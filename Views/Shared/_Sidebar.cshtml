@@ -1,0 +1,174 @@
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@inject IAuthorizationService Autorizacion
+
+@{
+    var controlador = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var accion = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+
+    string Activo(params string[] controladores) =>
+        controladores.Any(x => string.Equals(x, controlador, StringComparison.OrdinalIgnoreCase))
+            ? "active"
+            : string.Empty;
+
+    string Abierto(params string[] controladores) =>
+        controladores.Any(x => string.Equals(x, controlador, StringComparison.OrdinalIgnoreCase))
+            ? "menu-open"
+            : string.Empty;
+
+    var puedeVerUsuarios = (await Autorizacion.AuthorizeAsync(User, Permisos.Usuarios.Ver)).Succeeded;
+    var puedeVerRoles = (await Autorizacion.AuthorizeAsync(User, Permisos.Roles.Ver)).Succeeded;
+    var puedeVerPermisos = (await Autorizacion.AuthorizeAsync(User, Permisos.PermisosSistema.Ver)).Succeeded;
+    var mostrarAdministracion = puedeVerUsuarios || puedeVerRoles || puedeVerPermisos;
+}
+
+<aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
+    <div class="sidebar-brand">
+        <a asp-controller="Home" asp-action="Index" class="brand-link text-decoration-none">
+            <span class="brand-image brand-icon d-inline-flex align-items-center justify-content-center">
+                <i class="bi bi-mortarboard-fill"></i>
+            </span>
+            <span class="brand-text fw-semibold">SabIA</span>
+        </a>
+    </div>
+
+    <div class="sidebar-wrapper">
+        <nav class="mt-2">
+            <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
+                <li class="nav-item">
+                    <a asp-controller="Home" asp-action="Index" class="nav-link @Activo("Home")">
+                        <i class="nav-icon bi bi-speedometer2"></i>
+                        <p>Dashboard</p>
+                    </a>
+                </li>
+
+                @if (mostrarAdministracion)
+                {
+                    <li class="nav-header">ADMINISTRACIÓN</li>
+                    <li class="nav-item @Abierto("Usuarios", "Roles", "PermisosSistema")">
+                        <a href="#" class="nav-link @Activo("Usuarios", "Roles", "PermisosSistema")">
+                            <i class="nav-icon bi bi-shield-lock"></i>
+                            <p>
+                                Seguridad
+                                <i class="nav-arrow bi bi-chevron-right"></i>
+                            </p>
+                        </a>
+                        <ul class="nav nav-treeview">
+                            @if (puedeVerUsuarios)
+                            {
+                                <li class="nav-item">
+                                    <a asp-controller="Usuarios" asp-action="Index" class="nav-link @Activo("Usuarios")">
+                                        <i class="nav-icon bi bi-people"></i><p>Usuarios</p>
+                                    </a>
+                                </li>
+                            }
+                            @if (puedeVerRoles)
+                            {
+                                <li class="nav-item">
+                                    <a asp-controller="Roles" asp-action="Index" class="nav-link @Activo("Roles")">
+                                        <i class="nav-icon bi bi-person-badge"></i><p>Roles</p>
+                                    </a>
+                                </li>
+                            }
+                            @if (puedeVerPermisos)
+                            {
+                                <li class="nav-item">
+                                    <a asp-controller="PermisosSistema" asp-action="Index" class="nav-link @Activo("PermisosSistema")">
+                                        <i class="nav-icon bi bi-key"></i><p>Permisos</p>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </li>
+                }
+
+                <li class="nav-header">PERSONAS</li>
+                <li class="nav-item @Abierto("Docentes", "Alumnos", "Encargados")">
+                    <a href="#" class="nav-link @Activo("Docentes", "Alumnos", "Encargados")">
+                        <i class="nav-icon bi bi-people-fill"></i>
+                        <p>Comunidad educativa <i class="nav-arrow bi bi-chevron-right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item"><a asp-controller="Docentes" asp-action="Index" class="nav-link @Activo("Docentes")"><i class="nav-icon bi bi-person-video3"></i><p>Docentes</p></a></li>
+                        <li class="nav-item"><a asp-controller="Alumnos" asp-action="Index" class="nav-link @Activo("Alumnos")"><i class="nav-icon bi bi-mortarboard"></i><p>Alumnos</p></a></li>
+                        <li class="nav-item"><a asp-controller="Encargados" asp-action="Index" class="nav-link @Activo("Encargados")"><i class="nav-icon bi bi-person-hearts"></i><p>Encargados</p></a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-header">ESTRUCTURA ACADÉMICA</li>
+                <li class="nav-item @Abierto("Ciclos", "Periodos", "Grados", "Secciones", "Cursos")">
+                    <a href="#" class="nav-link @Activo("Ciclos", "Periodos", "Grados", "Secciones", "Cursos")">
+                        <i class="nav-icon bi bi-diagram-3"></i>
+                        <p>Configuración <i class="nav-arrow bi bi-chevron-right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item"><a asp-controller="Ciclos" asp-action="Index" class="nav-link @Activo("Ciclos")"><i class="nav-icon bi bi-calendar3"></i><p>Ciclos</p></a></li>
+                        <li class="nav-item"><a asp-controller="Periodos" asp-action="Index" class="nav-link @Activo("Periodos")"><i class="nav-icon bi bi-calendar-range"></i><p>Períodos</p></a></li>
+                        <li class="nav-item"><a asp-controller="Grados" asp-action="Index" class="nav-link @Activo("Grados")"><i class="nav-icon bi bi-layers"></i><p>Grados</p></a></li>
+                        <li class="nav-item"><a asp-controller="Secciones" asp-action="Index" class="nav-link @Activo("Secciones")"><i class="nav-icon bi bi-diagram-2"></i><p>Secciones</p></a></li>
+                        <li class="nav-item"><a asp-controller="Cursos" asp-action="Index" class="nav-link @Activo("Cursos")"><i class="nav-icon bi bi-book"></i><p>Cursos</p></a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-header">GESTIÓN ACADÉMICA</li>
+                <li class="nav-item @Abierto("Asignaciones", "Inscripciones")">
+                    <a href="#" class="nav-link @Activo("Asignaciones", "Inscripciones")">
+                        <i class="nav-icon bi bi-person-workspace"></i>
+                        <p>Organización <i class="nav-arrow bi bi-chevron-right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item"><a asp-controller="Asignaciones" asp-action="Index" class="nav-link @Activo("Asignaciones")"><i class="nav-icon bi bi-person-workspace"></i><p>Asignaciones</p></a></li>
+                        <li class="nav-item"><a asp-controller="Inscripciones" asp-action="Index" class="nav-link @Activo("Inscripciones")"><i class="nav-icon bi bi-person-vcard"></i><p>Inscripciones</p></a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-header">CONTENIDO Y DOCENCIA</li>
+                <li class="nav-item @Abierto("Unidades", "Materiales", "Planificaciones", "Documentos")">
+                    <a href="#" class="nav-link @Activo("Unidades", "Materiales", "Planificaciones", "Documentos")">
+                        <i class="nav-icon bi bi-journal-richtext"></i>
+                        <p>Contenido <i class="nav-arrow bi bi-chevron-right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item"><a asp-controller="Unidades" asp-action="Index" class="nav-link @Activo("Unidades")"><i class="nav-icon bi bi-journal-bookmark"></i><p>Unidades</p></a></li>
+                        <li class="nav-item"><a asp-controller="Materiales" asp-action="Index" class="nav-link @Activo("Materiales")"><i class="nav-icon bi bi-folder2-open"></i><p>Materiales</p></a></li>
+                        <li class="nav-item"><a asp-controller="Planificaciones" asp-action="Index" class="nav-link @Activo("Planificaciones")"><i class="nav-icon bi bi-clipboard2-check"></i><p>Planificación</p></a></li>
+                        <li class="nav-item"><a asp-controller="Documentos" asp-action="Index" class="nav-link @Activo("Documentos")"><i class="nav-icon bi bi-file-earmark-text"></i><p>Documentos</p></a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-header">EVALUACIÓN Y APOYO</li>
+                <li class="nav-item @Abierto("Tareas", "Entregas", "Cuestionarios", "ContenidoIA")">
+                    <a href="#" class="nav-link @Activo("Tareas", "Entregas", "Cuestionarios", "ContenidoIA")">
+                        <i class="nav-icon bi bi-list-check"></i>
+                        <p>Aprendizaje <i class="nav-arrow bi bi-chevron-right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item"><a asp-controller="Tareas" asp-action="Index" class="nav-link @Activo("Tareas")"><i class="nav-icon bi bi-list-check"></i><p>Tareas</p></a></li>
+                        <li class="nav-item"><a asp-controller="Entregas" asp-action="Index" class="nav-link @Activo("Entregas")"><i class="nav-icon bi bi-inbox"></i><p>Entregas</p></a></li>
+                        <li class="nav-item"><a asp-controller="Cuestionarios" asp-action="Index" class="nav-link @Activo("Cuestionarios")"><i class="nav-icon bi bi-ui-checks"></i><p>Cuestionarios</p></a></li>
+                        <li class="nav-item"><a asp-controller="ContenidoIA" asp-action="Index" class="nav-link @Activo("ContenidoIA")"><i class="nav-icon bi bi-stars"></i><p>Contenido con IA</p></a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-header">SEGUIMIENTO</li>
+                <li class="nav-item">
+                    <a asp-controller="Notificaciones" asp-action="Index" class="nav-link @Activo("Notificaciones")">
+                        <i class="nav-icon bi bi-bell"></i><p>Alertas y notificaciones</p>
+                    </a>
+                </li>
+
+                <li class="nav-header">PROTOTIPOS POR ROL</li>
+                <li class="nav-item @Abierto("Experiencias")">
+                    <a href="#" class="nav-link @Activo("Experiencias")">
+                        <i class="nav-icon bi bi-window-stack"></i>
+                        <p>Experiencias <i class="nav-arrow bi bi-chevron-right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item"><a asp-controller="Experiencias" asp-action="Docente" class="nav-link @(controlador == "Experiencias" && accion == "Docente" ? "active" : "")"><i class="nav-icon bi bi-person-video3"></i><p>Vista docente</p></a></li>
+                        <li class="nav-item"><a asp-controller="Experiencias" asp-action="Alumno" class="nav-link @(controlador == "Experiencias" && accion == "Alumno" ? "active" : "")"><i class="nav-icon bi bi-mortarboard"></i><p>Vista alumno</p></a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</aside>

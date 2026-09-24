@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "defaultProvider": "cdnjs",
+  "libraries": [
+    {
+      "library": "bootstrap-icons@1.13.1",
+      "destination": "wwwroot/lib/bootstrap-icons/"
+    },
+    {
+      "provider": "jsdelivr",
+      "library": "admin-lte@4.0.0-rc6",
+      "destination": "wwwroot/lib/admin-lte/",
+      "files": [
+        "dist/css/adminlte.min.css",
+        "dist/js/adminlte.min.js"
+      ]
+    }
+  ]
+}

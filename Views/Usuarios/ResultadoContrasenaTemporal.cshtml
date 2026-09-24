@@ -1,0 +1,120 @@
+@model Proyecto_Final.ViewModels.Usuarios.ResultadoContrasenaTemporal
+
+@{
+    ViewData["Title"] = "Contraseña temporal";
+}
+
+<div class="container py-4">
+
+    <div class="row justify-content-center">
+
+        <div class="col-12 col-md-8 col-lg-6">
+
+            <div class="card shadow border border-secondary">
+
+                <div class="card-body p-4">
+
+                    <div class="text-center mb-4">
+
+                        <h2 class="fw-bold mb-2">
+                            Contraseña restablecida
+                        </h2>
+
+                        <p class="text-muted mb-0">
+                            La contraseña temporal fue generada correctamente.
+                        </p>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Usuario
+                        </label>
+
+                        <input type="text"
+                               class="form-control"
+                               value="@Model.Usuario"
+                               readonly />
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Nombre
+                        </label>
+
+                        <input type="text"
+                               class="form-control"
+                               value="@Model.NombreCompleto"
+                               readonly />
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Contraseña temporal
+                        </label>
+
+                        <div class="input-group">
+
+                            <input type="text"
+                                   id="contrasenaTemporal"
+                                   class="form-control fw-bold"
+                                   value="@Model.ContrasenaTemporal"
+                                   readonly />
+
+                            <button type="button"
+                                    class="btn btn-outline-secondary"
+                                    id="botonCopiarContrasena">
+                                Copiar
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <div class="alert alert-warning"
+                         role="alert">
+
+                        Esta contraseña se mostrará únicamente en esta pantalla.
+                        Entréguela al usuario por un medio seguro.
+
+                    </div>
+
+                    <div class="alert alert-info"
+                         role="alert">
+
+                        El usuario deberá cambiar esta contraseña
+                        al iniciar sesión nuevamente.
+
+                    </div>
+
+                    <div class="d-grid mt-4">
+
+                        <a asp-controller="Usuarios"
+                           asp-action="Index"
+                           class="btn btn-primary">
+                            Volver a usuarios
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="~/js/usuarios.js"
+            asp-append-version="true">
+    </script>
+}
+

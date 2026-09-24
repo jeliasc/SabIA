@@ -1,0 +1,71 @@
+@model Proyecto_Final.ViewModels.Prototipo.ExperienciaDocentePrototipo
+@{
+    ViewData["Title"] = "Vista docente";
+}
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <h2 class="fw-semibold mb-0">Portal docente</h2>
+            <span class="badge text-bg-info">PROTOTIPO</span>
+        </div>
+        <p class="text-body-secondary mb-0">Ejemplo de experiencia para @Model.Docente.</p>
+    </div>
+
+    <div class="row g-3 mb-4">
+        @foreach (var indicador in Model.Indicadores)
+        {
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="small-box @indicador.Clase mb-0 h-100">
+                    <div class="inner"><h3>@indicador.Valor</h3><p>@indicador.Titulo</p></div>
+                    <i class="small-box-icon @indicador.Icono"></i>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-7">
+            <div class="card card-outline card-primary shadow-sm h-100">
+                <div class="card-header"><h3 class="card-title mb-0">Mis cursos</h3></div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead><tr><th>Curso</th><th>Sección</th><th>Progreso</th><th>Pendientes</th></tr></thead>
+                            <tbody>
+                            @foreach (var curso in Model.Cursos)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@curso.Curso</td>
+                                    <td>@curso.GradoSeccion</td>
+                                    <td>@curso.Progreso%</td>
+                                    <td><span class="badge text-bg-warning">@curso.EntregasPendientes</span></td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><h3 class="card-title mb-0">Entregas por revisar</h3></div>
+                <div class="list-group list-group-flush">
+                    @foreach (var entrega in Model.Entregas)
+                    {
+                        <div class="list-group-item py-3">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <div class="fw-semibold">@entrega.Alumno</div>
+                                    <div class="small text-body-secondary">@entrega.Tarea · @entrega.Curso</div>
+                                </div>
+                                <div class="small text-body-secondary text-nowrap">@entrega.Fecha</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,81 @@
+@{
+    ViewData["Title"] = "Recuperar contraseña";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="utf-8" />
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0" />
+
+    <title>Recuperar contraseña - Proyecto Final</title>
+
+    <link rel="stylesheet"
+          href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+
+    <link rel="stylesheet"
+          href="~/css/site.css"
+          asp-append-version="true" />
+
+</head>
+
+<body class="bg-light">
+
+    <div class="container">
+
+        <div class="row justify-content-center align-items-center min-vh-100">
+
+            <div class="col-12 col-sm-10 col-md-7 col-lg-5">
+
+                <div class="card shadow border-0">
+
+                    <div class="card-body p-4 p-md-5 text-center">
+
+                        <h2 class="fw-bold mb-3">
+                            Recuperar contraseña
+                        </h2>
+
+                        <p class="text-muted mb-4">
+                            La recuperación automática de contraseña
+                            no está disponible actualmente.
+                        </p>
+
+                        <div class="alert alert-info text-start"
+                             role="alert">
+
+                            Para restablecer su contraseña,
+                            contacte al administrador del sistema.
+
+                        </div>
+
+                        <div class="d-grid mt-4">
+
+                            <a asp-controller="Login"
+                               asp-action="Login"
+                               class="btn btn-primary">
+                                Volver al inicio de sesión
+                            </a>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+
+</html>

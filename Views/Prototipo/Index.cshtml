@@ -1,0 +1,119 @@
+@model Proyecto_Final.ViewModels.Prototipo.ModuloPrototipo
+
+@{
+    ViewData["Title"] = Model.Titulo;
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <i class="@Model.Icono fs-4 text-primary"></i>
+                <h2 class="mb-0 fw-semibold">@Model.Titulo</h2>
+                <span class="badge text-bg-info">PROTOTIPO</span>
+            </div>
+            <p class="text-body-secondary mb-0">@Model.Descripcion</p>
+        </div>
+
+        @if (Model.PermitirCrear)
+        {
+            <a asp-action="Crear" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>@Model.EtiquetaCrear
+            </a>
+        }
+    </div>
+
+    <div class="alert alert-info border-0 shadow-sm d-flex align-items-start gap-2" role="alert">
+        <i class="bi bi-database-x fs-5"></i>
+        <div>
+            <strong>Datos ficticios.</strong>
+            Esta pantalla todavía no utiliza tablas nuevas de PostgreSQL. La conectaremos a la base de datos cuando trabajemos este módulo.
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.NotaTecnica))
+    {
+        <div class="alert alert-warning border-0 shadow-sm">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            @Model.NotaTecnica
+        </div>
+    }
+
+    @if (Model.Indicadores.Count > 0)
+    {
+        <div class="row g-3 mb-4">
+            @foreach (var indicador in Model.Indicadores)
+            {
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="small-box @indicador.Clase mb-0 h-100">
+                        <div class="inner">
+                            <h3>@indicador.Valor</h3>
+                            <p>@indicador.Titulo</p>
+                        </div>
+                        <i class="small-box-icon @indicador.Icono"></i>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="card card-outline card-primary shadow-sm">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h3 class="card-title mb-0">Registros de demostración</h3>
+            <span class="text-body-secondary small">@Model.Filas.Count registros</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            @foreach (var columna in Model.Columnas)
+                            {
+                                <th>@columna</th>
+                            }
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var fila in Model.Filas)
+                        {
+                            <tr>
+                                @foreach (var columna in Model.Columnas)
+                                {
+                                    <td>
+                                        @if (fila.Valores.TryGetValue(columna, out var celda))
+                                        {
+                                            if (!string.IsNullOrWhiteSpace(celda.ClaseBadge))
+                                            {
+                                                <span class="badge @celda.ClaseBadge">@celda.Texto</span>
+                                            }
+                                            else
+                                            {
+                                                @celda.Texto
+                                            }
+                                        }
+                                    </td>
+                                }
+                                <td class="text-end text-nowrap">
+                                    <a asp-action="Ver" asp-route-id="@fila.Id" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-eye"></i>
+                                        <span class="d-none d-xl-inline">Ver</span>
+                                    </a>
+                                    @if (Model.PermitirEditar)
+                                    {
+                                        <a asp-action="Editar" asp-route-id="@fila.Id" class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-pencil"></i>
+                                            <span class="d-none d-xl-inline">@Model.EtiquetaEditar</span>
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

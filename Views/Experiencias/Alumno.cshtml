@@ -1,0 +1,76 @@
+@model Proyecto_Final.ViewModels.Prototipo.ExperienciaAlumnoPrototipo
+@{
+    ViewData["Title"] = "Vista alumno";
+}
+
+<div class="container-fluid">
+    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h2 class="fw-semibold mb-0">Portal del alumno</h2>
+                <span class="badge text-bg-info">PROTOTIPO</span>
+            </div>
+            <p class="text-body-secondary mb-0">@Model.Alumno · @Model.GradoSeccion</p>
+        </div>
+        <div class="text-lg-end">
+            <div class="text-body-secondary small">Progreso general</div>
+            <div class="fs-3 fw-bold text-primary">@Model.ProgresoGeneral%</div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        @foreach (var indicador in Model.Indicadores)
+        {
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="small-box @indicador.Clase mb-0 h-100">
+                    <div class="inner"><h3>@indicador.Valor</h3><p>@indicador.Titulo</p></div>
+                    <i class="small-box-icon @indicador.Icono"></i>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-7">
+            <div class="card card-outline card-primary shadow-sm h-100">
+                <div class="card-header"><h3 class="card-title mb-0">Unidades disponibles</h3></div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        @foreach (var unidad in Model.Unidades)
+                        {
+                            <div class="border rounded p-3">
+                                <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+                                    <div>
+                                        <div class="fw-semibold">@unidad.Curso</div>
+                                        <div class="small text-body-secondary">@unidad.Unidad</div>
+                                    </div>
+                                    <span class="badge @(unidad.Estado == "Disponible" ? "text-bg-success" : "text-bg-secondary")">@unidad.Estado</span>
+                                </div>
+                                <div class="progress" style="height:8px;"><div class="progress-bar" style="width:@unidad.Progreso%"></div></div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><h3 class="card-title mb-0">Mis tareas</h3></div>
+                <div class="list-group list-group-flush">
+                    @foreach (var tarea in Model.Tareas)
+                    {
+                        <div class="list-group-item py-3">
+                            <div class="d-flex justify-content-between gap-2">
+                                <div>
+                                    <div class="fw-semibold">@tarea.Tarea</div>
+                                    <div class="small text-body-secondary">@tarea.Curso · vence @tarea.FechaLimite</div>
+                                </div>
+                                <span class="badge @(tarea.Estado == "Entregada" ? "text-bg-success" : "text-bg-warning") align-self-start">@tarea.Estado</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

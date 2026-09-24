@@ -1,0 +1,31 @@
+@* ALERTAS GENERALES DEL SISTEMA *@
+
+@if (TempData["Error"] is string mensajeError)
+{
+    <div data-alerta
+         data-tipo="error"
+         data-titulo="Error"
+         data-mensaje="@mensajeError"
+         hidden>
+    </div>
+}
+
+@if (TempData["Advertencia"] is string mensajeAdvertencia)
+{
+    <div data-alerta
+         data-tipo="warning"
+         data-titulo="Advertencia"
+         data-mensaje="@mensajeAdvertencia"
+         hidden>
+    </div>
+}
+
+@if (TempData["Informacion"] is string mensajeInformacion)
+{
+    <div data-alerta
+         data-tipo="info"
+         data-titulo="Información"
+         data-mensaje="@mensajeInformacion"
+         hidden>
+    </div>
+}

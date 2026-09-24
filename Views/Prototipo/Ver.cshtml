@@ -1,0 +1,56 @@
+@model Proyecto_Final.ViewModels.Prototipo.DetalleModuloPrototipo
+
+@{
+    ViewData["Title"] = $"Ver {Model.Modulo.Titulo}";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <i class="@Model.Modulo.Icono fs-4 text-primary"></i>
+                <h2 class="fw-semibold mb-0">Detalle de @Model.Modulo.Titulo.ToLowerInvariant()</h2>
+                <span class="badge text-bg-info">PROTOTIPO</span>
+            </div>
+            <p class="text-body-secondary mb-0">Información ficticia para validar la estructura de la pantalla.</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Regresar
+        </a>
+    </div>
+
+    <div class="card card-outline card-primary shadow-sm">
+        <div class="card-header">
+            <h3 class="card-title mb-0">Información general</h3>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                @foreach (var columna in Model.Modulo.Columnas)
+                {
+                    if (Model.Fila.Valores.TryGetValue(columna, out var celda))
+                    {
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <div class="text-body-secondary small mb-1">@columna</div>
+                            @if (!string.IsNullOrWhiteSpace(celda.ClaseBadge))
+                            {
+                                <span class="badge @celda.ClaseBadge fs-6">@celda.Texto</span>
+                            }
+                            else
+                            {
+                                <div class="fw-semibold">@celda.Texto</div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+        <div class="card-footer d-flex justify-content-end gap-2">
+            @if (Model.Modulo.PermitirEditar)
+            {
+                <a asp-action="Editar" asp-route-id="@Model.Fila.Id" class="btn btn-primary">
+                    <i class="bi bi-pencil me-1"></i>@Model.Modulo.EtiquetaEditar
+                </a>
+            }
+        </div>
+    </div>
+</div>

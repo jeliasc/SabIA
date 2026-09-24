@@ -1,0 +1,492 @@
+@model IEnumerable<Proyecto_Final.Models.Usuario>
+
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+
+@inject IAuthorizationService Autorizacion
+
+@{
+    ViewData["Title"] = "Usuarios";
+
+    // PERMISO USUARIOS - VER
+    var permisoUsuariosVer =
+        (await Autorizacion.AuthorizeAsync(
+            User,
+            Permisos.Usuarios.Ver
+        )).Succeeded;
+
+    // PERMISO USUARIOS - CREAR
+    var permisoUsuariosCrear =
+        (await Autorizacion.AuthorizeAsync(
+            User,
+            Permisos.Usuarios.Crear
+        )).Succeeded;
+
+    // PERMISO USUARIOS - EDITAR
+    var permisoUsuariosEditar =
+        (await Autorizacion.AuthorizeAsync(
+            User,
+            Permisos.Usuarios.Editar
+        )).Succeeded;
+
+    // PERMISO USUARIOS - CAMBIAR ESTADO
+    var permisoUsuariosCambiarEstado =
+        (await Autorizacion.AuthorizeAsync(
+            User,
+            Permisos.Usuarios.CambiarEstado
+        )).Succeeded;
+
+    // PERMISO USUARIOS - RESTABLECER CONTRASEÑA
+    var permisoUsuariosRestablecerContrasena =
+        (await Autorizacion.AuthorizeAsync(
+            User,
+            Permisos.Usuarios.RestablecerContrasena
+        )).Succeeded;
+}
+
+@section Styles {
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.bootstrap5.min.css" />
+
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+    <div class="d-flex flex-column flex-md-row
+        justify-content-between
+        align-items-md-center
+        gap-3 mb-4">
+
+        <div>
+
+            <h2 class="fw-bold mb-1">
+                Usuarios
+            </h2>
+
+            <p class="text-muted mb-0">
+                Administración de usuarios del sistema.
+            </p>
+
+        </div>
+
+        @if (permisoUsuariosCrear)
+        {
+            <div class="d-grid d-md-block">
+
+                <a asp-controller="Usuarios" asp-action="Crear" class="btn btn-primary">
+
+                    Nuevo usuario
+
+                </a>
+
+            </div>
+        }
+
+    </div>
+
+
+    @* BÚSQUEDA - VISTA MÓVIL *@
+    <div class="d-md-none mb-3">
+
+        <div class="d-grid">
+
+            <button type="button" class="btn btn-outline-secondary" data-mostrar-busqueda-usuarios>
+
+                Buscar usuario
+
+            </button>
+
+        </div>
+
+        <div class="mt-2 d-none" data-contenedor-busqueda-usuarios>
+
+            <input type="search" class="form-control" placeholder="Buscar por usuario, nombre o correo..."
+                   autocomplete="off" data-busqueda-usuarios />
+
+        </div>
+
+    </div>
+
+
+    @* VISTA DE ESCRITORIO *@
+    <div class="card shadow-sm border border-secondary d-none d-md-block">
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table id="tablaUsuarios" class="table table-hover align-middle mb-0">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Usuario
+                            </th>
+
+                            <th>
+                                Nombre
+                            </th>
+
+                            <th>
+                                Correo
+                            </th>
+
+                            <th>
+                                Estado
+                            </th>
+
+                            <th>
+                                Cambio de contraseña
+                            </th>
+
+                            <th class="text-end">
+                                Acciones
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        @foreach (var usuario in Model)
+                        {
+                            var nombreCompleto = string.Join(
+                                " ",
+                                new[]
+                                {
+                                    usuario.PrimerNombre,
+                                    usuario.SegundoNombre,
+                                    usuario.TercerNombre,
+                                    usuario.PrimerApellido,
+                                    usuario.SegundoApellido
+                                }
+                                .Where(nombre =>
+                                    !string.IsNullOrWhiteSpace(nombre))
+                            );
+
+                            <tr>
+
+                                <td>
+                                    @usuario.UserName
+                                </td>
+
+                                <td>
+                                    @nombreCompleto
+                                </td>
+
+                                <td>
+                                    @usuario.Email
+                                </td>
+
+                                <td>
+
+                                    @if (usuario.Activo)
+                                    {
+                                        <span class="badge bg-success">
+                                            Activo
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">
+                                            Inactivo
+                                        </span>
+                                    }
+
+                                </td>
+
+                                <td>
+
+                                    @if (usuario.CambiarContrasena)
+                                    {
+                                        <span class="badge bg-warning text-dark">
+                                            Pendiente
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">
+                                            Actualizada
+                                        </span>
+                                    }
+
+                                </td>
+
+                                <td>
+
+                                    <div class="d-flex
+                                        flex-wrap
+                                        justify-content-end
+                                        align-items-center
+                                        gap-2">
+
+                                        @if (permisoUsuariosVer)
+                                        {
+                                            <a asp-controller="Usuarios" asp-action="Ver" asp-route-id="@usuario.Id"
+                                               class="btn btn-outline-secondary btn-sm">
+
+                                                Ver
+
+                                            </a>
+                                        }
+
+                                        @if (permisoUsuariosEditar)
+                                        {
+                                            <a asp-controller="Usuarios" asp-action="Editar" asp-route-id="@usuario.Id"
+                                               class="btn btn-outline-primary btn-sm">
+
+                                                Editar
+
+                                            </a>
+                                        }
+
+                                        @if (permisoUsuariosCambiarEstado)
+                                        {
+                                            if (usuario.Activo)
+                                            {
+                                                <form asp-controller="Usuarios" asp-action="Desactivar" asp-route-id="@usuario.Id"
+                                                      method="post" class="m-0" data-cambiar-estado-usuario data-accion="desactivar">
+
+                                                    @Html.AntiForgeryToken()
+
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        Desactivar
+                                                    </button>
+
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <form asp-controller="Usuarios" asp-action="Activar" asp-route-id="@usuario.Id"
+                                                      method="post" class="m-0" data-cambiar-estado-usuario data-accion="activar">
+
+                                                    @Html.AntiForgeryToken()
+
+                                                    <button type="submit" class="btn btn-outline-success btn-sm">
+                                                        Activar
+                                                    </button>
+
+                                                </form>
+                                            }
+                                        }
+                                        @if (permisoUsuariosRestablecerContrasena &&
+                                             usuario.Activo)
+                                        {
+                                            <form asp-controller="Usuarios" asp-action="RestablecerContrasena"
+                                                  asp-route-id="@usuario.Id" method="post" class="m-0"
+                                                  data-restablecer-contrasena>
+
+                                                @Html.AntiForgeryToken()
+
+                                                <button type="submit" class="btn btn-outline-warning btn-sm">
+
+                                                    Restablecer contraseña
+
+                                                </button>
+
+                                            </form>
+                                        }
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    @* VISTA MÓVIL *@
+    <div class="d-md-none" data-contenedor-usuarios-movil>
+
+        @foreach (var usuario in Model)
+        {
+            var nombreCompleto = string.Join(
+                " ",
+                new[]
+                {
+                    usuario.PrimerNombre,
+                    usuario.SegundoNombre,
+                    usuario.TercerNombre,
+                    usuario.PrimerApellido,
+                    usuario.SegundoApellido
+                }
+                .Where(nombre =>
+                    !string.IsNullOrWhiteSpace(nombre))
+            );
+
+            var textoBusqueda =
+                $"{usuario.UserName} {nombreCompleto} {usuario.Email}";
+
+            <div class="card shadow-sm border-0 mb-3" data-usuario data-texto-busqueda="@textoBusqueda">
+
+                <div class="card-body p-4">
+
+                    <div class="d-flex
+                        justify-content-between
+                        align-items-start
+                        gap-2
+                        mb-3">
+
+                        <div>
+
+                            <div class="fw-bold fs-5">
+                                @usuario.UserName
+                            </div>
+
+                            <div class="text-muted small">
+                                @nombreCompleto
+                            </div>
+
+                        </div>
+
+                        @if (usuario.Activo)
+                        {
+                            <span class="badge bg-success">
+                                Activo
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">
+                                Inactivo
+                            </span>
+                        }
+
+                    </div>
+
+
+                    <div class="small text-muted mb-1">
+                        Correo electrónico
+                    </div>
+
+                    <div class="text-break mb-3">
+                        @usuario.Email
+                    </div>
+
+
+                    <div class="d-flex align-items-center gap-2 mb-4">
+
+                        <span class="small text-muted">
+                            Contraseña:
+                        </span>
+
+                        @if (usuario.CambiarContrasena)
+                        {
+                            <span class="badge bg-warning text-dark">
+                                Pendiente
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">
+                                Actualizada
+                            </span>
+                        }
+
+                    </div>
+
+
+                    <div class="d-grid gap-2">
+
+                        @if (permisoUsuariosVer)
+                        {
+                            <a asp-controller="Usuarios" asp-action="Ver" asp-route-id="@usuario.Id"
+                               class="btn btn-outline-secondary btn-sm">
+
+                                Ver
+
+                            </a>
+                        }
+
+                        @if (permisoUsuariosEditar)
+                        {
+                            <a asp-controller="Usuarios" asp-action="Editar" asp-route-id="@usuario.Id"
+                               class="btn btn-outline-primary btn-sm">
+
+                                Editar
+
+                            </a>
+                        }
+
+                        @if (permisoUsuariosRestablecerContrasena &&
+                             usuario.Activo)
+                        {
+                            <form asp-controller="Usuarios" asp-action="RestablecerContrasena" method="post"
+                                  data-restablecer-contrasena>
+
+                                @Html.AntiForgeryToken()
+
+                                <input type="hidden" name="id" value="@usuario.Id" />
+
+                                <div class="d-grid">
+
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+
+                                        Restablecer contraseña
+
+                                    </button>
+
+                                </div>
+
+                            </form>
+                        }
+
+                    </div>
+
+                </div>
+
+            </div>
+        }
+
+    </div>
+
+
+    @* SIN RESULTADOS - BÚSQUEDA MÓVIL *@
+    <div class="d-md-none
+        text-center
+        text-muted
+        py-4
+        d-none" data-sin-resultados-usuarios>
+
+        No se encontraron usuarios.
+
+    </div>
+
+
+    @if (!Model.Any())
+    {
+        <div class="text-center text-muted py-4">
+
+            No existen usuarios registrados.
+
+        </div>
+    }
+
+</div>
+
+
+@section Scripts {
+
+    <script src="https://cdn.datatables.net/2.3.4/js/dataTables.min.js">
+    </script>
+
+    <script src="https://cdn.datatables.net/2.3.4/js/dataTables.bootstrap5.min.js">
+    </script>
+
+    <script src="~/js/usuarios.js" asp-append-version="true">
+    </script>
+
+}

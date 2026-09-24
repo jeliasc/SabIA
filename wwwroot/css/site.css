@@ -1,0 +1,117 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 0;
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem rgba(13, 110, 253, .35);
+}
+
+/* ADMINLTE / SABIA */
+.brand-icon {
+  width: 33px;
+  height: 33px;
+  margin-right: .55rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .14);
+  color: #fff;
+  font-size: 1rem;
+}
+
+.sidebar-brand .brand-link {
+  display: flex;
+  align-items: center;
+}
+
+.navbar-badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  font-size: .6rem;
+}
+
+.user-image {
+  width: 2rem;
+  height: 2rem;
+  margin-right: .35rem;
+}
+
+.user-avatar-large {
+  width: 64px;
+  height: 64px;
+}
+
+.fs-7 {
+  font-size: .75rem;
+}
+
+.app-content > .container-fluid {
+  padding-bottom: 1rem;
+}
+
+.card,
+.small-box,
+.alert {
+  border-radius: .65rem;
+}
+
+.small-box .small-box-icon {
+  font-size: 4.25rem;
+  opacity: .22;
+}
+
+.table > :not(caption) > * > * {
+  vertical-align: middle;
+}
+
+.login-page {
+  min-height: 100vh;
+}
+
+.login-box {
+  width: min(92vw, 410px);
+}
+
+.login-card-body {
+  padding: 1.75rem;
+}
+
+/* CONSERVAR ESTILOS DE FORMULARIOS EXISTENTES */
+.form-floating > .form-control-plaintext::placeholder,
+.form-floating > .form-control::placeholder {
+  color: var(--bs-secondary-color);
+  text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder,
+.form-floating > .form-control:focus::placeholder {
+  text-align: start;
+}
+
+@media (max-width: 767.98px) {
+  .app-content-header h3 {
+    font-size: 1.25rem;
+  }
+
+  .small-box .small-box-icon {
+    font-size: 3.5rem;
+  }
+}
