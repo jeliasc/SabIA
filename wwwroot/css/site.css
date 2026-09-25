@@ -63,7 +63,7 @@ body {
   font-size: .75rem;
 }
 
-.app-content > .container-fluid {
+.app-content>.container-fluid {
   padding-bottom: 1rem;
 }
 
@@ -78,7 +78,7 @@ body {
   opacity: .22;
 }
 
-.table > :not(caption) > * > * {
+.table> :not(caption)>*>* {
   vertical-align: middle;
 }
 
@@ -95,14 +95,14 @@ body {
 }
 
 /* CONSERVAR ESTILOS DE FORMULARIOS EXISTENTES */
-.form-floating > .form-control-plaintext::placeholder,
-.form-floating > .form-control::placeholder {
+.form-floating>.form-control-plaintext::placeholder,
+.form-floating>.form-control::placeholder {
   color: var(--bs-secondary-color);
   text-align: end;
 }
 
-.form-floating > .form-control-plaintext:focus::placeholder,
-.form-floating > .form-control:focus::placeholder {
+.form-floating>.form-control-plaintext:focus::placeholder,
+.form-floating>.form-control:focus::placeholder {
   text-align: start;
 }
 
@@ -114,4 +114,43 @@ body {
   .small-box .small-box-icon {
     font-size: 3.5rem;
   }
+}
+
+/* SIDEBAR */
+.sidebar-wrapper .nav-link {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.sidebar-wrapper .nav-link>p {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  gap: .5rem;
+}
+
+.sidebar-wrapper .nav-link .nav-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-wrapper .nav-link .nav-arrow {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+/* LOGO SABIA */
+.brand-image {
+    height: auto;
+    width: auto;
+    max-width: 48px;
+    object-fit: contain;
+    border-radius: 50%;
+    margin-right: .6rem;
 }
