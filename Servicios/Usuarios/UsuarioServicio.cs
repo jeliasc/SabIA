@@ -12,7 +12,7 @@ namespace Proyecto_Final.Servicios.Usuarios;
 public class UsuarioServicio : IUsuarioServicio
 {
     private readonly UserManager<Usuario> administradorUsuarios;
-    private readonly RoleManager<IdentityRole> administradorRoles;
+    private readonly RoleManager<Rol> administradorRoles;
     private readonly Contexto contexto;
 
     private static readonly Regex FormatoCorreo =
@@ -60,7 +60,7 @@ public class UsuarioServicio : IUsuarioServicio
 
     public UsuarioServicio(
         UserManager<Usuario> administradorUsuarios,
-        RoleManager<IdentityRole> administradorRoles,
+        RoleManager<Rol> administradorRoles,
         Contexto contexto)
     {
         this.administradorUsuarios = administradorUsuarios;

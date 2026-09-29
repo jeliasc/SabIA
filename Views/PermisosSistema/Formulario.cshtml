@@ -1,0 +1,54 @@
+@model Proyecto_Final.ViewModels.PermisosSistema.CrearPermiso
+
+<div class="mb-3">
+
+    <label asp-for="Codigo"
+           class="form-label"></label>
+
+    <input asp-for="Codigo"
+           class="form-control"
+           placeholder="Ej. Planificacion.Crear"
+           autocomplete="off" />
+
+    <div class="form-text">
+        Identificador técnico del permiso.
+        Utilice el formato Modulo.Accion.
+    </div>
+
+    <span asp-validation-for="Codigo"
+          id="CodigoError"
+          class="text-danger"></span>
+
+</div>
+
+<div class="mb-3">
+
+    <label asp-for="Modulo"
+           class="form-label"></label>
+
+    <input asp-for="Modulo"
+           class="form-control"
+           placeholder="Ej. Planificación"
+           autocomplete="off" />
+
+    <span asp-validation-for="Modulo"
+          id="ModuloError"
+          class="text-danger"></span>
+
+</div>
+
+<div class="mb-3">
+
+    <label asp-for="Descripcion"
+           class="form-label"></label>
+
+    <input asp-for="Descripcion"
+           class="form-control"
+           placeholder="Ej. Permite crear planificaciones académicas."
+           autocomplete="off" />
+
+    <span asp-validation-for="Descripcion"
+          id="DescripcionError"
+          class="text-danger"></span>
+
+</div>

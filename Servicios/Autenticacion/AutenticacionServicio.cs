@@ -28,11 +28,19 @@ public class AutenticacionServicio : IAutenticacionServicio
             );
 
         // No indicar si el usuario existe o está inactivo.
-        if (usuario == null || !usuario.Activo)
+        if (usuario == null)
         {
             return ResultadoAutenticacion
                 .CredencialesInvalidas(
                     "Usuario o contraseña incorrectos."
+                );
+        }
+
+        if (!usuario.Activo)
+        {
+            return ResultadoAutenticacion
+                .CuentaInactiva(
+                    "Su cuenta se encuentra inactiva. Comuníquese con el administrador."
                 );
         }
 

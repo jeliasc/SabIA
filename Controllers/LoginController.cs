@@ -67,6 +67,17 @@ public class LoginController : Controller
         }
 
         if (resultado.Tipo ==
+            TipoResultadoAutenticacion.CuentaInactiva)
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                resultado.Mensaje ?? string.Empty
+            );
+
+            return View(modelo);
+        }
+
+        if (resultado.Tipo ==
             TipoResultadoAutenticacion
                 .CredencialesInvalidas)
         {

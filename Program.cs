@@ -9,6 +9,8 @@ using Proyecto_Final.Seguridad.Filtros;
 using Proyecto_Final.Servicios.Correo;
 using Proyecto_Final.Servicios.Usuarios;
 using Proyecto_Final.Servicios.Autenticacion;
+using Proyecto_Final.Servicios.GestionRoles;
+using Proyecto_Final.Servicios.GestionPermisos;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +20,7 @@ builder.Services.AddDbContext<Contexto>(options =>
     )
 );
 
-builder.Services.AddIdentity<Usuario, IdentityRole>(options =>
+builder.Services.AddIdentity<Usuario, Rol>(options =>
     {
         // Requisitos de contraseña
         options.Password.RequiredLength = 10;
@@ -59,22 +61,17 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddAuthorization(options =>
 {
-    // REGISTRAR POLÍTICAS DE PERMISOS
-    foreach (var permiso in Permisos.ObtenerTodos())
-    {
-        options.AddPolicy(
-            permiso,
-            policy =>
-                policy.RequireClaim(TiposClaims.Permiso, permiso)
-        );
-    }
-
     // EXIGIR AUTENTICACIÓN EN TODO EL SISTEMA
     // excepto en las acciones marcadas con AllowAnonymous.
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
 });
+
+builder.Services.AddSingleton<
+    IAuthorizationPolicyProvider,
+    ProveedorPoliticasPermisos
+>();
 
 builder.Services.AddControllersWithViews(options =>
 {
@@ -91,6 +88,8 @@ builder.Services.Configure<ConfiguracionCorreo>(
 builder.Services.AddScoped<IServicioCorreo, ServicioCorreo>();
 builder.Services.AddScoped<IUsuarioServicio, UsuarioServicio>();
 builder.Services.AddScoped<IAutenticacionServicio, AutenticacionServicio>();
+builder.Services.AddScoped<IRolServicio, RolServicio>();
+builder.Services.AddScoped<IPermisoServicio,PermisoServicio>();
 
 var app = builder.Build();
 

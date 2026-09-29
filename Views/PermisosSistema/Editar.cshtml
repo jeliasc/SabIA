@@ -1,0 +1,151 @@
+@model Proyecto_Final.ViewModels.PermisosSistema.EditarPermiso
+
+@{
+    ViewData["Title"] = "Editar permiso";
+}
+
+<div class="container-fluid">
+
+    <div class="row">
+
+        <div class="col-12 col-lg-10 col-xl-9">
+
+            <!-- ENCABEZADO -->
+            <div class="d-flex justify-content-between align-items-center gap-3 mb-4">
+
+                <div>
+                    <h2 class="mb-0 fw-semibold">
+                        Editar permiso
+                    </h2>
+
+                    <p class="text-body-secondary mb-0">
+                        Modifique la información del permiso.
+                    </p>
+                </div>
+
+                <a asp-action="Index"
+                   class="btn btn-outline-secondary btn-sm text-nowrap">
+
+                    <i class="bi bi-arrow-left me-1"></i>
+                    Regresar
+
+                </a>
+
+            </div>
+
+            <!-- FORMULARIO -->
+            <div class="card card-outline card-primary shadow-sm">
+
+                <div class="card-header">
+
+                    <h3 class="card-title mb-0">
+                        Información del permiso
+                    </h3>
+
+                </div>
+
+                <div class="card-body">
+
+                    <form asp-action="Editar"
+                          method="post"
+                          data-modo="editar">
+
+                        @Html.AntiForgeryToken()
+
+                        <input asp-for="Id"
+                               type="hidden" />
+
+                        <div asp-validation-summary="ModelOnly"
+                             class="text-danger mb-3"></div>
+
+                        <!-- CÓDIGO -->
+                        <div class="mb-3">
+
+                            <label asp-for="Codigo"
+                                   class="form-label">
+                                Código
+                            </label>
+
+                            <input asp-for="Codigo"
+                                   class="form-control"
+                                   readonly />
+
+                            <div class="form-text">
+                                El código del permiso no puede modificarse.
+                            </div>
+
+                        </div>
+
+                        <!-- MÓDULO -->
+                        <div class="mb-3">
+
+                            <label asp-for="Modulo"
+                                   class="form-label">
+                            </label>
+
+                            <input asp-for="Modulo"
+                                   class="form-control"
+                                   autocomplete="off" />
+
+                            <span asp-validation-for="Modulo"
+                                  id="ModuloError"
+                                  class="text-danger"></span>
+
+                        </div>
+
+                        <!-- DESCRIPCIÓN -->
+                        <div class="mb-3">
+
+                            <label asp-for="Descripcion"
+                                   class="form-label">
+                            </label>
+
+                            <input asp-for="Descripcion"
+                                   class="form-control"
+                                   autocomplete="off" />
+
+                            <span asp-validation-for="Descripcion"
+                                  id="DescripcionError"
+                                  class="text-danger"></span>
+
+                        </div>
+
+                        <!-- ACCIONES -->
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+
+                            <a asp-action="Index"
+                               class="btn btn-outline-secondary">
+
+                                Cancelar
+
+                            </a>
+
+                            <button type="submit"
+                                    class="btn btn-primary">
+
+                                <i class="bi bi-floppy me-1"></i>
+                                Guardar cambios
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+@section Scripts
+{
+    <partial name="_ValidationScriptsPartial" />
+
+    <script src="~/js/permisos-sistema.js"
+            asp-append-version="true"></script>
+}

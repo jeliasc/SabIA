@@ -12,14 +12,14 @@
     var permisoUsuariosVer =
         (await Autorizacion.AuthorizeAsync(
             User,
-            Permisos.Usuarios.Ver
+             "Usuarios.Ver"
         )).Succeeded;
 
     // PERMISO USUARIOS - CREAR
     var permisoUsuariosCrear =
         (await Autorizacion.AuthorizeAsync(
             User,
-            Permisos.Usuarios.Crear
+                "Usuarios.Crear"
         )).Succeeded;
 
     // PERMISO USUARIOS - EDITAR
@@ -410,6 +410,10 @@
 
                             </a>
                         }
+                        <a permiso="Usuarios.Ver" asp-controller="Usuarios" asp-action="Ver" asp-route-id="@usuario.Id"
+                           class="btn btn-outline-secondary btn-sm">
+                            Ver
+                        </a>
 
                         @if (permisoUsuariosEditar)
                         {

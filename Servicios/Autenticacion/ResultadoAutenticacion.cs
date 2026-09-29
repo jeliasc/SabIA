@@ -4,6 +4,7 @@ public enum TipoResultadoAutenticacion
 {
     Exito,
     CredencialesInvalidas,
+    CuentaInactiva,
     Bloqueado,
     RequiereCambioContrasena,
     NoAutenticado,
@@ -35,6 +36,16 @@ public class ResultadoAutenticacion
         return new ResultadoAutenticacion
         {
             Tipo = TipoResultadoAutenticacion.CredencialesInvalidas,
+            Mensaje = mensaje
+        };
+    }
+
+    public static ResultadoAutenticacion CuentaInactiva(
+        string mensaje)
+    {
+        return new ResultadoAutenticacion
+        {
+            Tipo = TipoResultadoAutenticacion.CuentaInactiva,
             Mensaje = mensaje
         };
     }

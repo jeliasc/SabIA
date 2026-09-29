@@ -1,0 +1,92 @@
+@model Proyecto_Final.ViewModels.Roles.FormularioRol
+
+<div class="mb-3">
+    <label asp-for="Nombre"
+           class="form-label">
+    </label>
+
+    <input asp-for="Nombre"
+           class="form-control"
+           autocomplete="off"
+           maxlength="100"
+           placeholder="Ingrese el nombre del rol" />
+
+    <span asp-validation-for="Nombre"
+          class="text-danger"
+          id="NombreError">
+    </span>
+</div>
+
+<div class="mt-4">
+    <div class="d-flex justify-content-between
+                align-items-center mb-3">
+
+        <div>
+            <h5 class="mb-1">
+                Permisos del rol
+            </h5>
+
+            <small class="text-muted">
+                Seleccione los permisos que tendrá este rol.
+            </small>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="button"
+                    class="btn btn-outline-success btn-sm"
+                    id="seleccionarTodosPermisos">
+                Seleccionar todos
+            </button>
+
+            <button type="button"
+                    class="btn btn-outline-danger btn-sm"
+                    id="quitarTodosPermisos">
+                Quitar todos
+            </button>
+        </div>
+    </div>
+
+    @{
+        var grupos = Model.Permisos
+            .Select((permiso, indice) => new
+            {
+                Permiso = permiso,
+                Indice = indice,
+                Grupo = permiso.Nombre.Split(separator: '.')[0]
+            })
+            .GroupBy(item => item.Grupo);
+    }
+
+    <div class="row g-3">
+        @foreach (var grupo in grupos)
+        {
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <strong>@grupo.Key</strong>
+                    </div>
+
+                    <div class="card-body">
+                        @foreach (var item in grupo)
+                        {
+                            <div class="form-check mb-2">
+
+                                <input type="hidden"
+                                       asp-for="Permisos[item.Indice].Nombre" />
+
+                                <input class="form-check-input permiso-rol"
+                                       asp-for="Permisos[item.Indice].Seleccionado" />
+
+                                <label class="form-check-label"
+                                       asp-for="Permisos[item.Indice].Seleccionado">
+                                    @item.Permiso.Nombre.Split('.').Last()
+                                </label>
+
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

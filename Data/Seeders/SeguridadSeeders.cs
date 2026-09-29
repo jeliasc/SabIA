@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Proyecto_Final.Models;
 using Proyecto_Final.Seguridad;
+using Microsoft.EntityFrameworkCore;
 
 namespace Proyecto_Final.Data.Seeders;
 
@@ -11,11 +12,15 @@ public static class SeguridadSeeders
         IServiceProvider servicios,
         IConfiguration configuracion)
     {
+
         var administradorRoles =
-            servicios.GetRequiredService<RoleManager<IdentityRole>>();
+            servicios.GetRequiredService<RoleManager<Rol>>();
 
         var administradorUsuarios =
             servicios.GetRequiredService<UserManager<Usuario>>();
+
+        var contexto =
+            servicios.GetRequiredService<Contexto>();
 
         // ROLES INICIALES
 
@@ -31,7 +36,11 @@ public static class SeguridadSeeders
             if (!await administradorRoles.RoleExistsAsync(nombreRol))
             {
                 var resultado = await administradorRoles.CreateAsync(
-                    new IdentityRole(nombreRol)
+                    new Rol
+                    {
+                        Name = nombreRol,
+                        Activo = true
+                    }
                 );
 
                 VerificarResultado(
@@ -40,6 +49,42 @@ public static class SeguridadSeeders
                 );
             }
         }
+
+        // PERMISOS BASE DEL SISTEMA
+
+        foreach (var codigoPermiso in Permisos.ObtenerTodos())
+        {
+            var existePermiso =
+                await contexto.PermisosSistema
+                    .AnyAsync(x => x.Codigo == codigoPermiso);
+
+            if (existePermiso)
+            {
+                continue;
+            }
+
+            var partes = codigoPermiso.Split(
+                '.',
+                2,
+                StringSplitOptions.RemoveEmptyEntries
+            );
+
+            var modulo = partes.Length > 0
+                ? partes[0]
+                : "Sistema";
+
+            contexto.PermisosSistema.Add(
+                new PermisoSistema
+                {
+                    Codigo = codigoPermiso,
+                    Modulo = modulo,
+                    Descripcion = ObtenerDescripcionPermiso(codigoPermiso),
+                    Activo = true
+                }
+            );
+        }
+
+        await contexto.SaveChangesAsync();
 
         // PERMISOS DEL SUPERUSUARIO
 
@@ -50,9 +95,16 @@ public static class SeguridadSeeders
             );
 
         var permisosActuales =
-            await administradorRoles.GetClaimsAsync(rolSuperusuario);
+    await administradorRoles.GetClaimsAsync(rolSuperusuario);
 
-        foreach (var permiso in Permisos.ObtenerTodos())
+        var permisosActivos =
+            await contexto.PermisosSistema
+                .AsNoTracking()
+                .Where(permiso => permiso.Activo)
+                .Select(permiso => permiso.Codigo)
+                .ToListAsync();
+
+        foreach (var permiso in permisosActivos)
         {
             var existe = permisosActuales.Any(x =>
                 x.Type == TiposClaims.Permiso &&
@@ -153,6 +205,57 @@ public static class SeguridadSeeders
                 "asignar el rol Superusuario"
             );
         }
+    }
+
+    private static string ObtenerDescripcionPermiso(
+        string codigoPermiso)
+    {
+        return codigoPermiso switch
+        {
+            Permisos.Usuarios.Ver =>
+                "Consultar usuarios.",
+
+            Permisos.Usuarios.Crear =>
+                "Crear nuevos usuarios.",
+
+            Permisos.Usuarios.Editar =>
+                "Modificar información de usuarios.",
+
+            Permisos.Usuarios.CambiarEstado =>
+                "Activar o desactivar usuarios.",
+
+            Permisos.Usuarios.RestablecerContrasena =>
+                "Restablecer la contraseña de usuarios.",
+
+            Permisos.Roles.Ver =>
+                "Consultar roles.",
+
+            Permisos.Roles.Crear =>
+                "Crear nuevos roles.",
+
+            Permisos.Roles.Editar =>
+                "Modificar información de roles.",
+
+            Permisos.Roles.CambiarEstado =>
+                "Activar o desactivar roles.",
+
+            Permisos.Roles.AsignarPermisos =>
+                "Asignar o retirar permisos de los roles.",
+
+            Permisos.PermisosSistema.Ver =>
+                "Consultar permisos del sistema.",
+
+            Permisos.PermisosSistema.Crear =>
+                "Crear nuevos permisos.",
+
+            Permisos.PermisosSistema.Editar =>
+                "Modificar información de permisos.",
+
+            Permisos.PermisosSistema.CambiarEstado =>
+                "Activar o desactivar permisos.",
+
+            _ => "Permiso del sistema."
+        };
     }
 
     // VALIDAR RESULTADOS DE IDENTITY
