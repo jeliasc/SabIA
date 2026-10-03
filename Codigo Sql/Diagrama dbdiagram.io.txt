@@ -1,0 +1,370 @@
+
+
+// ---------------- USUARIOS ----------------
+Enum estado_usuario {
+  activo
+  bloqueado
+  inactivo
+}
+
+Enum resultado_acceso {
+  exitoso
+  fallido
+}
+
+Enum motivo_fallo {
+  usuario_no_existe
+  password_incorrecta
+  usuario_bloqueado
+  usuario_inactivo
+}
+Enum nivel_estudio {
+  diversificado
+  tecnico
+  profesorado
+  licenciatura
+  maestria
+  doctorado
+}
+
+Table rol {
+  id smallint [pk, increment]
+  codigo varchar(30) [not null, unique, note: 'COORDINACION, APOYO_TECNICO, DOCENTE, ALUMNO']
+  nombre varchar(60) [not null]
+  es_sistema boolean [not null, default: false, note: 'Los roles base no se pueden deshabilitar']
+  estado boolean [not null, default: true, note: 'true = activo, false = deshabilitado']
+  creado_por integer [ref: > usuario.id, note: 'Vacío en los roles base creados al instalar']
+  fecha_creacion timestamptz [not null, default: `now()`]
+}
+
+Table permiso {
+  id smallint [pk, increment]
+  codigo varchar(60) [not null, unique, note: 'Ej. docentes.crear, usuarios.resetear_password, panel.ver']
+  modulo varchar(40) [not null, note: 'Agrupa los permisos en la pantalla. Ej. Usuarios, Académico, Contenido']
+  descripcion varchar(200) [note: 'Texto que ve la coordinadora. Ej. Registrar nuevos docentes']
+}
+
+Table rol_permiso {
+  id integer [pk, increment]
+  rol_id smallint [not null, ref: > rol.id]
+  permiso_id smallint [not null, ref: > permiso.id]
+  asignado_por integer [not null, ref: > usuario.id]
+  fecha_creacion timestamptz [not null, default: `now()`]
+  eliminado boolean [not null, default: false, note: 'Borrado lógico: el permiso fue retirado al rol']
+  eliminado_por integer [ref: > usuario.id]
+  fecha_eliminacion timestamptz
+}
+
+Table usuario {
+  id integer [pk, increment]
+  rol_id smallint [not null, ref: > rol.id]
+  username varchar(50) [not null, unique]
+  correo varchar(150) [unique]
+  password_hash varchar(255) [not null]
+  debe_cambiar_password boolean [not null, default: true, note: 'Obliga a cambiar la contraseña temporal']
+  nombres varchar(100) [not null]
+  apellidos varchar(100) [not null]
+  dpi char(13) [unique, note: 'CUI de 13 dígitos. Opcional para alumnos menores de edad']
+  fecha_nacimiento date
+  telefono varchar(15) [note: 'Formato 0000-0000']
+  cargo varchar(100) [note: 'Puesto del personal administrativo']
+  estado estado_usuario [not null, default: 'activo', note: 'activo, bloqueado (acceso suspendido) o inactivo (ya no está en el centro)']
+  fecha_creacion timestamptz [not null, default: `now()`]
+}
+
+Table docente {
+  id integer [pk, increment]
+  usuario_id integer [not null, unique, ref: - usuario.id]
+  nit varchar(12) [unique, note: 'Sin guion; el dígito verificador puede ser K']
+  nivel_academico nivel_estudio [note: 'Nivel del título más alto']
+  titulo varchar(200) [note: 'Ej. Profesorado de Enseñanza Media en Matemática y Física']
+  institucion_otorgante varchar(150) [note: 'Universidad o establecimiento que otorgó el título. Ej. Universidad de San Carlos de Guatemala']
+}
+
+Table alumno {
+  id integer [pk, increment]
+  usuario_id integer [not null, unique, ref: - usuario.id]
+  codigo_personal varchar(20) [unique, note: 'Código MINEDUC del estudiante']
+}
+
+Table sesion {
+  id bigint [pk, increment]
+  usuario_id integer [ref: > usuario.id, note: 'NULL si el usuario ingresado no existe']
+  username_ingresado varchar(50) [not null, note: 'Usuario escrito en el inicio de sesión']
+  resultado resultado_acceso [not null]
+  motivo_fallo motivo_fallo [note: 'Solo cuando resultado = fallido']
+  inicio timestamptz [not null, default: `now()`]
+  fin timestamptz [note: 'Solo en accesos exitosos, al cerrar sesión']
+  ip inet
+  indexes {
+    (usuario_id, inicio)
+    (resultado, inicio)
+  }
+}
+
+// ---------------- ENCARGADOS (solo contacto, no inician sesión) ----------------
+Enum tipo_parentesco {
+  madre
+  padre
+  abuelo
+  abuela
+  tio
+  tia
+  hermano
+  hermana
+  tutor_legal
+  otro
+}
+
+Table encargado {
+  id integer [pk, increment]
+  nombres varchar(100) [not null]
+  apellidos varchar(100) [not null]
+  dpi char(13) [unique, note: 'Opcional; ayuda a no registrar dos veces a la misma persona']
+  telefono varchar(15) [not null, note: 'Formato 0000-0000']
+  telefono_alterno varchar(15)
+  correo varchar(150)
+  direccion varchar(200) [note: 'Incluir zona y municipio']
+  fecha_creacion timestamptz [not null, default: `now()`]
+}
+
+Table alumno_encargado {
+  alumno_id integer [not null, ref: > alumno.id]
+  encargado_id integer [not null, ref: > encargado.id]
+  parentesco tipo_parentesco [not null]
+
+  indexes {
+    (alumno_id, encargado_id) [pk]
+  }
+}
+
+// ---------------- ESTRUCTURA ACADÉMICA ----------------
+Enum estado_registro {
+  activo
+  inactivo
+}
+
+Enum nivel_educativo {
+  basico
+  diversificado
+}
+
+Enum estado_inscripcion {
+  activa
+  retirada
+  finalizada
+}
+
+Table periodo {
+  id integer [pk, increment]
+  ciclo_escolar_id smallint [not null, ref: > ciclo_escolar.id]
+  numero smallint [not null, note: '1, 2, 3, 4']
+  nombre varchar(50) [not null, note: 'Ej. Primer bimestre']
+  fecha_inicio date [not null]
+  fecha_fin date [not null]
+
+  indexes {
+    (ciclo_escolar_id, numero) [unique]
+  }
+}
+
+Table ciclo_escolar {
+  id smallint [pk, increment]
+  anio smallint [not null, unique]
+  fecha_inicio date [not null]
+  fecha_fin date [not null]
+  activo boolean [not null, default: false]
+}
+
+Table grado {
+  id smallint [pk, increment]
+  nivel nivel_educativo [not null]
+  nombre varchar(60) [not null, unique, note: 'Ej. Primero Básico, Cuarto Bachillerato']
+  carrera varchar(150) [note: 'Solo Diversificado']
+  orden smallint [not null]
+}
+
+Table seccion {
+  id integer [pk, increment]
+  ciclo_escolar_id smallint [not null, ref: > ciclo_escolar.id]
+  grado_id smallint [not null, ref: > grado.id]
+  nombre varchar(5) [not null, note: 'A, B, C']
+  estado estado_registro [not null, default: 'activo']
+
+  indexes {
+    (ciclo_escolar_id, grado_id, nombre) [unique]
+  }
+}
+
+Table curso {
+  id integer [pk, increment]
+  grado_id smallint [not null, ref: > grado.id]
+  nombre varchar(100) [not null, note: 'Ej. Matemáticas']
+  estado estado_registro [not null, default: 'activo']
+
+  indexes {
+    (grado_id, nombre) [unique]
+  }
+}
+
+Table asignacion {
+  id integer [pk, increment]
+  seccion_id integer [not null, ref: > seccion.id]
+  curso_id integer [not null, ref: > curso.id]
+  docente_id integer [not null, ref: > docente.id]
+  estado estado_registro [not null, default: 'activo']
+
+  indexes {
+    (seccion_id, curso_id) [unique]
+  }
+
+  Note: 'Qué docente imparte qué curso en qué sección. Base de los permisos'
+}
+
+Table inscripcion {
+  id integer [pk, increment]
+  alumno_id integer [not null, ref: > alumno.id]
+  seccion_id integer [not null, ref: > seccion.id]
+  fecha date [not null, default: `current_date`]
+  estado estado_inscripcion [not null, default: 'activa']
+
+  indexes {
+    (alumno_id, seccion_id) [unique]
+  }
+}
+
+// ---------------- CONTENIDO ----------------
+
+Enum tipo_material {
+  documento     // PDF, Word
+  presentacion  // PowerPoint
+  hoja_calculo  // Excel
+  video
+  audio
+  imagen        // infografías, esquemas
+}
+
+Enum estado_material {
+  borrador   // el docente lo está preparando
+  publicado  // visible si la unidad está liberada
+  oculto     // retirado temporalmente por el docente
+}
+
+
+
+Table unidad {
+  id integer [pk, increment]
+  asignacion_id integer [not null, ref: > asignacion.id]
+  orden smallint [not null, note: 'Posición de la unidad en el curso: 1, 2, 3...']
+  titulo varchar(150) [not null, note: 'Ej. Unidad 2: Fracciones y decimales']
+  descripcion varchar(500)
+  fecha_liberacion timestamptz [note: 'Vacía = bloqueada. Puede programarse a futuro']
+  fecha_cierre timestamptz [note: 'Con valor = finalizada']
+  periodo_id integer [ref: > periodo.id, note: 'Bimestre al que corresponde la unidad']
+  indexes {
+    (asignacion_id, orden) [unique]
+  }
+}
+
+Table archivo {
+  id integer [pk, increment]
+  nombre_original varchar(255) [not null, note: 'Nombre con el que el docente lo subió. Ej. Guía fracciones.pdf']
+  nombre_almacenado varchar(150) [not null, note: 'Nombre real en el disco. Ej. 9f3c1a7e-4b2d-11ee-be56.pdf']
+  ruta_directorio varchar(200) [not null, note: 'Ruta de la carpeta, sin el nombre del archivo. Ej. materiales/2027/15/2']
+  formato varchar(100) [not null, note: 'Tipo MIME. Ej. application/pdf, video/mp4']
+  subido_por integer [not null, ref: > usuario.id]
+fecha_creacion timestamptz [not null, default: `now()`]
+  indexes {
+    (ruta_directorio, nombre_almacenado) [unique]
+  }
+}
+
+Table material {
+  id integer [pk, increment]
+  unidad_id integer [not null, ref: > unidad.id]
+  archivo_id integer [not null, ref: > archivo.id]
+  tipo tipo_material [not null]
+  titulo varchar(200) [not null]
+  descripcion varchar(500)
+  estado estado_material [not null, default: 'borrador']
+  orden smallint [not null, default: 1, note: 'Posición dentro de la unidad']
+  descargable boolean [not null, default: true, note: 'Si el alumno puede descargarlo']
+  creado_por integer [not null, ref: > usuario.id]
+  fecha_creacion timestamptz [not null, default: `now()`]
+  fecha_publicacion timestamptz
+
+  indexes {
+    (unidad_id, orden)
+  }
+}
+
+// ---------------- TAREAS ----------------
+Enum estado_tarea {
+  borrador   // el docente la está preparando
+  publicada  // visible para los alumnos
+  cerrada    // ya no se reciben entregas
+}
+
+Enum estado_entrega {
+  pendiente   // aún no entrega
+  entregada   // entregó a tiempo
+  tardia      // entregó después de la fecha
+  calificada  // el docente ya la revisó
+}
+
+Table tarea {
+  id integer [pk, increment]
+  unidad_id integer [not null, ref: > unidad.id]
+  titulo varchar(200) [not null]
+  instrucciones text
+  fecha_entrega timestamptz [not null, note: 'Fecha y hora límite']
+  permite_entrega_tardia boolean [not null, default: false]
+  punteo_maximo numeric(5,2) [not null, default: 100]
+  estado estado_tarea [not null, default: 'borrador']
+  creado_por integer [not null, ref: > usuario.id]
+  fecha_creacion timestamptz [not null, default: `now()`]
+
+  indexes {
+    (unidad_id, fecha_entrega)
+  }
+}
+
+Table tarea_archivo {
+  tarea_id integer [not null, ref: > tarea.id]
+  archivo_id integer [not null, ref: > archivo.id]
+
+  indexes {
+    (tarea_id, archivo_id) [pk]
+  }
+
+  Note: 'Archivos adjuntos por el docente: instructivo, plantilla, hoja de trabajo'
+}
+
+Table entrega {
+  id integer [pk, increment]
+  tarea_id integer [not null, ref: > tarea.id]
+  alumno_id integer [not null, ref: > alumno.id]
+  estado estado_entrega [not null, default: 'pendiente']
+  fecha_entrega timestamptz [note: 'Cuándo entregó el alumno']
+  comentario_alumno varchar(1000)
+  punteo numeric(5,2)
+  retroalimentacion text [note: 'Comentario del docente al calificar']
+  calificado_por integer [ref: > usuario.id]
+  fecha_calificacion timestamptz
+
+  indexes {
+    (tarea_id, alumno_id) [unique]
+    (alumno_id, estado)
+  }
+}
+
+Table entrega_archivo {
+  entrega_id integer [not null, ref: > entrega.id]
+  archivo_id integer [not null, ref: > archivo.id]
+
+  indexes {
+    (entrega_id, archivo_id) [pk]
+  }
+
+  Note: 'Archivos que sube el alumno como respuesta'
+}
