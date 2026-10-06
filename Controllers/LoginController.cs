@@ -1,20 +1,41 @@
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
+using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Autenticacion;
+using Proyecto_Final.Servicios.Correo;
 using Proyecto_Final.ViewModels.Autenticacion;
+using Proyecto_Final.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Proyecto_Final.Controllers;
 
 public class LoginController : Controller
 {
-    private readonly IAutenticacionServicio
-        autenticacionServicio;
+    private readonly IAutenticacionServicio autenticacionServicio;
+    private readonly UserManager<Usuario> administradorUsuarios;
+    private readonly IServicioCorreo servicioCorreo;
+    private readonly Contexto contexto;
 
     public LoginController(
-        IAutenticacionServicio autenticacionServicio)
+        IAutenticacionServicio autenticacionServicio,
+        UserManager<Usuario> administradorUsuarios,
+        IServicioCorreo servicioCorreo,
+        Contexto contexto)
     {
         this.autenticacionServicio =
             autenticacionServicio;
+
+        this.administradorUsuarios =
+            administradorUsuarios;
+
+        this.servicioCorreo =
+            servicioCorreo;
+
+        this.contexto =
+            contexto;
     }
 
     // LOGIN - MOSTRAR FORMULARIO
@@ -98,8 +119,6 @@ public class LoginController : Controller
             );
         }
 
-        // Regresa a la dirección solicitada originalmente
-        // si es una URL local segura.
         if (!string.IsNullOrWhiteSpace(urlRetorno) &&
             Url.IsLocalUrl(urlRetorno))
         {
@@ -142,7 +161,7 @@ public class LoginController : Controller
         if (resultado.Tipo ==
             TipoResultadoAutenticacion.NoAutenticado)
         {
-            return RedirectToAction("Login");
+            return RedirectToAction(nameof(Login));
         }
 
         if (resultado.Tipo ==
@@ -164,10 +183,245 @@ public class LoginController : Controller
         );
     }
 
-    // RECUPERAR CONTRASEÑA - MOSTRAR INFORMACIÓN
+    // RESTABLECER CONTRASEÑA - MOSTRAR FORMULARIO
+    [AllowAnonymous]
+    [HttpGet]
+    public IActionResult RestablecerContrasena(
+        string usuarioId,
+        string token)
+    {
+        if (string.IsNullOrWhiteSpace(usuarioId) ||
+            string.IsNullOrWhiteSpace(token))
+        {
+            return RedirectToAction(
+                nameof(Login)
+            );
+        }
+
+        var modelo =
+            new RestablecerContrasena
+            {
+                UsuarioId = usuarioId,
+                Token = token
+            };
+
+        return View(modelo);
+    }
+
+    // RESTABLECER CONTRASEÑA - GUARDAR NUEVA CONTRASEÑA
+    [AllowAnonymous]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RestablecerContrasena(
+        RestablecerContrasena modelo)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(modelo);
+        }
+
+        var usuario =
+            await administradorUsuarios
+                .FindByIdAsync(
+                    modelo.UsuarioId
+                );
+
+        if (usuario == null ||
+            !usuario.Activo)
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                "El enlace de recuperación no es válido."
+            );
+
+            return View(modelo);
+        }
+
+        string token;
+
+        try
+        {
+            token =
+                Encoding.UTF8.GetString(
+                    WebEncoders.Base64UrlDecode(
+                        modelo.Token
+                    )
+                );
+        }
+        catch
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                "El enlace de recuperación no es válido."
+            );
+
+            return View(modelo);
+        }
+
+        await using var transaccion =
+            await contexto.Database
+                .BeginTransactionAsync();
+
+        try
+        {
+            var resultado =
+                await administradorUsuarios
+                    .ResetPasswordAsync(
+                        usuario,
+                        token,
+                        modelo.Contrasena
+                    );
+
+            if (!resultado.Succeeded)
+            {
+                await transaccion.RollbackAsync();
+
+                foreach (var error in resultado.Errors)
+                {
+                    ModelState.AddModelError(
+                        string.Empty,
+                        error.Description
+                    );
+                }
+
+                return View(modelo);
+            }
+
+            usuario.CambiarContrasena = false;
+            usuario.FechaUltimoCambioContrasena =
+                DateTime.UtcNow;
+
+            var resultadoActualizacion =
+                await administradorUsuarios
+                    .UpdateAsync(usuario);
+
+            if (!resultadoActualizacion.Succeeded)
+            {
+                await transaccion.RollbackAsync();
+
+                ModelState.AddModelError(
+                    string.Empty,
+                    "No fue posible completar el restablecimiento de la contraseña."
+                );
+
+                return View(modelo);
+            }
+
+            await transaccion.CommitAsync();
+
+            return RedirectToAction(
+                nameof(RestablecimientoCompletado)
+            );
+        }
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
+    }
+
+    // RECUPERAR CONTRASEÑA - MOSTRAR FORMULARIO
     [AllowAnonymous]
     [HttpGet]
     public IActionResult RecuperarContrasena()
+    {
+        return View();
+    }
+
+    // RECUPERAR CONTRASEÑA - ENVIAR ENLACE
+    [AllowAnonymous]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RecuperarContrasena(
+        RecuperarContrasena modelo)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(modelo);
+        }
+
+        var usuario =
+            await administradorUsuarios
+                .FindByEmailAsync(
+                    modelo.Correo
+                );
+
+        if (usuario != null &&
+            usuario.Activo)
+        {
+            var token =
+                await administradorUsuarios
+                    .GeneratePasswordResetTokenAsync(
+                        usuario
+                    );
+
+            var tokenCodificado =
+                WebEncoders.Base64UrlEncode(
+                    Encoding.UTF8.GetBytes(
+                        token
+                    )
+                );
+
+            var enlace =
+                Url.Action(
+                    nameof(RestablecerContrasena),
+                    "Login",
+                    new
+                    {
+                        usuarioId = usuario.Id,
+                        token = tokenCodificado
+                    },
+                    Request.Scheme
+                );
+
+            if (!string.IsNullOrWhiteSpace(enlace))
+            {
+                var contenidoHtml =
+                    $"""
+                    <h2>Restablecer contraseña</h2>
+
+                    <p>
+                        Se recibió una solicitud para restablecer
+                        la contraseña de su cuenta en SabIA.
+                    </p>
+
+                    <p>
+                        <a href="{enlace}">
+                            Restablecer contraseña
+                        </a>
+                    </p>
+
+                    <p>
+                        Si usted no realizó esta solicitud,
+                        puede ignorar este correo.
+                    </p>
+                    """;
+
+                await servicioCorreo.EnviarAsync(
+                    modelo.Correo,
+                    "Restablecer contraseña - SabIA",
+                    contenidoHtml
+                );
+            }
+        }
+
+        return RedirectToAction(
+            nameof(RecuperacionSolicitada)
+        );
+    }
+
+    // RECUPERACIÓN SOLICITADA
+    [AllowAnonymous]
+    [HttpGet]
+    public IActionResult RecuperacionSolicitada()
+    {
+        return View();
+    }
+
+    // RESTABLECIMIENTO COMPLETADO
+    [AllowAnonymous]
+    [HttpGet]
+    public IActionResult RestablecimientoCompletado()
     {
         return View();
     }

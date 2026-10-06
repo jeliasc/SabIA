@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Proyecto_Final.ViewModels.Usuarios;
+namespace Proyecto_Final.ViewModels.Personas;
 
-public abstract class FormularioUsuario
+public abstract class FormularioPersona
 {
     [Required(ErrorMessage = "El primer nombre es obligatorio.")]
     [StringLength(100)]
@@ -29,14 +29,6 @@ public abstract class FormularioUsuario
     [Required(ErrorMessage = "El correo electrónico es obligatorio.")]
     [EmailAddress(ErrorMessage = "Ingrese un correo electrónico válido.")]
     [StringLength(256)]
-    [RegularExpression(
-        @"^[^@\s]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,63}$",
-        ErrorMessage = "Ingrese un correo electrónico válido con un dominio completo."
-    )]
     [Display(Name = "Correo electrónico")]
     public string Correo { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "Debe seleccionar un rol.")]
-    [Display(Name = "Rol")]
-    public string Rol { get; set; } = string.Empty;
 }

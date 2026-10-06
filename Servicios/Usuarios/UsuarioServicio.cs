@@ -1,11 +1,19 @@
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.ViewModels.Usuarios;
-using System.Text.RegularExpressions;
+using System.Text;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.WebUtilities;
+using Proyecto_Final.Servicios.Correo;
+using System.Globalization;
+using System.Net;
+
 
 namespace Proyecto_Final.Servicios.Usuarios;
 
@@ -14,13 +22,15 @@ public class UsuarioServicio : IUsuarioServicio
     private readonly UserManager<Usuario> administradorUsuarios;
     private readonly RoleManager<Rol> administradorRoles;
     private readonly Contexto contexto;
-
+    private readonly IServicioCorreo servicioCorreo;
+    private readonly LinkGenerator generadorEnlaces;
+    private readonly IHttpContextAccessor contextoHttp;
     private static readonly Regex FormatoCorreo =
-    new(
-        @"^[^@\s]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,63}$",
-        RegexOptions.Compiled |
-        RegexOptions.IgnoreCase
-    );
+        new(
+            @"^[^@\s]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,63}$",
+            RegexOptions.Compiled |
+            RegexOptions.IgnoreCase
+        );
 
     private static readonly Dictionary<
         string,
@@ -31,41 +41,47 @@ public class UsuarioServicio : IUsuarioServicio
                 ["gmail"] = new(
                     StringComparer.OrdinalIgnoreCase)
                 {
-                "gmail.com",
-                "googlemail.com"
+                    "gmail.com",
+                    "googlemail.com"
                 },
 
                 ["hotmail"] = new(
                     StringComparer.OrdinalIgnoreCase)
                 {
-                "hotmail.com",
-                "hotmail.es"
+                    "hotmail.com",
+                    "hotmail.es"
                 },
 
                 ["outlook"] = new(
                     StringComparer.OrdinalIgnoreCase)
                 {
-                "outlook.com",
-                "outlook.es"
+                    "outlook.com",
+                    "outlook.es"
                 },
 
                 ["yahoo"] = new(
                     StringComparer.OrdinalIgnoreCase)
                 {
-                "yahoo.com",
-                "yahoo.es",
-                "yahoo.com.mx"
+                    "yahoo.com",
+                    "yahoo.es",
+                    "yahoo.com.mx"
                 }
             };
 
     public UsuarioServicio(
         UserManager<Usuario> administradorUsuarios,
         RoleManager<Rol> administradorRoles,
-        Contexto contexto)
+        Contexto contexto,
+        IServicioCorreo servicioCorreo,
+    LinkGenerator generadorEnlaces,
+    IHttpContextAccessor contextoHttp)
     {
         this.administradorUsuarios = administradorUsuarios;
         this.administradorRoles = administradorRoles;
         this.contexto = contexto;
+        this.servicioCorreo = servicioCorreo;
+        this.generadorEnlaces = generadorEnlaces;
+        this.contextoHttp = contextoHttp;
     }
 
     // OBTENER USUARIOS
@@ -113,81 +129,80 @@ public class UsuarioServicio : IUsuarioServicio
                 );
         }
 
-        var modelo =
-            new DetalleUsuario
-            {
-                Id =
-                    usuario.Id,
+        var modelo = new DetalleUsuario
+        {
+            Id = usuario.Id,
 
-                PrimerNombre =
-                    usuario.PrimerNombre,
+            PrimerNombre =
+                usuario.PrimerNombre,
 
-                SegundoNombre =
-                    usuario.SegundoNombre,
+            SegundoNombre =
+                usuario.SegundoNombre,
 
-                TercerNombre =
-                    usuario.TercerNombre,
+            TercerNombre =
+                usuario.TercerNombre,
 
-                PrimerApellido =
-                    usuario.PrimerApellido,
+            PrimerApellido =
+                usuario.PrimerApellido,
 
-                SegundoApellido =
-                    usuario.SegundoApellido,
+            SegundoApellido =
+                usuario.SegundoApellido,
 
-                Usuario =
-                    usuario.UserName ??
-                    string.Empty,
+            Usuario =
+                usuario.UserName ?? string.Empty,
 
-                Correo =
-                    usuario.Email ??
-                    string.Empty,
+            Correo =
+                usuario.Email ?? string.Empty,
 
-                Rol =
-                    rolesUsuario[0],
+            Rol =
+                rolesUsuario[0],
 
-                Activo =
-                    usuario.Activo,
+            Activo =
+                usuario.Activo,
 
-                CambiarContrasena =
-                    usuario.CambiarContrasena,
+            CambiarContrasena =
+                usuario.CambiarContrasena,
 
-                FechaCreacion =
-                    usuario.FechaCreacion,
+            FechaCreacion =
+                usuario.FechaCreacion,
 
-                FechaUltimoCambioContrasena =
-                    usuario.FechaUltimoCambioContrasena
-            };
+            FechaUltimoCambioContrasena =
+                usuario.FechaUltimoCambioContrasena
+        };
 
         return ResultadoUsuario<DetalleUsuario>
             .Correcto(modelo);
     }
 
     // OBTENER ROLES DISPONIBLES
-    public async Task<List<string>> ObtenerRolesDisponiblesAsync(
-        ClaimsPrincipal usuarioActual)
+    public async Task<List<string>> ObtenerRolesDisponiblesAsync(ClaimsPrincipal usuarioActual)
     {
         var usuario =
             await administradorUsuarios.GetUserAsync(
                 usuarioActual
             );
 
-        var roles = await administradorRoles.Roles
-            .Select(rol => rol.Name!)
-            .Where(nombre => nombre != null)
-            .OrderBy(nombre => nombre)
-            .ToListAsync();
+        var roles =
+            await administradorRoles.Roles
+                .Where(rol => rol.Name != null)
+                .Select(rol => rol.Name!)
+                .OrderBy(nombre => nombre)
+                .ToListAsync();
 
         if (usuario != null)
         {
             var esSuperusuario =
-                await administradorUsuarios.IsInRoleAsync(
-                    usuario,
-                    Roles.Superusuario
-                );
+                await administradorUsuarios
+                    .IsInRoleAsync(
+                        usuario,
+                        Roles.Superusuario
+                    );
 
             if (!esSuperusuario)
             {
-                roles.Remove(Roles.Superusuario);
+                roles.Remove(
+                    Roles.Superusuario
+                );
             }
         }
 
@@ -195,17 +210,23 @@ public class UsuarioServicio : IUsuarioServicio
     }
 
     // CREAR USUARIO
-    public async Task<
-        ResultadoUsuario<ResultadoContrasenaTemporal>>
+    public async Task<ResultadoUsuario<ResultadoContrasenaTemporal>>
         CrearAsync(
             CrearUsuario modelo,
             ClaimsPrincipal usuarioActual)
     {
+        var nombreUsuario =
+            await GenerarNombreUsuarioAsync(
+                modelo.PrimerNombre,
+                modelo.PrimerApellido,
+                modelo.SegundoApellido
+            );
+
         var validacionDatos =
-     await ValidarDatosAsync(
-         modelo.Usuario,
-         modelo.Correo
-     );
+            await ValidarDatosAsync(
+                nombreUsuario,
+                modelo.Correo
+            );
 
         if (validacionDatos.Tipo ==
             TipoResultadoUsuario.Validacion)
@@ -216,6 +237,7 @@ public class UsuarioServicio : IUsuarioServicio
                     validacionDatos.Errores
                 );
         }
+
         var administrador =
             await administradorUsuarios.GetUserAsync(
                 usuarioActual
@@ -246,10 +268,11 @@ public class UsuarioServicio : IUsuarioServicio
         if (modelo.Rol == Roles.Superusuario)
         {
             var administradorEsSuperusuario =
-                await administradorUsuarios.IsInRoleAsync(
-                    administrador,
-                    Roles.Superusuario
-                );
+                await administradorUsuarios
+                    .IsInRoleAsync(
+                        administrador,
+                        Roles.Superusuario
+                    );
 
             if (!administradorEsSuperusuario)
             {
@@ -262,97 +285,320 @@ public class UsuarioServicio : IUsuarioServicio
         var contrasenaTemporal =
             GeneradorContrasenaTemporal.Generar();
 
-        var usuario = new Usuario
+        Usuario usuario;
+
+        await using var transaccion =
+            await contexto.Database
+                .BeginTransactionAsync();
+
+        try
         {
-            UserName = modelo.Usuario.Trim(),
-            Email = modelo.Correo.Trim(),
+            usuario =
+                new Usuario
+                {
+                    UserName =
+                        nombreUsuario,
 
-            PrimerNombre =
-                modelo.PrimerNombre.Trim(),
+                    Email =
+                        modelo.Correo.Trim(),
 
-            SegundoNombre =
-                LimpiarTextoOpcional(
-                    modelo.SegundoNombre
-                ),
+                    PrimerNombre =
+                        modelo.PrimerNombre.Trim(),
 
-            TercerNombre =
-                LimpiarTextoOpcional(
-                    modelo.TercerNombre
-                ),
+                    SegundoNombre =
+                        LimpiarTextoOpcional(
+                            modelo.SegundoNombre
+                        ),
 
-            PrimerApellido =
-                modelo.PrimerApellido.Trim(),
+                    TercerNombre =
+                        LimpiarTextoOpcional(
+                            modelo.TercerNombre
+                        ),
 
-            SegundoApellido =
-                LimpiarTextoOpcional(
-                    modelo.SegundoApellido
-                ),
+                    PrimerApellido =
+                        modelo.PrimerApellido.Trim(),
 
-            Activo = true,
-            CambiarContrasena = true,
-            FechaCreacion = DateTime.UtcNow
-        };
+                    SegundoApellido =
+                        LimpiarTextoOpcional(
+                            modelo.SegundoApellido
+                        ),
 
-        var resultadoCreacion =
-            await administradorUsuarios.CreateAsync(
-                usuario,
-                contrasenaTemporal
-            );
+                    Activo = true,
+                    CambiarContrasena = true,
+                    FechaCreacion = DateTime.UtcNow
+                };
 
-        if (!resultadoCreacion.Succeeded)
-        {
-            var errores =
-                CrearErroresIdentity(
-                    resultadoCreacion.Errors
+            var resultadoCreacion =
+                await administradorUsuarios.CreateAsync(
+                    usuario,
+                    contrasenaTemporal
                 );
 
-            return ResultadoUsuario<
-                ResultadoContrasenaTemporal>
-                .Validacion(errores);
+            if (!resultadoCreacion.Succeeded)
+            {
+                await transaccion.RollbackAsync();
+
+                return ResultadoUsuario<
+                    ResultadoContrasenaTemporal>
+                    .Validacion(
+                        CrearErroresIdentity(
+                            resultadoCreacion.Errors
+                        )
+                    );
+            }
+
+            var resultadoRol =
+                await administradorUsuarios
+                    .AddToRoleAsync(
+                        usuario,
+                        modelo.Rol
+                    );
+
+            if (!resultadoRol.Succeeded)
+            {
+                await transaccion.RollbackAsync();
+
+                return ResultadoUsuario<
+                    ResultadoContrasenaTemporal>
+                    .Validacion(
+                        string.Empty,
+                        "No fue posible asignar el rol al usuario."
+                    );
+            }
+
+            await transaccion.CommitAsync();
+        }
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
         }
 
-        var resultadoRol =
-            await administradorUsuarios.AddToRoleAsync(
-                usuario,
-                modelo.Rol
-            );
-
-        if (!resultadoRol.Succeeded)
-        {
-            await administradorUsuarios.DeleteAsync(
-                usuario
-            );
-
-            return ResultadoUsuario<
-                ResultadoContrasenaTemporal>
-                .Validacion(
+        var resultado =
+            new ResultadoContrasenaTemporal
+            {
+                Usuario =
+                    usuario.UserName ??
                     string.Empty,
-                    "No fue posible asignar el rol al usuario."
+
+                NombreCompleto =
+                    ObtenerNombreCompleto(
+                        usuario
+                    ),
+
+                ContrasenaTemporal =
+                    contrasenaTemporal
+            };
+
+        var nombreCompletoCorreo =
+            WebUtility.HtmlEncode(
+                ObtenerNombreCompleto(usuario)
+            );
+
+        var nombreUsuarioCorreo =
+            WebUtility.HtmlEncode(
+                usuario.UserName ??
+                string.Empty
+            );
+
+        var contrasenaCorreo =
+            WebUtility.HtmlEncode(
+                contrasenaTemporal
+            );
+
+        var contenidoHtml =
+            $"""
+        <div style="font-family: Arial, sans-serif;
+                    max-width: 600px;
+                    margin: 0 auto;">
+
+            <h2>Bienvenido a SabIA</h2>
+
+            <p>
+                Hola {nombreCompletoCorreo},
+            </p>
+
+            <p>
+                Su cuenta en SabIA ha sido creada correctamente.
+            </p>
+
+            <p>
+                Utilice las siguientes credenciales para iniciar sesión:
+            </p>
+
+            <p>
+                <strong>Usuario:</strong>
+                {nombreUsuarioCorreo}
+            </p>
+
+            <p>
+                <strong>Contraseña temporal:</strong>
+                {contrasenaCorreo}
+            </p>
+
+            <p>
+                Por seguridad, al iniciar sesión deberá cambiar
+                obligatoriamente esta contraseña.
+            </p>
+
+            <p>
+                SabIA
+            </p>
+
+        </div>
+        """;
+
+        try
+        {
+            await servicioCorreo.EnviarAsync(
+                usuario.Email!,
+                "Bienvenido a SabIA - Credenciales de acceso",
+                contenidoHtml
+            );
+        }
+        catch
+        {
+            return ResultadoUsuario<
+                ResultadoContrasenaTemporal>
+                .Correcto(
+                    resultado,
+                    "El usuario fue creado correctamente, pero no fue posible enviar el correo. Entregue la contraseña temporal al usuario por otro medio."
                 );
         }
-
-        var resultado = new ResultadoContrasenaTemporal
-        {
-            Usuario =
-                usuario.UserName ?? string.Empty,
-
-            NombreCompleto =
-                ObtenerNombreCompleto(usuario),
-
-            ContrasenaTemporal =
-                contrasenaTemporal
-        };
 
         return ResultadoUsuario<
             ResultadoContrasenaTemporal>
             .Correcto(
                 resultado,
-                "El usuario fue creado correctamente."
+                "El usuario fue creado correctamente y las credenciales fueron enviadas por correo."
+            );
+    }
+
+    public async Task<string> GenerarNombreUsuarioAsync(
+    string primerNombre,
+    string primerApellido,
+    string? segundoApellido)
+    {
+        var nombreNormalizado =
+            NormalizarTexto(primerNombre);
+
+        var primerApellidoNormalizado =
+            NormalizarTexto(primerApellido);
+
+        var segundoApellidoNormalizado =
+            NormalizarTexto(segundoApellido);
+
+        if (string.IsNullOrWhiteSpace(nombreNormalizado) ||
+            string.IsNullOrWhiteSpace(primerApellidoNormalizado))
+        {
+            return string.Empty;
+        }
+
+        var inicialNombre =
+            nombreNormalizado[0].ToString();
+
+        var inicialSegundoApellido =
+            string.IsNullOrWhiteSpace(segundoApellidoNormalizado)
+                ? string.Empty
+                : segundoApellidoNormalizado[0].ToString();
+
+        var baseUsuario =
+            inicialNombre +
+            primerApellidoNormalizado +
+            inicialSegundoApellido;
+
+        var usuariosExistentes =
+            await administradorUsuarios.Users
+                .Where(usuario =>
+                    usuario.UserName != null &&
+                    usuario.UserName.StartsWith(baseUsuario))
+                .Select(usuario => usuario.UserName!)
+                .ToListAsync();
+
+        var maximoCorrelativo = 0;
+
+        foreach (var usuarioExistente in usuariosExistentes)
+        {
+            if (!usuarioExistente.StartsWith(
+                baseUsuario,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var parteNumerica =
+                usuarioExistente[
+                    baseUsuario.Length..
+                ];
+
+            if (int.TryParse(
+                parteNumerica,
+                out var correlativo) &&
+                correlativo > maximoCorrelativo)
+            {
+                maximoCorrelativo =
+                    correlativo;
+            }
+        }
+
+        return
+            baseUsuario +
+            (maximoCorrelativo + 1);
+    }
+    // NORMALIZAR TEXTO PARA NOMBRE DE USUARIO
+    private static string NormalizarTexto(
+        string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            return string.Empty;
+        }
+
+        var textoNormalizado =
+            texto.Trim()
+                .ToLowerInvariant()
+                .Normalize(
+                    NormalizationForm.FormD
+                );
+
+        var resultado =
+            new StringBuilder();
+
+        foreach (var caracter
+            in textoNormalizado)
+        {
+            var categoria =
+                CharUnicodeInfo
+                    .GetUnicodeCategory(
+                        caracter
+                    );
+
+            if (categoria ==
+                UnicodeCategory.NonSpacingMark)
+            {
+                continue;
+            }
+
+            if (char.IsLetterOrDigit(
+                caracter
+            ))
+            {
+                resultado.Append(
+                    caracter
+                );
+            }
+        }
+
+        return resultado
+            .ToString()
+            .Normalize(
+                NormalizationForm.FormC
             );
     }
 
     // OBTENER USUARIO PARA EDICIÓN
-    public async Task<ResultadoUsuario<EditarUsuario>>
+    public async Task<
+        ResultadoUsuario<EditarUsuario>>
         ObtenerParaEditarAsync(
             string id,
             ClaimsPrincipal usuarioActual)
@@ -388,16 +634,18 @@ public class UsuarioServicio : IUsuarioServicio
         }
 
         var usuarioEsSuperusuario =
-            await administradorUsuarios.IsInRoleAsync(
-                usuario,
-                Roles.Superusuario
-            );
+            await administradorUsuarios
+                .IsInRoleAsync(
+                    usuario,
+                    Roles.Superusuario
+                );
 
         var administradorEsSuperusuario =
-            await administradorUsuarios.IsInRoleAsync(
-                administrador,
-                Roles.Superusuario
-            );
+            await administradorUsuarios
+                .IsInRoleAsync(
+                    administrador,
+                    Roles.Superusuario
+                );
 
         if (usuarioEsSuperusuario &&
             !administradorEsSuperusuario)
@@ -421,7 +669,8 @@ public class UsuarioServicio : IUsuarioServicio
 
         var modelo = new EditarUsuario
         {
-            Id = usuario.Id,
+            Id =
+                usuario.Id,
 
             PrimerNombre =
                 usuario.PrimerNombre,
@@ -439,10 +688,12 @@ public class UsuarioServicio : IUsuarioServicio
                 usuario.SegundoApellido,
 
             Usuario =
-                usuario.UserName ?? string.Empty,
+                usuario.UserName ??
+                string.Empty,
 
             Correo =
-                usuario.Email ?? string.Empty,
+                usuario.Email ??
+                string.Empty,
 
             Rol =
                 rolesUsuario[0]
@@ -459,11 +710,11 @@ public class UsuarioServicio : IUsuarioServicio
             ClaimsPrincipal usuarioActual)
     {
         var validacionDatos =
-    await ValidarDatosAsync(
-        modelo.Usuario,
-        modelo.Correo,
-        modelo.Id
-    );
+            await ValidarDatosAsync(
+                modelo.Usuario,
+                modelo.Correo,
+                modelo.Id
+            );
 
         if (validacionDatos.Tipo ==
             TipoResultadoUsuario.Validacion)
@@ -499,16 +750,18 @@ public class UsuarioServicio : IUsuarioServicio
         }
 
         var administradorEsSuperusuario =
-            await administradorUsuarios.IsInRoleAsync(
-                administrador,
-                Roles.Superusuario
-            );
+            await administradorUsuarios
+                .IsInRoleAsync(
+                    administrador,
+                    Roles.Superusuario
+                );
 
         var usuarioEsSuperusuario =
-            await administradorUsuarios.IsInRoleAsync(
-                usuario,
-                Roles.Superusuario
-            );
+            await administradorUsuarios
+                .IsInRoleAsync(
+                    usuario,
+                    Roles.Superusuario
+                );
 
         if (usuarioEsSuperusuario &&
             !administradorEsSuperusuario)
@@ -577,12 +830,19 @@ public class UsuarioServicio : IUsuarioServicio
                         Roles.Superusuario
                     );
 
-            if (superusuarios.Count <= 1)
+            var cantidadSuperusuariosActivos =
+                superusuarios.Count(
+                    superusuario =>
+                        superusuario.Activo &&
+                        superusuario.Id != usuario.Id
+                );
+
+            if (cantidadSuperusuariosActivos == 0)
             {
                 return ResultadoUsuario<bool>
                     .Validacion(
                         nameof(modelo.Rol),
-                        "No puede cambiar el rol del único superusuario del sistema."
+                        "No puede cambiar el rol del único superusuario activo del sistema."
                     );
             }
         }
@@ -591,101 +851,290 @@ public class UsuarioServicio : IUsuarioServicio
             await contexto.Database
                 .BeginTransactionAsync();
 
-        usuario.PrimerNombre =
-            modelo.PrimerNombre.Trim();
-
-        usuario.SegundoNombre =
-            LimpiarTextoOpcional(
-                modelo.SegundoNombre
-            );
-
-        usuario.TercerNombre =
-            LimpiarTextoOpcional(
-                modelo.TercerNombre
-            );
-
-        usuario.PrimerApellido =
-            modelo.PrimerApellido.Trim();
-
-        usuario.SegundoApellido =
-            LimpiarTextoOpcional(
-                modelo.SegundoApellido
-            );
-
-        usuario.UserName =
-            modelo.Usuario.Trim();
-
-        usuario.Email =
-            modelo.Correo.Trim();
-
-        var resultadoActualizacion =
-            await administradorUsuarios.UpdateAsync(
-                usuario
-            );
-
-        if (!resultadoActualizacion.Succeeded)
+        try
         {
-            await transaccion.RollbackAsync();
+            usuario.PrimerNombre =
+                modelo.PrimerNombre.Trim();
+
+            usuario.SegundoNombre =
+                LimpiarTextoOpcional(
+                    modelo.SegundoNombre
+                );
+
+            usuario.TercerNombre =
+                LimpiarTextoOpcional(
+                    modelo.TercerNombre
+                );
+
+            usuario.PrimerApellido =
+                modelo.PrimerApellido.Trim();
+
+            usuario.SegundoApellido =
+                LimpiarTextoOpcional(
+                    modelo.SegundoApellido
+                );
+
+            usuario.UserName =
+                modelo.Usuario.Trim();
+
+            usuario.Email =
+                modelo.Correo.Trim();
+
+            var resultadoActualizacion =
+                await administradorUsuarios
+                    .UpdateAsync(
+                        usuario
+                    );
+
+            if (!resultadoActualizacion.Succeeded)
+            {
+                await transaccion.RollbackAsync();
+
+                return ResultadoUsuario<bool>
+                    .Validacion(
+                        CrearErroresIdentity(
+                            resultadoActualizacion.Errors
+                        )
+                    );
+            }
+
+            if (!string.Equals(
+                rolActual,
+                modelo.Rol,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                var resultadoEliminarRol =
+                    await administradorUsuarios
+                        .RemoveFromRoleAsync(
+                            usuario,
+                            rolActual
+                        );
+
+                if (!resultadoEliminarRol.Succeeded)
+                {
+                    await transaccion.RollbackAsync();
+
+                    return ResultadoUsuario<bool>
+                        .Validacion(
+                            string.Empty,
+                            "No fue posible modificar el rol del usuario."
+                        );
+                }
+
+                var resultadoAgregarRol =
+                    await administradorUsuarios
+                        .AddToRoleAsync(
+                            usuario,
+                            modelo.Rol
+                        );
+
+                if (!resultadoAgregarRol.Succeeded)
+                {
+                    await transaccion.RollbackAsync();
+
+                    return ResultadoUsuario<bool>
+                        .Validacion(
+                            string.Empty,
+                            "No fue posible asignar el nuevo rol al usuario."
+                        );
+                }
+            }
+
+            await transaccion.CommitAsync();
 
             return ResultadoUsuario<bool>
-                .Validacion(
-                    CrearErroresIdentity(
-                        resultadoActualizacion.Errors
-                    )
+                .Correcto(
+                    true,
+                    "El usuario fue actualizado correctamente."
+                );
+        }
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
+    }
+
+    // ENVIAR RESTABLECIMIENTO DE CONTRASEÑA POR CORREO
+    public async Task<ResultadoUsuario<bool>>
+        EnviarRestablecimientoContrasenaAsync(
+            string id,
+            ClaimsPrincipal usuarioActual)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return ResultadoUsuario<bool>
+                .Error(
+                    "No se recibió el usuario que desea restablecer."
                 );
         }
 
-        if (!string.Equals(
-            rolActual,
-            modelo.Rol,
-            StringComparison.OrdinalIgnoreCase))
+        var usuario =
+            await administradorUsuarios.FindByIdAsync(id);
+
+        if (usuario == null)
         {
-            var resultadoEliminarRol =
-                await administradorUsuarios
-                    .RemoveFromRoleAsync(
-                        usuario,
-                        rolActual
-                    );
-
-            if (!resultadoEliminarRol.Succeeded)
-            {
-                await transaccion.RollbackAsync();
-
-                return ResultadoUsuario<bool>
-                    .Validacion(
-                        string.Empty,
-                        "No fue posible modificar el rol del usuario."
-                    );
-            }
-
-            var resultadoAgregarRol =
-                await administradorUsuarios
-                    .AddToRoleAsync(
-                        usuario,
-                        modelo.Rol
-                    );
-
-            if (!resultadoAgregarRol.Succeeded)
-            {
-                await transaccion.RollbackAsync();
-
-                return ResultadoUsuario<bool>
-                    .Validacion(
-                        string.Empty,
-                        "No fue posible asignar el nuevo rol al usuario."
-                    );
-            }
+            return ResultadoUsuario<bool>
+                .Error(
+                    "El usuario seleccionado no existe."
+                );
         }
 
-        await transaccion.CommitAsync();
+        if (!usuario.Activo)
+        {
+            return ResultadoUsuario<bool>
+                .Advertencia(
+                    "No se puede restablecer la contraseña de un usuario inactivo."
+                );
+        }
+
+        if (string.IsNullOrWhiteSpace(usuario.Email))
+        {
+            return ResultadoUsuario<bool>
+                .Advertencia(
+                    "El usuario no tiene un correo electrónico registrado."
+                );
+        }
+
+        var administrador =
+            await administradorUsuarios.GetUserAsync(
+                usuarioActual
+            );
+
+        if (administrador == null)
+        {
+            return ResultadoUsuario<bool>
+                .NoAutenticado();
+        }
+
+        var usuarioEsSuperusuario =
+            await administradorUsuarios
+                .IsInRoleAsync(
+                    usuario,
+                    Roles.Superusuario
+                );
+
+        var administradorEsSuperusuario =
+            await administradorUsuarios
+                .IsInRoleAsync(
+                    administrador,
+                    Roles.Superusuario
+                );
+
+        if (usuarioEsSuperusuario &&
+            !administradorEsSuperusuario)
+        {
+            return ResultadoUsuario<bool>
+                .Prohibido();
+        }
+
+        var token =
+            await administradorUsuarios
+                .GeneratePasswordResetTokenAsync(
+                    usuario
+                );
+
+        var tokenCodificado =
+            WebEncoders.Base64UrlEncode(
+                Encoding.UTF8.GetBytes(token)
+            );
+
+        var httpContext =
+            contextoHttp.HttpContext;
+
+        if (httpContext == null)
+        {
+            return ResultadoUsuario<bool>
+                .Error(
+                    "No fue posible generar el enlace de restablecimiento."
+                );
+        }
+
+        var enlace =
+            generadorEnlaces.GetUriByAction(
+                httpContext,
+                action: "RestablecerContrasena",
+                controller: "Login",
+                values: new
+                {
+                    usuarioId = usuario.Id,
+                    token = tokenCodificado
+                }
+            );
+
+        if (string.IsNullOrWhiteSpace(enlace))
+        {
+            return ResultadoUsuario<bool>
+                .Error(
+                    "No fue posible generar el enlace de restablecimiento."
+                );
+        }
+
+        var nombreCompleto =
+            ObtenerNombreCompleto(usuario);
+
+        var contenidoHtml =
+            $"""
+        <div style="font-family: Arial, sans-serif;
+                    max-width: 600px;
+                    margin: 0 auto;">
+
+            <h2>Restablecimiento de contraseña</h2>
+
+            <p>
+                Hola {nombreCompleto},
+            </p>
+
+            <p>
+                Se solicitó el restablecimiento de la contraseña
+                de su cuenta en SabIA.
+            </p>
+
+            <p>
+                Para establecer una nueva contraseña,
+                utilice el siguiente enlace:
+            </p>
+
+            <p>
+                <a href="{enlace}">
+                    Restablecer contraseña
+                </a>
+            </p>
+
+            <p>
+                Si usted no esperaba este mensaje,
+                puede ignorarlo.
+            </p>
+
+            <p>
+                SabIA
+            </p>
+
+        </div>
+        """;
+
+        try
+        {
+            await servicioCorreo.EnviarAsync(
+                usuario.Email,
+                "Restablecer contraseña - SabIA",
+                contenidoHtml
+            );
+        }
+        catch
+        {
+            return ResultadoUsuario<bool>
+                .Error(
+                    "No fue posible enviar el correo de restablecimiento."
+                );
+        }
 
         return ResultadoUsuario<bool>
             .Correcto(
                 true,
-                "El usuario fue actualizado correctamente."
+                "Se envió el enlace de restablecimiento al correo del usuario."
             );
     }
-
     // RESTABLECER CONTRASEÑA
     public async Task<
         ResultadoUsuario<ResultadoContrasenaTemporal>>
@@ -736,16 +1185,18 @@ public class UsuarioServicio : IUsuarioServicio
         }
 
         var usuarioEsSuperusuario =
-            await administradorUsuarios.IsInRoleAsync(
-                usuario,
-                Roles.Superusuario
-            );
+            await administradorUsuarios
+                .IsInRoleAsync(
+                    usuario,
+                    Roles.Superusuario
+                );
 
         var administradorEsSuperusuario =
-            await administradorUsuarios.IsInRoleAsync(
-                administrador,
-                Roles.Superusuario
-            );
+            await administradorUsuarios
+                .IsInRoleAsync(
+                    administrador,
+                    Roles.Superusuario
+                );
 
         if (usuarioEsSuperusuario &&
             !administradorEsSuperusuario)
@@ -758,61 +1209,83 @@ public class UsuarioServicio : IUsuarioServicio
         var contrasenaTemporal =
             GeneradorContrasenaTemporal.Generar();
 
-        var token =
-            await administradorUsuarios
-                .GeneratePasswordResetTokenAsync(
-                    usuario
-                );
+        await using var transaccion =
+            await contexto.Database
+                .BeginTransactionAsync();
 
-        var resultado =
-            await administradorUsuarios
-                .ResetPasswordAsync(
-                    usuario,
-                    token,
-                    contrasenaTemporal
-                );
-
-        if (!resultado.Succeeded)
+        try
         {
-            return ResultadoUsuario<
-                ResultadoContrasenaTemporal>
-                .Error(
-                    "No fue posible restablecer la contraseña del usuario."
-                );
-        }
+            var token =
+                await administradorUsuarios
+                    .GeneratePasswordResetTokenAsync(
+                        usuario
+                    );
 
-        usuario.CambiarContrasena = true;
+            var resultado =
+                await administradorUsuarios
+                    .ResetPasswordAsync(
+                        usuario,
+                        token,
+                        contrasenaTemporal
+                    );
 
-        var resultadoActualizacion =
-            await administradorUsuarios.UpdateAsync(
-                usuario
-            );
-
-        if (!resultadoActualizacion.Succeeded)
-        {
-            return ResultadoUsuario<
-                ResultadoContrasenaTemporal>
-                .Error(
-                    "La contraseña fue restablecida, pero no fue posible actualizar el estado del usuario."
-                );
-        }
-
-        var resultadoVista =
-            new ResultadoContrasenaTemporal
+            if (!resultado.Succeeded)
             {
-                Usuario =
-                    usuario.UserName ?? string.Empty,
+                await transaccion.RollbackAsync();
 
-                NombreCompleto =
-                    ObtenerNombreCompleto(usuario),
+                return ResultadoUsuario<
+                    ResultadoContrasenaTemporal>
+                    .Error(
+                        "No fue posible restablecer la contraseña del usuario."
+                    );
+            }
 
-                ContrasenaTemporal =
-                    contrasenaTemporal
-            };
+            usuario.CambiarContrasena = true;
 
-        return ResultadoUsuario<
-            ResultadoContrasenaTemporal>
-            .Correcto(resultadoVista);
+            var resultadoActualizacion =
+                await administradorUsuarios
+                    .UpdateAsync(
+                        usuario
+                    );
+
+            if (!resultadoActualizacion.Succeeded)
+            {
+                await transaccion.RollbackAsync();
+
+                return ResultadoUsuario<
+                    ResultadoContrasenaTemporal>
+                    .Error(
+                        "No fue posible completar el restablecimiento de la contraseña."
+                    );
+            }
+
+            await transaccion.CommitAsync();
+
+            var resultadoVista =
+                new ResultadoContrasenaTemporal
+                {
+                    Usuario =
+                        usuario.UserName ??
+                        string.Empty,
+
+                    NombreCompleto =
+                        ObtenerNombreCompleto(
+                            usuario
+                        ),
+
+                    ContrasenaTemporal =
+                        contrasenaTemporal
+                };
+
+            return ResultadoUsuario<
+                ResultadoContrasenaTemporal>
+                .Correcto(resultadoVista);
+        }
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
     }
 
     // DESACTIVAR USUARIO
@@ -868,16 +1341,18 @@ public class UsuarioServicio : IUsuarioServicio
         }
 
         var usuarioEsSuperusuario =
-            await administradorUsuarios.IsInRoleAsync(
-                usuario,
-                Roles.Superusuario
-            );
+            await administradorUsuarios
+                .IsInRoleAsync(
+                    usuario,
+                    Roles.Superusuario
+                );
 
         var administradorEsSuperusuario =
-            await administradorUsuarios.IsInRoleAsync(
-                administrador,
-                Roles.Superusuario
-            );
+            await administradorUsuarios
+                .IsInRoleAsync(
+                    administrador,
+                    Roles.Superusuario
+                );
 
         if (usuarioEsSuperusuario &&
             !administradorEsSuperusuario)
@@ -910,27 +1385,43 @@ public class UsuarioServicio : IUsuarioServicio
             }
         }
 
-        usuario.Activo = false;
+        await using var transaccion =
+            await contexto.Database
+                .BeginTransactionAsync();
 
-        var resultado =
-            await administradorUsuarios
-                .UpdateSecurityStampAsync(
-                    usuario
-                );
-
-        if (!resultado.Succeeded)
+        try
         {
+            usuario.Activo = false;
+
+            var resultado =
+                await administradorUsuarios
+                    .UpdateSecurityStampAsync(
+                        usuario
+                    );
+
+            if (!resultado.Succeeded)
+            {
+                await transaccion.RollbackAsync();
+
+                return ResultadoUsuario<bool>
+                    .Error(
+                        "No fue posible desactivar el usuario."
+                    );
+            }
+
+            await transaccion.CommitAsync();
+
             return ResultadoUsuario<bool>
-                .Error(
-                    "No fue posible desactivar el usuario."
+                .Correcto(
+                    true,
+                    "El usuario fue desactivado correctamente."
                 );
         }
-
-        return ResultadoUsuario<bool>
-            .Correcto(
-                true,
-                "El usuario fue desactivado correctamente."
-            );
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
     }
 
     // ACTIVAR USUARIO
@@ -964,26 +1455,42 @@ public class UsuarioServicio : IUsuarioServicio
                 );
         }
 
-        usuario.Activo = true;
+        await using var transaccion =
+            await contexto.Database
+                .BeginTransactionAsync();
 
-        var resultado =
-            await administradorUsuarios.UpdateAsync(
-                usuario
-            );
-
-        if (!resultado.Succeeded)
+        try
         {
+            usuario.Activo = true;
+
+            var resultado =
+                await administradorUsuarios.UpdateAsync(
+                    usuario
+                );
+
+            if (!resultado.Succeeded)
+            {
+                await transaccion.RollbackAsync();
+
+                return ResultadoUsuario<bool>
+                    .Error(
+                        "No fue posible activar el usuario."
+                    );
+            }
+
+            await transaccion.CommitAsync();
+
             return ResultadoUsuario<bool>
-                .Error(
-                    "No fue posible activar el usuario."
+                .Correcto(
+                    true,
+                    "El usuario fue activado correctamente."
                 );
         }
-
-        return ResultadoUsuario<bool>
-            .Correcto(
-                true,
-                "El usuario fue activado correctamente."
-            );
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
     }
 
     // OBTENER NOMBRE COMPLETO
@@ -1047,7 +1554,9 @@ public class UsuarioServicio : IUsuarioServicio
             AgregarError(
                 errores,
                 string.Empty,
-                TraducirErrorIdentity(error.Code)
+                TraducirErrorIdentity(
+                    error.Code
+                )
             );
         }
 
@@ -1088,7 +1597,7 @@ public class UsuarioServicio : IUsuarioServicio
                 "La contraseña debe contener al menos una letra mayúscula.",
 
             _ =>
-                "No fue posible crear el usuario. Verifique los datos e intente nuevamente."
+                "No fue posible procesar el usuario. Verifique los datos e intente nuevamente."
         };
     }
 
@@ -1098,21 +1607,25 @@ public class UsuarioServicio : IUsuarioServicio
     {
         if (string.IsNullOrWhiteSpace(correo))
         {
-            return "El correo electrónico es obligatorio.";
+            return
+                "El correo electrónico es obligatorio.";
         }
 
         correo = correo.Trim();
 
         if (!FormatoCorreo.IsMatch(correo))
         {
-            return "Ingrese un correo electrónico válido con un dominio completo.";
+            return
+                "Ingrese un correo electrónico válido con un dominio completo.";
         }
 
-        var partes = correo.Split('@');
+        var partes =
+            correo.Split('@');
 
         if (partes.Length != 2)
         {
-            return "Ingrese un correo electrónico válido.";
+            return
+                "Ingrese un correo electrónico válido.";
         }
 
         var dominio =
@@ -1123,18 +1636,22 @@ public class UsuarioServicio : IUsuarioServicio
 
         // PROVEEDOR CONOCIDO
         if (DominiosConocidos.TryGetValue(
-                proveedor,
-                out var dominiosPermitidos))
+            proveedor,
+            out var dominiosPermitidos))
         {
-            if (!dominiosPermitidos.Contains(dominio))
+            if (!dominiosPermitidos.Contains(
+                dominio
+            ))
             {
-                return $"El dominio '{dominio}' no es válido para {proveedor}.";
+                return
+                    $"El dominio '{dominio}' no es válido para {proveedor}.";
             }
 
             return null;
         }
 
-        // DETECTAR POSIBLES ERRORES EN PROVEEDORES CONOCIDOS
+        // DETECTAR POSIBLES ERRORES
+        // EN PROVEEDORES CONOCIDOS
         foreach (var proveedorConocido
             in DominiosConocidos.Keys)
         {
@@ -1142,7 +1659,8 @@ public class UsuarioServicio : IUsuarioServicio
                 proveedor,
                 proveedorConocido))
             {
-                return $"El dominio '{dominio}' parece contener un error. Verifique el proveedor de correo.";
+                return
+                    $"El dominio '{dominio}' parece contener un error. Verifique el proveedor de correo.";
             }
         }
 
@@ -1229,13 +1747,16 @@ public class UsuarioServicio : IUsuarioServicio
     }
 
     // VALIDAR DATOS DE USUARIO
-    public async Task<ResultadoUsuario<bool>> ValidarDatosAsync(
-        string nombreUsuario,
-        string correo,
-        string? idUsuario = null)
+    public async Task<ResultadoUsuario<bool>>
+        ValidarDatosAsync(
+            string nombreUsuario,
+            string correo,
+            string? idUsuario = null)
     {
         var errores =
-            new Dictionary<string, List<string>>();
+            new Dictionary<
+                string,
+                List<string>>();
 
         var errorCorreo =
             ValidarCorreo(correo);
@@ -1249,12 +1770,15 @@ public class UsuarioServicio : IUsuarioServicio
             );
         }
 
-        if (!string.IsNullOrWhiteSpace(nombreUsuario))
+        if (!string.IsNullOrWhiteSpace(
+            nombreUsuario
+        ))
         {
             var usuarioMismoNombre =
-                await administradorUsuarios.FindByNameAsync(
-                    nombreUsuario.Trim()
-                );
+                await administradorUsuarios
+                    .FindByNameAsync(
+                        nombreUsuario.Trim()
+                    );
 
             if (usuarioMismoNombre != null &&
                 usuarioMismoNombre.Id != idUsuario)
@@ -1267,12 +1791,15 @@ public class UsuarioServicio : IUsuarioServicio
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(correo))
+        if (!string.IsNullOrWhiteSpace(
+            correo
+        ))
         {
             var usuarioMismoCorreo =
-                await administradorUsuarios.FindByEmailAsync(
-                    correo.Trim()
-                );
+                await administradorUsuarios
+                    .FindByEmailAsync(
+                        correo.Trim()
+                    );
 
             if (usuarioMismoCorreo != null &&
                 usuarioMismoCorreo.Id != idUsuario)

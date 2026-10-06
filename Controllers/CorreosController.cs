@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Proyecto_Final.Servicios.Correo;
 
 namespace Proyecto_Final.Controllers;
 
+[Authorize]
 public class CorreosController : Controller
 {
     private readonly IServicioCorreo servicioCorreo;
@@ -14,10 +16,11 @@ public class CorreosController : Controller
     }
 
     // PROBAR ENVÍO DE CORREO
+    [HttpGet]
     public async Task<IActionResult> ProbarCorreo()
     {
         await servicioCorreo.EnviarAsync(
-            "CORREO_DESTINO",
+            "jeliasc.9@gmail.com",
             "Prueba de correo - Proyecto Final",
             """
             <h2>Correo de prueba</h2>

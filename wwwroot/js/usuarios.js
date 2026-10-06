@@ -1,71 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-    // CONFIGURAR TABLA DE USUARIOS
-    const tablaUsuarios =
-        document.getElementById("tablaUsuarios");
-
-    if (tablaUsuarios &&
-        typeof DataTable !== "undefined") {
-
-        new DataTable(
-            tablaUsuarios,
-            {
-                pageLength: 10,
-
-                lengthMenu: [
-                    5,
-                    10,
-                    25,
-                    50
-                ],
-
-                order: [
-                    [0, "asc"]
-                ],
-
-                columnDefs: [
-                    {
-                        targets: -1,
-                        orderable: false,
-                        searchable: false
-                    }
-                ],
-
-                language: {
-                    search: "Buscar:",
-                    searchPlaceholder:
-                        "Usuario, nombre o correo...",
-
-                    lengthMenu:
-                        "Mostrar _MENU_ registros",
-
-                    info:
-                        "Mostrando _START_ a _END_ de _TOTAL_ registros",
-
-                    infoEmpty:
-                        "No existen registros",
-
-                    infoFiltered:
-                        "(filtrado de _MAX_ registros)",
-
-                    zeroRecords:
-                        "No se encontraron usuarios",
-
-                    emptyTable:
-                        "No existen usuarios registrados",
-
-                    paginate: {
-                        first: "<<",
-                        previous: "<",
-                        next: ">",
-                        last: ">>"
-                    }
-                }
-            }
-        );
-    }
-
-
     // COPIAR CONTRASEÑA TEMPORAL
     const botonCopiar =
         document.getElementById(
@@ -210,24 +144,59 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
 
-    // CONFIRMAR RESTABLECIMIENTO DE CONTRASEÑA
-    const formulariosRestablecer =
+    // CONFIRMAR ENVÍO DE ENLACE DE RESTABLECIMIENTO
+    const formulariosRestablecerCorreo =
         document.querySelectorAll(
-            "[data-restablecer-contrasena]"
+            "[data-restablecer-contrasena-correo]"
         );
 
-    formulariosRestablecer.forEach(
+    formulariosRestablecerCorreo.forEach(
         function (formulario) {
+
             formulario.addEventListener(
                 "submit",
                 async function (evento) {
+
                     evento.preventDefault();
 
                     const confirmado =
                         await confirmarAccion(
-                            "Restablecer contraseña",
-                            "La contraseña actual dejará de funcionar y se generará una nueva contraseña temporal.",
-                            "Restablecer",
+                            "Enviar enlace de recuperación",
+                            "Se enviará al usuario un correo con un enlace para establecer una nueva contraseña.",
+                            "Enviar correo",
+                            "Cancelar",
+                            "#dc3545"
+                        );
+
+                    if (confirmado) {
+                        formulario.submit();
+                    }
+                }
+            );
+        }
+    );
+
+
+    // CONFIRMAR GENERACIÓN DE CONTRASEÑA TEMPORAL
+    const formulariosContrasenaTemporal =
+        document.querySelectorAll(
+            "[data-restablecer-contrasena-manual]"
+        );
+
+    formulariosContrasenaTemporal.forEach(
+        function (formulario) {
+
+            formulario.addEventListener(
+                "submit",
+                async function (evento) {
+
+                    evento.preventDefault();
+
+                    const confirmado =
+                        await confirmarAccion(
+                            "Generar contraseña temporal",
+                            "La contraseña actual del usuario será reemplazada por una nueva contraseña temporal y deberá cambiarla al iniciar sesión.",
+                            "Generar contraseña",
                             "Cancelar",
                             "#dc3545"
                         );
@@ -415,6 +384,9 @@ async function validarDatosUsuario(formulario) {
     const campoUsuario =
         formulario.querySelector(
             "[name='Usuario']"
+        ) ??
+        formulario.querySelector(
+            "[data-usuario-generado]"
         );
 
     const campoCorreo =
@@ -527,3 +499,107 @@ function normalizarTexto(texto) {
         .replace(/[\u0300-\u036f]/g, "")
         .trim();
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    const formulario =
+        document.querySelector("[data-crear-usuario]");
+
+    if (!formulario) {
+        return;
+    }
+
+    const primerNombre =
+        formulario.querySelector("[name='PrimerNombre']");
+
+    const primerApellido =
+        formulario.querySelector("[name='PrimerApellido']");
+
+    const segundoApellido =
+        formulario.querySelector("[name='SegundoApellido']");
+
+    const usuarioGenerado =
+        formulario.querySelector("[data-usuario-generado]");
+
+    const url =
+        formulario.dataset.urlGenerarUsuario;
+
+    if (!primerNombre ||
+        !primerApellido ||
+        !usuarioGenerado ||
+        !url) {
+        return;
+    }
+
+    let temporizador;
+
+    async function actualizarUsuario() {
+
+        clearTimeout(temporizador);
+
+        temporizador =
+            setTimeout(async () => {
+
+                const nombre =
+                    primerNombre.value.trim();
+
+                const apellido1 =
+                    primerApellido.value.trim();
+
+                const apellido2 =
+                    segundoApellido?.value.trim() ?? "";
+
+                if (!nombre || !apellido1) {
+                    usuarioGenerado.value = "";
+                    return;
+                }
+
+                const parametros =
+                    new URLSearchParams({
+                        primerNombre: nombre,
+                        primerApellido: apellido1,
+                        segundoApellido: apellido2
+                    });
+
+                try {
+                    const respuesta =
+                        await fetch(
+                            `${url}?${parametros.toString()}`
+                        );
+
+                    if (!respuesta.ok) {
+                        usuarioGenerado.value = "";
+                        return;
+                    }
+
+                    const datos =
+                        await respuesta.json();
+
+                    usuarioGenerado.value =
+                        datos.usuario ?? "";
+                }
+                catch {
+                    usuarioGenerado.value = "";
+                }
+
+            }, 350);
+    }
+
+    primerNombre.addEventListener(
+        "input",
+        actualizarUsuario
+    );
+
+    primerApellido.addEventListener(
+        "input",
+        actualizarUsuario
+    );
+
+    segundoApellido?.addEventListener(
+        "input",
+        actualizarUsuario
+    );
+
+    actualizarUsuario();
+
+});

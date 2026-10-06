@@ -18,8 +18,7 @@
             </p>
         </div>
 
-        <a asp-action="Index"
-           class="btn btn-outline-secondary">
+        <a asp-action="Index" class="app-btn app-btn-soft-secondary">
             <i class="bi bi-arrow-left me-1"></i>
             Regresar
         </a>
@@ -33,31 +32,25 @@
             </h3>
         </div>
 
-        <form asp-action="Editar"
-              method="post"
-              data-modo="editar">
+        <form asp-action="Editar" method="post" data-modo="editar">
 
             @Html.AntiForgeryToken()
 
-            <input asp-for="Id"
-                   type="hidden" />
+            <input asp-for="Id" type="hidden" />
 
             <div class="card-body">
 
-                <partial name="Formulario"
-                         model="Model" />
+                <partial name="Formulario" model="Model" />
 
             </div>
 
             <div class="card-footer d-flex justify-content-end gap-2">
 
-                <a asp-action="Index"
-                   class="btn btn-outline-secondary">
+                <a asp-action="Index" class="app-btn app-btn-soft-secondary">
                     Cancelar
                 </a>
 
-                <button type="submit"
-                        class="btn btn-primary">
+                <button type="submit" class="app-btn app-btn-soft-primary">
                     <i class="bi bi-floppy me-1"></i>
                     Guardar cambios
                 </button>
@@ -74,6 +67,5 @@
 {
     <partial name="_ValidationScriptsPartial" />
 
-    <script src="~/js/roles.js"
-            asp-append-version="true"></script>
+    <script src="~/js/roles.js" asp-append-version="true"></script>
 }

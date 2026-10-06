@@ -28,8 +28,7 @@
             TiposClaims.Permiso,
             Permisos.Roles.Crear))
         {
-            <a asp-action="Crear"
-               class="btn btn-primary">
+            <a asp-action="Crear" class="app-btn app-btn-soft-primary">
                 <i class="bi bi-plus-lg me-1"></i>
                 Nuevo rol
             </a>
@@ -55,7 +54,9 @@
 
             <div class="table-responsive">
 
-                <table class="table table-hover align-middle mb-0">
+                <table id="tablaRoles" class="table app-table" data-tabla-index
+                       data-search-placeholder="Nombre o descripción..." data-empty-message="No existen roles registrados"
+                       data-zero-message="No se encontraron roles">
 
                     <thead>
                         <tr>
@@ -88,13 +89,13 @@
 
                                     @if (rol.Activo)
                                     {
-                                        <span class="badge text-bg-success">
+                                        <span class="app-badge app-badge-success">
                                             Activo
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="badge text-bg-secondary">
+                                        <span class="app-badge app-badge-danger">
                                             Inactivo
                                         </span>
                                     }
@@ -108,9 +109,7 @@
                                             TiposClaims.Permiso,
                                             Permisos.Roles.Editar))
                                     {
-                                        <a asp-action="Editar"
-                                           asp-route-id="@rol.Id"
-                                           class="btn btn-outline-primary btn-sm">
+                                        <a asp-action="Editar" asp-route-id="@rol.Id" class="app-btn app-btn-soft-secondary">
 
                                             <i class="bi bi-pencil"></i>
 
@@ -128,20 +127,14 @@
                                             TiposClaims.Permiso,
                                             Permisos.Roles.CambiarEstado))
                                         {
-                                            <form asp-action="Desactivar"
-                                                  method="post"
-                                                  class="d-inline formulario-cambiar-estado"
-                                                  data-accion="desactivar"
-                                                  data-nombre="@rol.Name">
+                                            <form asp-action="Desactivar" method="post" class="d-inline formulario-cambiar-estado"
+                                                  data-accion="desactivar" data-nombre="@rol.Name">
 
                                                 @Html.AntiForgeryToken()
 
-                                                <input type="hidden"
-                                                       name="id"
-                                                       value="@rol.Id" />
+                                                <input type="hidden" name="id" value="@rol.Id" />
 
-                                                <button type="submit"
-                                                        class="btn btn-outline-danger btn-sm">
+                                                <button type="submit" class="app-btn app-btn-soft-danger">
 
                                                     <i class="bi bi-shield-x"></i>
 
@@ -161,20 +154,14 @@
                                                 TiposClaims.Permiso,
                                                 Permisos.Roles.CambiarEstado))
                                         {
-                                            <form asp-action="Activar"
-                                                  method="post"
-                                                  class="d-inline formulario-cambiar-estado"
-                                                  data-accion="activar"
-                                                  data-nombre="@rol.Name">
+                                            <form asp-action="Activar" method="post" class="d-inline formulario-cambiar-estado"
+                                                  data-accion="activar" data-nombre="@rol.Name">
 
                                                 @Html.AntiForgeryToken()
 
-                                                <input type="hidden"
-                                                       name="id"
-                                                       value="@rol.Id" />
+                                                <input type="hidden" name="id" value="@rol.Id" />
 
-                                                <button type="submit"
-                                                        class="btn btn-outline-success btn-sm">
+                                                <button type="submit" class="app-btn app-btn-soft-success">
 
                                                     <i class="bi bi-shield-check"></i>
 
@@ -207,6 +194,5 @@
 
 @section Scripts
 {
-    <script src="~/js/roles.js"
-            asp-append-version="true"></script>
+    <script src="~/js/roles.js" asp-append-version="true"></script>
 }

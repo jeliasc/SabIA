@@ -189,7 +189,7 @@
 
                         </div>
 
-                        <div class="alert alert-info" role="alert">
+                        <div class="app-alert app-alert-info-danger-text" role="alert">
 
                             La contraseña del usuario no se modifica desde
                             esta pantalla. Para cambiarla, utilice la opción
@@ -202,13 +202,13 @@
                             justify-content-end
                             gap-2 mt-4">
 
-                            <a asp-controller="Usuarios" asp-action="Index" class="btn btn-outline-secondary">
+                            <a asp-controller="Usuarios" asp-action="Index" class="app-btn app-btn-soft-secondary">
 
                                 Cancelar
 
                             </a>
 
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="app-btn app-btn-soft-primary">
 
                                 Guardar cambios
 
@@ -232,7 +232,6 @@
 
     <partial name="_ValidationScriptsPartial" />
 
-    <script src="~/js/usuarios.js" asp-append-version="true">
-    </script>
+    <script src="~/js/usuarios.js" asp-append-version="true"></script>
 
 }

@@ -1,7 +1,7 @@
-@model Proyecto_Final.ViewModels.Autenticacion.CambiarContrasena
+@model Proyecto_Final.ViewModels.Autenticacion.RestablecerContrasena
 
 @{
-    ViewData["Title"] = "Cambiar contraseña";
+    ViewData["Title"] = "Restablecer contraseña";
     Layout = null;
 
     var erroresGenerales = ViewData.ModelState[string.Empty]?.Errors
@@ -20,7 +20,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>Cambiar contraseña - Proyecto Final</title>
+    <title>Restablecer contraseña - SabIA</title>
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
 
@@ -32,8 +32,17 @@
 
     @if (erroresGenerales?.Any() == true)
     {
-        <div data-alerta data-tipo="error" data-titulo="Cambio de contraseña"
-             data-mensaje="@string.Join(" ", erroresGenerales)" hidden>
+        <div class="container pt-3">
+
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+
+                @string.Join(" ", erroresGenerales)
+
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar">
+                </button>
+
+            </div>
+
         </div>
     }
 
@@ -50,64 +59,31 @@
                         <div class="text-center mb-4">
 
                             <h2 class="fw-bold mb-2">
-                                Cambiar contraseña
+                                Restablecer contraseña
                             </h2>
 
                             <p class="text-muted mb-0">
-                                Por seguridad, debe establecer una nueva
-                                contraseña antes de continuar.
+                                Ingrese una nueva contraseña para su cuenta.
                             </p>
 
                         </div>
 
-                        <form asp-controller="Login" asp-action="CambiarContrasena" method="post" novalidate>
+                        <form asp-controller="Login" asp-action="RestablecerContrasena" method="post" novalidate>
 
                             @Html.AntiForgeryToken()
 
-                            <input type="text" name="UsuarioNavegador" value="@User.Identity?.Name"
-                                   autocomplete="username" hidden />
+                            <input asp-for="UsuarioId" type="hidden" />
+
+                            <input asp-for="Token" type="hidden" />
 
                             <div class="mb-3">
 
-                                <label asp-for="ContrasenaActual" class="form-label">
+                                <label asp-for="Contrasena" class="form-label">
                                 </label>
 
                                 <div class="input-group">
 
-                                    <input asp-for="ContrasenaActual" class="form-control"
-                                           autocomplete="current-password" data-contrasena />
-
-                                    <button type="button" class="btn btn-outline-secondary" data-mostrar-contrasena
-                                            aria-label="Mostrar contraseña" title="Mostrar contraseña">
-
-                                        <svg data-icono-mostrar xmlns="http://www.w3.org/2000/svg" width="18"
-                                             height="18" fill="currentColor" viewBox="0 0 16 16">
-
-                                            <path
-                                            d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z" />
-
-                                            <path
-                                            d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M6.5 8a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0" />
-
-                                        </svg>
-
-                                    </button>
-
-                                </div>
-
-                                <span asp-validation-for="ContrasenaActual" class="text-danger small">
-                                </span>
-
-                            </div>
-
-                            <div class="mb-3">
-
-                                <label asp-for="NuevaContrasena" class="form-label">
-                                </label>
-
-                                <div class="input-group">
-
-                                    <input asp-for="NuevaContrasena" class="form-control" autocomplete="new-password"
+                                    <input asp-for="Contrasena" class="form-control" autocomplete="new-password"
                                            data-contrasena data-nueva-contrasena />
 
                                     <button type="button" class="btn btn-outline-secondary" data-mostrar-contrasena
@@ -128,7 +104,7 @@
 
                                 </div>
 
-                                <span asp-validation-for="NuevaContrasena" class="text-danger small">
+                                <span asp-validation-for="Contrasena" class="text-danger small">
                                 </span>
 
                             </div>
@@ -198,23 +174,12 @@
 
                             </div>
 
-                            <div class="d-grid gap-2">
+                            <div class="d-grid">
 
                                 <button type="submit" class="btn btn-primary btn-lg">
-                                    Cambiar contraseña
+                                    Restablecer contraseña
                                 </button>
 
-                            </div>
-
-                        </form>
-                        <form asp-controller="Login" asp-action="CerrarSesion" method="post" class="mt-2">
-
-                            @Html.AntiForgeryToken()
-
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-outline-secondary">
-                                    Regresar al login
-                                </button>
                             </div>
 
                         </form>
@@ -234,10 +199,6 @@
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 
     <partial name="_ValidationScriptsPartial" />
-
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <script src="~/js/alertas.js" asp-append-version="true"></script>
 
     <script src="~/js/contrasena.js" asp-append-version="true"></script>
 

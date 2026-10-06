@@ -9,7 +9,7 @@
     ViewData["Title"] = "Usuarios";
 
     // PERMISO USUARIOS - VER
-    var permisoUsuariosVer =
+    bool permisoUsuariosVer =
         (await Autorizacion.AuthorizeAsync(
             User,
              "Usuarios.Ver"
@@ -73,7 +73,7 @@
         {
             <div class="d-grid d-md-block">
 
-                <a asp-controller="Usuarios" asp-action="Crear" class="btn btn-primary">
+                <a asp-controller="Usuarios" asp-action="Crear" class="app-btn app-btn-soft-primary">
 
                     Nuevo usuario
 
@@ -90,10 +90,9 @@
 
         <div class="d-grid">
 
-            <button type="button" class="btn btn-outline-secondary" data-mostrar-busqueda-usuarios>
-
+            <button type="button" class="app-btn app-btn-secondary" data-mostrar-busqueda-usuarios>
+                <i class="bi bi-search"></i>
                 Buscar usuario
-
             </button>
 
         </div>
@@ -115,7 +114,9 @@
 
             <div class="table-responsive">
 
-                <table id="tablaUsuarios" class="table table-hover align-middle mb-0">
+                <table id="tablaUsuarios" class="table app-table w-100" data-tabla-index
+                       data-search-placeholder="Usuario, nombre o correo..."
+                       data-empty-message="No existen usuarios registrados" data-zero-message="No se encontraron usuarios">
 
                     <thead>
 
@@ -185,13 +186,13 @@
 
                                     @if (usuario.Activo)
                                     {
-                                        <span class="badge bg-success">
+                                        <span class="app-badge app-badge-success">
                                             Activo
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-secondary">
+                                        <span class="app-badge app-badge-danger">
                                             Inactivo
                                         </span>
                                     }
@@ -202,33 +203,29 @@
 
                                     @if (usuario.CambiarContrasena)
                                     {
-                                        <span class="badge bg-warning text-dark">
+                                        <span class="app-badge app-badge-warning">
                                             Pendiente
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-success">
+                                        <span class="app-badge app-badge-success">
                                             Actualizada
                                         </span>
                                     }
 
                                 </td>
 
-                                <td>
+                                <td class="app-actions-cell">
 
-                                    <div class="d-flex
-                                        flex-wrap
-                                        justify-content-end
-                                        align-items-center
-                                        gap-2">
+                                    <div class="app-actions app-actions-table">
 
                                         @if (permisoUsuariosVer)
                                         {
                                             <a asp-controller="Usuarios" asp-action="Ver" asp-route-id="@usuario.Id"
-                                               class="btn btn-outline-secondary btn-sm">
+                                               class="app-btn-icon" title="Ver">
 
-                                                Ver
+                                                <i class="bi bi-eye"></i>
 
                                             </a>
                                         }
@@ -236,7 +233,7 @@
                                         @if (permisoUsuariosEditar)
                                         {
                                             <a asp-controller="Usuarios" asp-action="Editar" asp-route-id="@usuario.Id"
-                                               class="btn btn-outline-primary btn-sm">
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
 
                                                 Editar
 
@@ -252,8 +249,10 @@
 
                                                     @Html.AntiForgeryToken()
 
-                                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                    <button type="submit" class="app-btn app-btn-soft-danger app-btn-sm">
+
                                                         Desactivar
+
                                                     </button>
 
                                                 </form>
@@ -265,29 +264,55 @@
 
                                                     @Html.AntiForgeryToken()
 
-                                                    <button type="submit" class="btn btn-outline-success btn-sm">
+                                                    <button type="submit" class="app-btn app-btn-soft-success app-btn-sm">
+
                                                         Activar
+
                                                     </button>
 
                                                 </form>
                                             }
                                         }
+
                                         @if (permisoUsuariosRestablecerContrasena &&
-                                             usuario.Activo)
+     usuario.Activo)
                                         {
-                                            <form asp-controller="Usuarios" asp-action="RestablecerContrasena"
-                                                  asp-route-id="@usuario.Id" method="post" class="m-0"
-                                                  data-restablecer-contrasena>
+                                            <div class="app-actions">
 
-                                                @Html.AntiForgeryToken()
+                                                <form asp-controller="Usuarios" asp-action="EnviarRestablecimientoContrasena"
+                                                      asp-route-id="@usuario.Id" method="post" class="m-0"
+                                                      data-restablecer-contrasena-correo>
 
-                                                <button type="submit" class="btn btn-outline-warning btn-sm">
+                                                    @Html.AntiForgeryToken()
 
-                                                    Restablecer contraseña
+                                                    <button type="submit"
+                                                            class="app-btn app-btn-soft-warning app-btn-sm app-btn-two-lines app-btn-reset">
 
-                                                </button>
+                                                        <span>Enviar enlace</span>
+                                                        <span>por correo</span>
 
-                                            </form>
+                                                    </button>
+
+                                                </form>
+
+
+                                                <form asp-controller="Usuarios" asp-action="RestablecerContrasenaManual"
+                                                      asp-route-id="@usuario.Id" method="post" class="m-0"
+                                                      data-restablecer-contrasena-manual>
+
+                                                    @Html.AntiForgeryToken()
+
+                                                    <button type="submit"
+                                                            class="app-btn app-btn-soft-secondary app-btn-sm app-btn-two-lines app-btn-reset">
+
+                                                        <span>Generar contraseña</span>
+                                                        <span>temporal</span>
+
+                                                    </button>
+
+                                                </form>
+
+                                            </div>
                                         }
 
                                     </div>
@@ -354,13 +379,13 @@
 
                         @if (usuario.Activo)
                         {
-                            <span class="badge bg-success">
+                            <span class="app-badge app-badge-success">
                                 Activo
                             </span>
                         }
                         else
                         {
-                            <span class="badge bg-secondary">
+                            <span class="app-badge app-badge-danger">
                                 Inactivo
                             </span>
                         }
@@ -379,84 +404,140 @@
 
                     <div class="d-flex align-items-center gap-2 mb-4">
 
-                        <span class="small text-muted">
+                        <span class="app-text-muted small">
                             Contraseña:
                         </span>
 
                         @if (usuario.CambiarContrasena)
                         {
-                            <span class="badge bg-warning text-dark">
+                            <span class="app-badge app-badge-warning">
                                 Pendiente
                             </span>
                         }
                         else
                         {
-                            <span class="badge bg-success">
+                            <span class="app-badge app-badge-success">
                                 Actualizada
                             </span>
                         }
 
                     </div>
 
-
                     <div class="d-grid gap-2">
 
                         @if (permisoUsuariosVer)
                         {
                             <a asp-controller="Usuarios" asp-action="Ver" asp-route-id="@usuario.Id"
-                               class="btn btn-outline-secondary btn-sm">
+                               class="app-btn app-btn-soft-secondary app-btn-sm">
 
+                                <i class="bi bi-eye"></i>
                                 Ver
 
                             </a>
                         }
-                        <a permiso="Usuarios.Ver" asp-controller="Usuarios" asp-action="Ver" asp-route-id="@usuario.Id"
-                           class="btn btn-outline-secondary btn-sm">
-                            Ver
-                        </a>
 
                         @if (permisoUsuariosEditar)
                         {
                             <a asp-controller="Usuarios" asp-action="Editar" asp-route-id="@usuario.Id"
-                               class="btn btn-outline-primary btn-sm">
+                               class="app-btn app-btn-soft-primary app-btn-sm">
 
+                                <i class="bi bi-pencil"></i>
                                 Editar
 
                             </a>
                         }
 
-                        @if (permisoUsuariosRestablecerContrasena &&
-                             usuario.Activo)
+                        @if (permisoUsuariosCambiarEstado)
                         {
-                            <form asp-controller="Usuarios" asp-action="RestablecerContrasena" method="post"
-                                  data-restablecer-contrasena>
+                            if (usuario.Activo)
+                            {
+                                <form asp-controller="Usuarios" asp-action="Desactivar" asp-route-id="@usuario.Id" method="post"
+                                      class="m-0" data-cambiar-estado-usuario data-accion="desactivar">
 
-                                @Html.AntiForgeryToken()
+                                    @Html.AntiForgeryToken()
 
-                                <input type="hidden" name="id" value="@usuario.Id" />
+                                    <div class="d-grid">
 
-                                <div class="d-grid">
+                                        <button type="submit" class="app-btn app-btn-soft-danger app-btn-sm">
 
-                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <i class="bi bi-person-x"></i>
+                                            Desactivar
 
-                                        Restablecer contraseña
+                                        </button>
 
-                                    </button>
+                                    </div>
 
-                                </div>
+                                </form>
+                            }
+                            else
+                            {
+                                <form asp-controller="Usuarios" asp-action="Activar" asp-route-id="@usuario.Id" method="post"
+                                      class="m-0" data-cambiar-estado-usuario data-accion="activar">
 
-                            </form>
+                                    @Html.AntiForgeryToken()
+
+                                    <div class="d-grid">
+
+                                        <button type="submit" class="app-btn app-btn-soft-success app-btn-sm">
+
+                                            <i class="bi bi-person-check"></i>
+                                            Activar
+
+                                        </button>
+
+                                    </div>
+
+                                </form>
+                            }
+                        }
+
+                        @if (permisoUsuariosRestablecerContrasena &&
+                            usuario.Activo)
+                        {
+                            <div class="d-grid gap-2">
+
+                                <form asp-controller="Usuarios" asp-action="EnviarRestablecimientoContrasena"
+                                      asp-route-id="@usuario.Id" method="post" class="m-0" data-restablecer-contrasena-correo>
+
+                                    @Html.AntiForgeryToken()
+
+                                    <div class="d-grid">
+
+                                        <button type="submit" class="app-btn app-btn-soft-warning app-btn-sm app-btn-reset">
+                                            <i class="bi bi-envelope"></i>
+                                            Enviar enlace por correo
+                                        </button>
+
+                                    </div>
+
+                                </form>
+
+                                <form asp-controller="Usuarios" asp-action="RestablecerContrasenaManual"
+                                      asp-route-id="@usuario.Id" method="post" class="m-0" data-restablecer-contrasena-manual>
+
+                                    @Html.AntiForgeryToken()
+
+                                    <div class="d-grid">
+
+                                        <button type="submit" class="app-btn app-btn-soft-secondary app-btn-sm app-btn-reset">
+                                            <i class="bi bi-key"></i>
+                                            Generar contraseña temporal
+                                        </button>
+
+                                    </div>
+
+                                </form>
+
+                            </div>
                         }
 
                     </div>
-
                 </div>
 
             </div>
         }
 
     </div>
-
 
     @* SIN RESULTADOS - BÚSQUEDA MÓVIL *@
     <div class="d-md-none
@@ -469,7 +550,6 @@
 
     </div>
 
-
     @if (!Model.Any())
     {
         <div class="text-center text-muted py-4">
@@ -481,16 +561,6 @@
 
 </div>
 
-
 @section Scripts {
-
-    <script src="https://cdn.datatables.net/2.3.4/js/dataTables.min.js">
-    </script>
-
-    <script src="https://cdn.datatables.net/2.3.4/js/dataTables.bootstrap5.min.js">
-    </script>
-
-    <script src="~/js/usuarios.js" asp-append-version="true">
-    </script>
-
+    <script src="~/js/usuarios.js" asp-append-version="true"></script>
 }

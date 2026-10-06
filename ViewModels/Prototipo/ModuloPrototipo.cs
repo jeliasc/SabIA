@@ -24,7 +24,8 @@ public class IndicadorPrototipo
     public string Titulo { get; set; } = string.Empty;
     public string Valor { get; set; } = string.Empty;
     public string Icono { get; set; } = "bi bi-bar-chart";
-    public string Clase { get; set; } = "text-bg-primary";
+
+    public string Clase { get; set; } = "ui-stat-card-primary";
 }
 
 public class FilaPrototipo

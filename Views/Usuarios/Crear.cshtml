@@ -48,6 +48,7 @@
                 <div class="card-body p-4">
 
                     <form asp-controller="Usuarios" asp-action="Crear" method="post" novalidate data-crear-usuario
+                          data-url-generar-usuario="@Url.Action("GenerarNombreUsuario", "Usuarios")"
                           data-url-validar-datos="@Url.Action("ValidarDatos", "Usuarios")">
 
                         @Html.AntiForgeryToken()
@@ -134,13 +135,15 @@
 
                             <div class="col-12 col-md-6 mb-3">
 
-                                <label asp-for="Usuario" class="form-label">
+                                <label class="form-label">
+                                    Usuario generado
                                 </label>
 
-                                <input asp-for="Usuario" class="form-control" autocomplete="off" />
+                                <input type="text" class="form-control" data-usuario-generado readonly />
 
-                                <span asp-validation-for="Usuario" class="text-danger small" data-error-usuario>
-                                </span>
+                                <div class="form-text">
+                                    El sistema genera automáticamente este usuario.
+                                </div>
 
                             </div>
 
@@ -187,7 +190,7 @@
 
                         </div>
 
-                        <div class="alert alert-info" role="alert">
+                        <div class="app-alert app-alert-primary" role="alert">
 
                             El sistema generará automáticamente una
                             contraseña temporal. El usuario deberá
@@ -200,13 +203,13 @@
                             justify-content-end
                             gap-2 mt-4">
 
-                            <a asp-controller="Usuarios" asp-action="Index" class="btn btn-outline-secondary">
+                            <a asp-controller="Usuarios" asp-action="Index" class="app-btn app-btn-soft-secondary">
 
                                 Cancelar
 
                             </a>
 
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="app-btn app-btn-soft-primary">
 
                                 Crear usuario
 
@@ -229,5 +232,7 @@
 @section Scripts {
 
     <partial name="_ValidationScriptsPartial" />
+
+    <script src="~/js/usuarios.js" asp-append-version="true"></script>
 
 }

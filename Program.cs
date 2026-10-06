@@ -20,6 +20,8 @@ builder.Services.AddDbContext<Contexto>(options =>
     )
 );
 
+
+
 builder.Services.AddIdentity<Usuario, Rol>(options =>
     {
         // Requisitos de contraseña
@@ -85,11 +87,14 @@ builder.Services.Configure<ConfiguracionCorreo>(
     builder.Configuration.GetSection("Correo")
 );
 
+builder.Services.AddHttpContextAccessor();
+
+//INYECIÓN DE DEPENDENCIAS DE SERVICIOS DEL SISTEMA
 builder.Services.AddScoped<IServicioCorreo, ServicioCorreo>();
 builder.Services.AddScoped<IUsuarioServicio, UsuarioServicio>();
 builder.Services.AddScoped<IAutenticacionServicio, AutenticacionServicio>();
 builder.Services.AddScoped<IRolServicio, RolServicio>();
-builder.Services.AddScoped<IPermisoServicio,PermisoServicio>();
+builder.Services.AddScoped<IPermisoServicio, PermisoServicio>();
 
 var app = builder.Build();
 

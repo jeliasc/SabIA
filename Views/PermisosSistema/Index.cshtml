@@ -30,8 +30,7 @@
             TiposClaims.Permiso,
             "Permisos.Crear"))
         {
-            <a asp-action="Crear"
-               class="btn btn-primary">
+            <a asp-action="Crear" class="app-btn app-btn-soft-primary">
 
                 <i class="bi bi-plus-lg me-1"></i>
                 Nuevo permiso
@@ -59,7 +58,9 @@
 
             <div class="table-responsive">
 
-                <table class="table table-hover align-middle mb-0">
+                <table id="tablaPermisos" class="table app-table" data-tabla-index
+                       data-search-placeholder="Código, módulo o descripción..."
+                       data-empty-message="No existen permisos registrados" data-zero-message="No se encontraron permisos">
 
                     <thead>
                         <tr>
@@ -121,13 +122,13 @@
 
                                     @if (permiso.Activo)
                                     {
-                                        <span class="badge text-bg-success">
+                                        <span class="app-badge app-badge-success">
                                             Activo
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="badge text-bg-secondary">
+                                        <span class="app-badge app-badge-danger">
                                             Inactivo
                                         </span>
                                     }
@@ -140,9 +141,8 @@
                                         TiposClaims.Permiso,
                                         "Permisos.Editar"))
                                     {
-                                        <a asp-action="Editar"
-                                           asp-route-id="@permiso.Id"
-                                           class="btn btn-outline-primary btn-sm">
+                                        <a asp-action="Editar" asp-route-id="@permiso.Id"
+                                           class="app-btn app-btn-soft-secondary">
 
                                             <i class="bi bi-pencil"></i>
 
@@ -159,20 +159,14 @@
                                             TiposClaims.Permiso,
                                             "Permisos.CambiarEstado"))
                                         {
-                                            <form asp-action="Desactivar"
-                                                  method="post"
-                                                  class="d-inline formulario-cambiar-estado"
-                                                  data-accion="desactivar"
-                                                  data-nombre="@permiso.Codigo">
+                                            <form asp-action="Desactivar" method="post" class="d-inline formulario-cambiar-estado"
+                                                  data-accion="desactivar" data-nombre="@permiso.Codigo">
 
                                                 @Html.AntiForgeryToken()
 
-                                                <input type="hidden"
-                                                       name="id"
-                                                       value="@permiso.Id" />
+                                                <input type="hidden" name="id" value="@permiso.Id" />
 
-                                                <button type="submit"
-                                                        class="btn btn-outline-danger btn-sm">
+                                                <button type="submit" class="app-btn app-btn-soft-danger btn-sm">
 
                                                     <i class="bi bi-shield-x"></i>
 
@@ -191,20 +185,14 @@
                                             TiposClaims.Permiso,
                                             "Permisos.CambiarEstado"))
                                         {
-                                            <form asp-action="Activar"
-                                                  method="post"
-                                                  class="d-inline formulario-cambiar-estado"
-                                                  data-accion="activar"
-                                                  data-nombre="@permiso.Codigo">
+                                            <form asp-action="Activar" method="post" class="d-inline formulario-cambiar-estado"
+                                                  data-accion="activar" data-nombre="@permiso.Codigo">
 
                                                 @Html.AntiForgeryToken()
 
-                                                <input type="hidden"
-                                                       name="id"
-                                                       value="@permiso.Id" />
+                                                <input type="hidden" name="id" value="@permiso.Id" />
 
-                                                <button type="submit"
-                                                        class="btn btn-outline-success btn-sm">
+                                                <button type="submit" class="app-btn app-btn-soft-success btn-sm">
 
                                                     <i class="bi bi-shield-check"></i>
 
@@ -237,6 +225,5 @@
 
 @section Scripts
 {
-    <script src="~/js/permisos-sistema.js"
-            asp-append-version="true"></script>
+    <script src="~/js/permisos-sistema.js" asp-append-version="true"></script>
 }

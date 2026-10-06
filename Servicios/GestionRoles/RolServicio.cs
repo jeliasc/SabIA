@@ -1,11 +1,10 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Final.ViewModels.Roles;
-using Proyecto_Final.Models;
-using System.Security.Claims;
-using Proyecto_Final.Seguridad;
 using Proyecto_Final.Data;
-
+using Proyecto_Final.Models;
+using Proyecto_Final.Seguridad;
+using Proyecto_Final.ViewModels.Roles;
+using System.Security.Claims;
 
 namespace Proyecto_Final.Servicios.GestionRoles;
 
@@ -31,12 +30,12 @@ public class RolServicio : IRolServicio
     }
 
     // OBTENER MODELO PARA CREAR
-
     public async Task<CrearRol> ObtenerParaCrearAsync()
     {
         var modelo = new CrearRol
         {
-            Permisos = await ObtenerPermisosDisponiblesAsync()
+            Permisos =
+                await ObtenerPermisosDisponiblesAsync()
         };
 
         return modelo;
@@ -46,10 +45,13 @@ public class RolServicio : IRolServicio
     public async Task<ResultadoRol<bool>> CrearAsync(
         CrearRol modelo)
     {
-        var nombre = modelo.Nombre.Trim();
+        var nombre =
+            modelo.Nombre.Trim();
 
         var rolExistente =
-            await administradorRoles.FindByNameAsync(nombre);
+            await administradorRoles.FindByNameAsync(
+                nombre
+            );
 
         if (rolExistente != null)
         {
@@ -60,54 +62,76 @@ public class RolServicio : IRolServicio
                 );
         }
 
-        var rol = new Rol
-        {
-            Name = nombre,
-            Activo = true
-        };
-
-        var resultado =
-            await administradorRoles.CreateAsync(rol);
-
-        if (!resultado.Succeeded)
-        {
-            return ResultadoRol<bool>
-                .Validacion(
-                    CrearErroresIdentity(resultado.Errors)
-                );
-        }
-
         var permisosValidos =
             await ObtenerPermisosSeleccionadosValidosAsync(
-            modelo.Permisos
-    );
-        foreach (var permiso in permisosValidos)
+                modelo.Permisos
+            );
+
+        await using var transaccion =
+            await contexto.Database
+                .BeginTransactionAsync();
+
+        try
         {
-            var resultadoPermiso =
-                await administradorRoles.AddClaimAsync(
-                    rol,
-                    new Claim(
-                        TiposClaims.Permiso,
-                        permiso
-                    )
+            var rol = new Rol
+            {
+                Name = nombre,
+                Activo = true
+            };
+
+            var resultado =
+                await administradorRoles.CreateAsync(
+                    rol
                 );
 
-            if (!resultadoPermiso.Succeeded)
+            if (!resultado.Succeeded)
             {
-                await administradorRoles.DeleteAsync(rol);
+                await transaccion.RollbackAsync();
 
                 return ResultadoRol<bool>
-                    .Error(
-                        "No fue posible asignar los permisos al rol."
+                    .Validacion(
+                        CrearErroresIdentity(
+                            resultado.Errors
+                        )
                     );
             }
-        }
 
-        return ResultadoRol<bool>
-            .Correcto(
-                true,
-                "El rol fue creado correctamente."
-            );
+            foreach (var permiso in permisosValidos)
+            {
+                var resultadoPermiso =
+                    await administradorRoles
+                        .AddClaimAsync(
+                            rol,
+                            new Claim(
+                                TiposClaims.Permiso,
+                                permiso
+                            )
+                        );
+
+                if (!resultadoPermiso.Succeeded)
+                {
+                    await transaccion.RollbackAsync();
+
+                    return ResultadoRol<bool>
+                        .Error(
+                            "No fue posible asignar los permisos al rol."
+                        );
+                }
+            }
+
+            await transaccion.CommitAsync();
+
+            return ResultadoRol<bool>
+                .Correcto(
+                    true,
+                    "El rol fue creado correctamente."
+                );
+        }
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
     }
 
     // OBTENER ROL PARA EDICIÓN
@@ -123,7 +147,9 @@ public class RolServicio : IRolServicio
         }
 
         var rol =
-            await administradorRoles.FindByIdAsync(id);
+            await administradorRoles.FindByIdAsync(
+                id
+            );
 
         if (rol == null)
         {
@@ -146,7 +172,9 @@ public class RolServicio : IRolServicio
         }
 
         var claims =
-            await administradorRoles.GetClaimsAsync(rol);
+            await administradorRoles.GetClaimsAsync(
+                rol
+            );
 
         var permisosAsignados =
             claims
@@ -155,18 +183,24 @@ public class RolServicio : IRolServicio
                         claim.Type ==
                         TiposClaims.Permiso
                 )
-                .Select(claim => claim.Value)
+                .Select(
+                    claim =>
+                        claim.Value
+                )
                 .ToHashSet();
 
         var modelo = new EditarRol
         {
             Id = rol.Id,
-            Nombre = rol.Name ?? string.Empty,
+
+            Nombre =
+                rol.Name ??
+                string.Empty,
 
             Permisos =
-    await ObtenerPermisosDisponiblesAsync(
-        permisosAsignados
-    )
+                await ObtenerPermisosDisponiblesAsync(
+                    permisosAsignados
+                )
         };
 
         return ResultadoRol<EditarRol>
@@ -202,7 +236,8 @@ public class RolServicio : IRolServicio
                 );
         }
 
-        var nombre = modelo.Nombre.Trim();
+        var nombre =
+            modelo.Nombre.Trim();
 
         var rolMismoNombre =
             await administradorRoles.FindByNameAsync(
@@ -219,26 +254,15 @@ public class RolServicio : IRolServicio
                 );
         }
 
-        rol.Name = nombre;
-
-        var resultado =
-            await administradorRoles.UpdateAsync(rol);
-
-        if (!resultado.Succeeded)
-        {
-            return ResultadoRol<bool>
-                .Validacion(
-                    CrearErroresIdentity(resultado.Errors)
-                );
-        }
-
         var permisosSeleccionados =
             await ObtenerPermisosSeleccionadosValidosAsync(
-            modelo.Permisos
-    );
+                modelo.Permisos
+            );
 
         var claimsActuales =
-            await administradorRoles.GetClaimsAsync(rol);
+            await administradorRoles.GetClaimsAsync(
+                rol
+            );
 
         var claimsPermisos =
             claimsActuales
@@ -251,69 +275,114 @@ public class RolServicio : IRolServicio
 
         var permisosActuales =
             claimsPermisos
-                .Select(claim => claim.Value)
+                .Select(
+                    claim =>
+                        claim.Value
+                )
                 .ToHashSet();
 
-        // AGREGAR PERMISOS NUEVOS
-        foreach (var permiso in permisosSeleccionados)
-        {
-            if (permisosActuales.Contains(permiso))
-            {
-                continue;
-            }
+        await using var transaccion =
+            await contexto.Database
+                .BeginTransactionAsync();
 
-            var resultadoPermiso =
-                await administradorRoles.AddClaimAsync(
-                    rol,
-                    new Claim(
-                        TiposClaims.Permiso,
-                        permiso
-                    )
+        try
+        {
+            rol.Name =
+                nombre;
+
+            var resultado =
+                await administradorRoles.UpdateAsync(
+                    rol
                 );
 
-            if (!resultadoPermiso.Succeeded)
+            if (!resultado.Succeeded)
             {
+                await transaccion.RollbackAsync();
+
                 return ResultadoRol<bool>
-                    .Error(
-                        "No fue posible actualizar los permisos del rol."
+                    .Validacion(
+                        CrearErroresIdentity(
+                            resultado.Errors
+                        )
                     );
             }
-        }
 
-
-        // QUITAR PERMISOS
-        foreach (var claim in claimsPermisos)
-        {
-            if (permisosSeleccionados.Contains(
-                claim.Value))
+            // AGREGAR PERMISOS NUEVOS
+            foreach (var permiso
+                in permisosSeleccionados)
             {
-                continue;
+                if (permisosActuales.Contains(
+                    permiso
+                ))
+                {
+                    continue;
+                }
+
+                var resultadoPermiso =
+                    await administradorRoles
+                        .AddClaimAsync(
+                            rol,
+                            new Claim(
+                                TiposClaims.Permiso,
+                                permiso
+                            )
+                        );
+
+                if (!resultadoPermiso.Succeeded)
+                {
+                    await transaccion.RollbackAsync();
+
+                    return ResultadoRol<bool>
+                        .Error(
+                            "No fue posible actualizar los permisos del rol."
+                        );
+                }
             }
 
-            var resultadoPermiso =
-                await administradorRoles.RemoveClaimAsync(
-                    rol,
-                    claim
+            // QUITAR PERMISOS
+            foreach (var claim in claimsPermisos)
+            {
+                if (permisosSeleccionados.Contains(
+                    claim.Value
+                ))
+                {
+                    continue;
+                }
+
+                var resultadoPermiso =
+                    await administradorRoles
+                        .RemoveClaimAsync(
+                            rol,
+                            claim
+                        );
+
+                if (!resultadoPermiso.Succeeded)
+                {
+                    await transaccion.RollbackAsync();
+
+                    return ResultadoRol<bool>
+                        .Error(
+                            "No fue posible actualizar los permisos del rol."
+                        );
+                }
+            }
+
+            await transaccion.CommitAsync();
+
+            return ResultadoRol<bool>
+                .Correcto(
+                    true,
+                    "El rol fue actualizado correctamente."
                 );
-
-            if (!resultadoPermiso.Succeeded)
-            {
-                return ResultadoRol<bool>
-                    .Error(
-                        "No fue posible actualizar los permisos del rol."
-                    );
-            }
         }
-
-        return ResultadoRol<bool>
-            .Correcto(
-                true,
-                "El rol fue actualizado correctamente."
-            );
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
     }
 
     // OBTENER PERMISOS DISPONIBLES
-
     private async Task<List<PermisoRol>>
         ObtenerPermisosDisponiblesAsync(
             HashSet<string>? permisosAsignados = null)
@@ -323,10 +392,22 @@ public class RolServicio : IRolServicio
         var permisos =
             await contexto.PermisosSistema
                 .AsNoTracking()
-                .Where(permiso => permiso.Activo)
-                .OrderBy(permiso => permiso.Modulo)
-                .ThenBy(permiso => permiso.Codigo)
-                .Select(permiso => permiso.Codigo)
+                .Where(
+                    permiso =>
+                        permiso.Activo
+                )
+                .OrderBy(
+                    permiso =>
+                        permiso.Modulo
+                )
+                .ThenBy(
+                    permiso =>
+                        permiso.Codigo
+                )
+                .Select(
+                    permiso =>
+                        permiso.Codigo
+                )
                 .ToListAsync();
 
         return permisos
@@ -334,17 +415,20 @@ public class RolServicio : IRolServicio
                 permiso =>
                     new PermisoRol
                     {
-                        Nombre = permiso,
+                        Nombre =
+                            permiso,
+
                         Seleccionado =
-                            permisosAsignados.Contains(permiso)
+                            permisosAsignados
+                                .Contains(
+                                    permiso
+                                )
                     }
             )
             .ToList();
     }
 
-
     // OBTENER PERMISOS SELECCIONADOS VÁLIDOS
-
     private async Task<HashSet<string>>
         ObtenerPermisosSeleccionadosValidosAsync(
             IEnumerable<PermisoRol>? permisos)
@@ -356,8 +440,14 @@ public class RolServicio : IRolServicio
 
         var permisosSeleccionados =
             permisos
-                .Where(permiso => permiso.Seleccionado)
-                .Select(permiso => permiso.Nombre)
+                .Where(
+                    permiso =>
+                        permiso.Seleccionado
+                )
+                .Select(
+                    permiso =>
+                        permiso.Nombre
+                )
                 .ToHashSet();
 
         if (permisosSeleccionados.Count == 0)
@@ -375,10 +465,14 @@ public class RolServicio : IRolServicio
                             permiso.Codigo
                         )
                 )
-                .Select(permiso => permiso.Codigo)
+                .Select(
+                    permiso =>
+                        permiso.Codigo
+                )
                 .ToListAsync();
 
-        return permisosValidos.ToHashSet();
+        return permisosValidos
+            .ToHashSet();
     }
 
     // CREAR ERRORES DE IDENTITY
@@ -387,7 +481,9 @@ public class RolServicio : IRolServicio
             IEnumerable<IdentityError> erroresIdentity)
     {
         var errores =
-            new Dictionary<string, List<string>>();
+            new Dictionary<
+                string,
+                List<string>>();
 
         foreach (var error in erroresIdentity)
         {
@@ -396,11 +492,16 @@ public class RolServicio : IRolServicio
                 out var lista))
             {
                 lista = [];
-                errores[string.Empty] = lista;
+
+                errores[
+                    string.Empty
+                ] = lista;
             }
 
             lista.Add(
-                TraducirErrorIdentity(error.Code)
+                TraducirErrorIdentity(
+                    error.Code
+                )
             );
         }
 
@@ -424,7 +525,6 @@ public class RolServicio : IRolServicio
         };
     }
 
-
     // DESACTIVAR ROL
     public async Task<ResultadoRol<bool>>
         DesactivarAsync(string id)
@@ -438,7 +538,9 @@ public class RolServicio : IRolServicio
         }
 
         var rol =
-            await administradorRoles.FindByIdAsync(id);
+            await administradorRoles.FindByIdAsync(
+                id
+            );
 
         if (rol == null)
         {
@@ -468,24 +570,43 @@ public class RolServicio : IRolServicio
                 );
         }
 
-        rol.Activo = false;
+        await using var transaccion =
+            await contexto.Database
+                .BeginTransactionAsync();
 
-        var resultado =
-            await administradorRoles.UpdateAsync(rol);
-
-        if (!resultado.Succeeded)
+        try
         {
+            rol.Activo =
+                false;
+
+            var resultado =
+                await administradorRoles.UpdateAsync(
+                    rol
+                );
+
+            if (!resultado.Succeeded)
+            {
+                await transaccion.RollbackAsync();
+
+                return ResultadoRol<bool>
+                    .Error(
+                        "No fue posible desactivar el rol."
+                    );
+            }
+
+            await transaccion.CommitAsync();
+
             return ResultadoRol<bool>
-                .Error(
-                    "No fue posible desactivar el rol."
+                .Correcto(
+                    true,
+                    "El rol fue desactivado correctamente."
                 );
         }
-
-        return ResultadoRol<bool>
-            .Correcto(
-                true,
-                "El rol fue desactivado correctamente."
-            );
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
     }
 
     // ACTIVAR ROL
@@ -501,7 +622,9 @@ public class RolServicio : IRolServicio
         }
 
         var rol =
-            await administradorRoles.FindByIdAsync(id);
+            await administradorRoles.FindByIdAsync(
+                id
+            );
 
         if (rol == null)
         {
@@ -531,23 +654,42 @@ public class RolServicio : IRolServicio
                 );
         }
 
-        rol.Activo = true;
+        await using var transaccion =
+            await contexto.Database
+                .BeginTransactionAsync();
 
-        var resultado =
-            await administradorRoles.UpdateAsync(rol);
-
-        if (!resultado.Succeeded)
+        try
         {
+            rol.Activo =
+                true;
+
+            var resultado =
+                await administradorRoles.UpdateAsync(
+                    rol
+                );
+
+            if (!resultado.Succeeded)
+            {
+                await transaccion.RollbackAsync();
+
+                return ResultadoRol<bool>
+                    .Error(
+                        "No fue posible activar el rol."
+                    );
+            }
+
+            await transaccion.CommitAsync();
+
             return ResultadoRol<bool>
-                .Error(
-                    "No fue posible activar el rol."
+                .Correcto(
+                    true,
+                    "El rol fue activado correctamente."
                 );
         }
-
-        return ResultadoRol<bool>
-            .Correcto(
-                true,
-                "El rol fue activado correctamente."
-            );
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
     }
 }

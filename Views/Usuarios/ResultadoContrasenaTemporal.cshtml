@@ -1,7 +1,16 @@
 @model Proyecto_Final.ViewModels.Usuarios.ResultadoContrasenaTemporal
 
 @{
-    ViewData["Title"] = "Contraseña temporal";
+    var tipoOperacion =
+        ViewData["TipoOperacion"] as string;
+
+    var esCreacion =
+        tipoOperacion == "Creacion";
+
+    ViewData["Title"] =
+        esCreacion
+            ? "Usuario creado"
+            : "Contraseña temporal";
 }
 
 <div class="container py-4">
@@ -10,18 +19,26 @@
 
         <div class="col-12 col-md-8 col-lg-6">
 
-            <div class="card shadow border border-secondary">
+            <div class="app-card">
 
-                <div class="card-body p-4">
+                <div class="app-card-body p-4">
 
                     <div class="text-center mb-4">
 
+                        <div class="app-icon-box app-icon-success mx-auto mb-3">
+                            <i class="bi bi-check-lg"></i>
+                        </div>
+
                         <h2 class="fw-bold mb-2">
-                            Contraseña restablecida
+                            @(esCreacion
+                                ? "Usuario creado correctamente"
+                                : "Contraseña restablecida")
                         </h2>
 
                         <p class="text-muted mb-0">
-                            La contraseña temporal fue generada correctamente.
+                            @(esCreacion
+                                ? "La cuenta y la contraseña temporal fueron generadas correctamente."
+                                : "La contraseña temporal fue generada correctamente.")
                         </p>
 
                     </div>
@@ -67,8 +84,9 @@
                                    readonly />
 
                             <button type="button"
-                                    class="btn btn-outline-secondary"
+                                    class="app-btn app-btn-soft-secondary"
                                     id="botonCopiarContrasena">
+                                <i class="bi bi-copy"></i>
                                 Copiar
                             </button>
 
@@ -76,19 +94,50 @@
 
                     </div>
 
-                    <div class="alert alert-warning"
-                         role="alert">
+                    <div class="app-alert app-alert-warning mb-3">
 
-                        Esta contraseña se mostrará únicamente en esta pantalla.
-                        Entréguela al usuario por un medio seguro.
+                        <i class="bi bi-exclamation-triangle"></i>
+
+                        <div>
+                            @if (esCreacion)
+                            {
+                                <span>
+                                    Las credenciales fueron enviadas al correo
+                                    registrado. Esta contraseña temporal también
+                                    se muestra aquí como respaldo.
+                                </span>
+                            }
+                            else
+                            {
+                                <span>
+                                    Esta contraseña se mostrará únicamente en esta
+                                    pantalla. Entréguela al usuario por un medio seguro.
+                                </span>
+                            }
+                        </div>
 
                     </div>
 
-                    <div class="alert alert-info"
-                         role="alert">
+                    <div class="app-alert app-alert-info">
 
-                        El usuario deberá cambiar esta contraseña
-                        al iniciar sesión nuevamente.
+                        <i class="bi bi-info-circle"></i>
+
+                        <div>
+                            @if (esCreacion)
+                            {
+                                <span>
+                                    El usuario deberá cambiar esta contraseña
+                                    en su primer inicio de sesión.
+                                </span>
+                            }
+                            else
+                            {
+                                <span>
+                                    El usuario deberá cambiar esta contraseña
+                                    al iniciar sesión nuevamente.
+                                </span>
+                            }
+                        </div>
 
                     </div>
 
@@ -96,7 +145,8 @@
 
                         <a asp-controller="Usuarios"
                            asp-action="Index"
-                           class="btn btn-primary">
+                           class="app-btn app-btn-soft-primary">
+                            <i class="bi bi-arrow-left"></i>
                             Volver a usuarios
                         </a>
 
@@ -113,8 +163,5 @@
 </div>
 
 @section Scripts {
-    <script src="~/js/usuarios.js"
-            asp-append-version="true">
-    </script>
+    <script src="~/js/usuarios.js" asp-append-version="true"></script>
 }
-

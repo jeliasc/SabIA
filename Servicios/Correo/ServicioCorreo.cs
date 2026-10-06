@@ -1,6 +1,7 @@
-using System.Net;
-using System.Net.Mail;
+using MailKit.Net.Smtp;
+using MailKit.Security;
 using Microsoft.Extensions.Options;
+using MimeKit;
 
 namespace Proyecto_Final.Servicios.Correo;
 
@@ -27,6 +28,21 @@ public class ServicioCorreo : IServicioCorreo
             );
         }
 
+        if (string.IsNullOrWhiteSpace(configuracion.Servidor) ||
+            configuracion.Puerto <= 0)
+        {
+            throw new InvalidOperationException(
+                "La configuración del servidor SMTP no es válida."
+            );
+        }
+
+        if (string.IsNullOrWhiteSpace(configuracion.Remitente))
+        {
+            throw new InvalidOperationException(
+                "No se configuró el correo remitente."
+            );
+        }
+
         if (string.IsNullOrWhiteSpace(configuracion.Usuario) ||
             string.IsNullOrWhiteSpace(configuracion.Contrasena))
         {
@@ -35,32 +51,54 @@ public class ServicioCorreo : IServicioCorreo
             );
         }
 
-        using var mensaje = new MailMessage();
+        var mensaje = new MimeMessage();
 
-        mensaje.From = new MailAddress(
-            configuracion.Usuario,
-            configuracion.NombreRemitente
+        mensaje.From.Add(
+            new MailboxAddress(
+                configuracion.NombreRemitente,
+                configuracion.Remitente
+            )
         );
 
-        mensaje.To.Add(destinatario);
-        mensaje.Subject = asunto;
-        mensaje.Body = contenidoHtml;
-        mensaje.IsBodyHtml = true;
+        mensaje.To.Add(
+            MailboxAddress.Parse(
+                destinatario
+            )
+        );
 
-        using var cliente = new SmtpClient(
+        mensaje.Subject =
+            asunto;
+
+        mensaje.Body =
+            new BodyBuilder
+            {
+                HtmlBody =
+                    contenidoHtml
+            }
+            .ToMessageBody();
+
+        using var cliente =
+            new SmtpClient();
+
+        await cliente.ConnectAsync(
             configuracion.Servidor,
-            configuracion.Puerto
+            configuracion.Puerto,
+            configuracion.UsarSsl
+                ? SecureSocketOptions.SslOnConnect
+                : SecureSocketOptions.StartTls
         );
 
-        cliente.UseDefaultCredentials = false;
-
-        cliente.Credentials = new NetworkCredential(
+        await cliente.AuthenticateAsync(
             configuracion.Usuario,
             configuracion.Contrasena
         );
 
-        cliente.EnableSsl = configuracion.UsarSsl;
+        await cliente.SendAsync(
+            mensaje
+        );
 
-        await cliente.SendMailAsync(mensaje);
+        await cliente.DisconnectAsync(
+            true
+        );
     }
 }

@@ -1,0 +1,828 @@
+/* =========================================================
+   SABIA - COMPONENTES REUTILIZABLES
+========================================================= */
+
+
+/* =========================================================
+   VARIABLES
+========================================================= */
+
+:root {
+    --app-primary: #2563eb;
+    --app-primary-hover: #1d4ed8;
+    --app-primary-soft: #dbeafe;
+
+    --app-secondary: #64748b;
+    --app-secondary-hover: #475569;
+    --app-secondary-soft: #f1f5f9;
+
+    --app-success: #16a34a;
+    --app-success-hover: #15803d;
+    --app-success-soft: #dcfce7;
+
+    --app-danger: #dc2626;
+    --app-danger-hover: #b91c1c;
+    --app-danger-soft: #fee2e2;
+
+    --app-warning: #d97706;
+    --app-warning-hover: #b45309;
+    --app-warning-soft: #fef3c7;
+
+    --app-purple: #7c3aed;
+    --app-purple-soft: #ede9fe;
+
+    --app-text: #0f172a;
+    --app-text-secondary: #64748b;
+
+    --app-border: #e2e8f0;
+    --app-background: #f8fafc;
+    --app-white: #ffffff;
+
+    --app-radius: 10px;
+    --app-radius-sm: 7px;
+
+    --app-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+
+/* =========================================================
+   BOTÓN BASE
+========================================================= */
+
+.app-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    min-height: 38px;
+    padding: 8px 15px;
+
+    border: 1px solid transparent;
+    border-radius: var(--app-radius-sm);
+
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1;
+
+    text-decoration: none;
+    cursor: pointer;
+
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.1s ease;
+}
+
+.app-btn i {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.app-btn:active {
+    transform: translateY(1px);
+}
+
+.app-btn:disabled,
+.app-btn.disabled {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+
+/* =========================================================
+   BOTÓN PRINCIPAL
+========================================================= */
+
+.app-btn-primary {
+    background: var(--app-primary);
+    border-color: var(--app-primary);
+    color: var(--app-white);
+}
+
+.app-btn-primary:hover {
+    background: var(--app-primary-hover);
+    border-color: var(--app-primary-hover);
+    color: var(--app-white);
+}
+
+
+/* =========================================================
+   BOTÓN SECUNDARIO
+========================================================= */
+
+.app-btn-secondary {
+    background: var(--app-white);
+    border-color: var(--app-border);
+    color: #334155;
+}
+
+.app-btn-secondary:hover {
+    background: var(--app-background);
+    border-color: #cbd5e1;
+    color: var(--app-text);
+}
+
+
+/* =========================================================
+   BOTÓN ÉXITO
+========================================================= */
+
+.app-btn-success {
+    background: var(--app-success);
+    border-color: var(--app-success);
+    color: var(--app-white);
+}
+
+.app-btn-success:hover {
+    background: var(--app-success-hover);
+    border-color: var(--app-success-hover);
+    color: var(--app-white);
+}
+
+
+/* =========================================================
+   BOTÓN PELIGRO
+========================================================= */
+
+.app-btn-danger {
+    background: var(--app-danger);
+    border-color: var(--app-danger);
+    color: var(--app-white);
+}
+
+.app-btn-danger:hover {
+    background: var(--app-danger-hover);
+    border-color: var(--app-danger-hover);
+    color: var(--app-white);
+}
+
+
+/* =========================================================
+   BOTONES SUAVES
+========================================================= */
+
+.app-btn-soft-primary {
+    background: var(--app-primary-soft);
+    border-color: transparent;
+    color: var(--app-primary);
+}
+
+.app-btn-soft-primary:hover {
+    background: #bfdbfe;
+    color: var(--app-primary-hover);
+}
+
+
+/* SECONDARY */
+
+.app-btn-soft-secondary {
+    background: var(--app-secondary-soft);
+    border-color: transparent;
+    color: var(--app-secondary);
+}
+
+.app-btn-soft-secondary:hover {
+    background: #e2e8f0;
+    color: var(--app-secondary-hover);
+}
+
+
+/* SUCCESS */
+
+.app-btn-soft-success {
+    background: var(--app-success-soft);
+    border-color: transparent;
+    color: var(--app-success);
+}
+
+.app-btn-soft-success:hover {
+    background: #bbf7d0;
+}
+
+
+/* DANGER */
+
+.app-btn-soft-danger {
+    background: var(--app-danger-soft);
+    border-color: transparent;
+    color: var(--app-danger);
+}
+
+.app-btn-soft-danger:hover {
+    background: #fecaca;
+}
+
+
+/* WARNING */
+
+.app-btn-soft-warning {
+    background: var(--app-warning-soft);
+    border-color: transparent;
+    color: var(--app-warning);
+}
+
+.app-btn-soft-warning:hover {
+    background: #fde68a;
+}
+
+
+/* =========================================================
+   TAMAÑOS
+========================================================= */
+
+.app-btn-sm {
+    min-height: 32px;
+    padding: 6px 11px;
+    font-size: 0.82rem;
+}
+
+.app-btn-lg {
+    min-height: 44px;
+    padding: 11px 19px;
+    font-size: 0.95rem;
+}
+
+.app-btn-reset {
+    min-width: 120px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.app-btn-two-lines {
+    flex-direction: column;
+    gap: 1px;
+    line-height: 1.05;
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* =========================================================
+   BOTONES SOLO ICONO
+========================================================= */
+
+.app-btn-icon {
+    width: 34px;
+    height: 34px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+
+    background: transparent;
+    color: var(--app-secondary);
+
+    border: 1px solid transparent;
+    border-radius: 8px;
+
+    text-decoration: none;
+    cursor: pointer;
+
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.app-btn-icon i {
+    font-size: 1rem;
+}
+
+.app-btn-icon:hover {
+    background: var(--app-secondary-soft);
+    color: var(--app-primary);
+}
+
+.app-btn-icon-danger:hover {
+    background: var(--app-danger-soft);
+    color: var(--app-danger);
+}
+
+.app-btn-icon-success:hover {
+    background: var(--app-success-soft);
+    color: var(--app-success);
+}
+
+
+/* =========================================================
+   TARJETAS
+========================================================= */
+
+.app-card {
+    background: var(--app-white);
+
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius);
+
+    box-shadow: var(--app-shadow);
+}
+
+.app-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    padding: 16px 18px;
+
+    border-bottom: 1px solid var(--app-border);
+}
+
+.app-card-title {
+    margin: 0;
+
+    color: var(--app-text);
+
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.app-card-body {
+    padding: 18px;
+}
+
+
+/* =========================================================
+   BADGES / ESTADOS
+========================================================= */
+
+.app-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 4px 9px;
+
+    border-radius: 6px;
+
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+
+/* ACTIVO / ÉXITO */
+
+.app-badge-success {
+    background: var(--app-success-soft);
+    color: var(--app-success);
+}
+
+
+/* INACTIVO / ERROR */
+
+.app-badge-danger {
+    background: var(--app-danger-soft);
+    color: var(--app-danger);
+}
+
+
+/* PENDIENTE / ADVERTENCIA */
+
+.app-badge-warning {
+    background: var(--app-warning-soft);
+    color: var(--app-warning);
+}
+
+
+/* INFORMACIÓN / EN PROCESO */
+
+.app-badge-primary {
+    background: var(--app-primary-soft);
+    color: var(--app-primary);
+}
+
+
+/* SECUNDARIO */
+
+.app-badge-secondary {
+    background: var(--app-secondary-soft);
+    color: var(--app-secondary);
+}
+
+
+/* OPCIONAL */
+
+.app-badge-purple {
+    background: var(--app-purple-soft);
+    color: var(--app-purple);
+}
+
+
+/* =========================================================
+   ENCABEZADOS DE PÁGINA
+========================================================= */
+
+.app-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    margin-bottom: 1.5rem;
+}
+
+.app-page-title {
+    margin: 0;
+
+    color: var(--app-text);
+
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.app-page-description {
+    margin: 4px 0 0;
+
+    color: var(--app-text-secondary);
+
+    font-size: 0.9rem;
+}
+
+
+/* =========================================================
+   ICONOS DESTACADOS
+========================================================= */
+
+.app-icon-box {
+    width: 40px;
+    height: 40px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border-radius: 10px;
+}
+
+.app-icon-box i {
+    font-size: 1.15rem;
+}
+
+.app-icon-primary {
+    background: var(--app-primary-soft);
+    color: var(--app-primary);
+}
+
+.app-icon-secondary {
+    background: var(--app-secondary-soft);
+    color: var(--app-secondary);
+}
+
+.app-icon-success {
+    background: var(--app-success-soft);
+    color: var(--app-success);
+}
+
+.app-icon-danger {
+    background: var(--app-danger-soft);
+    color: var(--app-danger);
+}
+
+.app-icon-warning {
+    background: var(--app-warning-soft);
+    color: var(--app-warning);
+}
+
+.app-icon-purple {
+    background: var(--app-purple-soft);
+    color: var(--app-purple);
+}
+
+
+/* =========================================================
+   TARJETAS DE RESUMEN / DASHBOARD
+========================================================= */
+
+.ui-stat-card {
+    position: relative;
+
+    min-height: 112px;
+    padding: 1.25rem 1.35rem;
+
+    overflow: hidden;
+
+    border: 1px solid transparent;
+    border-radius: 14px;
+
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.03),
+        0 2px 5px rgba(15, 23, 42, 0.04);
+
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.ui-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow:
+        0 3px 8px rgba(15, 23, 42, 0.06);
+}
+
+.ui-stat-value {
+    position: relative;
+    z-index: 2;
+
+    margin-bottom: .6rem;
+
+    font-size: 2.15rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.ui-stat-label {
+    position: relative;
+    z-index: 2;
+
+    margin: 0;
+
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.ui-stat-icon {
+    position: absolute;
+    right: 1rem;
+    bottom: .8rem;
+
+    font-size: 3.2rem;
+    opacity: .08;
+}
+
+
+/* =========================================================
+   DASHBOARD PRIMARY
+========================================================= */
+
+.ui-stat-card-primary {
+    background: rgba(37, 99, 235, 0.05);
+    border-color: rgba(37, 99, 235, 0.10);
+    color: #2563eb;
+}
+
+.ui-stat-card-primary:hover {
+    background: rgba(37, 99, 235, 0.12);
+    border-color: rgba(37, 99, 235, 0.18);
+    color: #1d4ed8;
+}
+
+
+/* =========================================================
+   DASHBOARD SUCCESS
+========================================================= */
+
+.ui-stat-card-success {
+    background: rgba(22, 163, 74, 0.10);
+    border-color: rgba(22, 163, 74, 0.14);
+    color: #15803d;
+}
+
+.ui-stat-card-success:hover {
+    background: rgba(22, 163, 74, 0.14);
+    border-color: rgba(22, 163, 74, 0.18);
+    color: #166534;
+}
+
+
+/* =========================================================
+   DASHBOARD INFO
+========================================================= */
+
+.ui-stat-card-info {
+    background: rgba(8, 145, 178, 0.10);
+    border-color: rgba(8, 145, 178, 0.14);
+    color: #0e7490;
+}
+
+.ui-stat-card-info:hover {
+    background: rgba(8, 145, 178, 0.14);
+    border-color: rgba(8, 145, 178, 0.18);
+    color: #155e75;
+}
+
+
+/* =========================================================
+   DASHBOARD WARNING
+========================================================= */
+
+.ui-stat-card-warning {
+    background: rgba(217, 119, 6, 0.10);
+    border-color: rgba(217, 119, 6, 0.14);
+    color: #b45309;
+}
+
+.ui-stat-card-warning:hover {
+    background: rgba(217, 119, 6, 0.14);
+    border-color: rgba(217, 119, 6, 0.18);
+    color: #92400e;
+}
+
+
+/* =========================================================
+   DASHBOARD DANGER
+========================================================= */
+
+.ui-stat-card-danger {
+    background: rgba(220, 38, 38, 0.10);
+    border-color: rgba(220, 38, 38, 0.14);
+    color: #b91c1c;
+}
+
+.ui-stat-card-danger:hover {
+    background: rgba(220, 38, 38, 0.14);
+    border-color: rgba(220, 38, 38, 0.18);
+    color: #991b1b;
+}
+
+
+/* =========================================================
+   DASHBOARD SECONDARY
+========================================================= */
+
+.ui-stat-card-secondary {
+    background: rgba(100, 116, 139, 0.10);
+    border-color: rgba(100, 116, 139, 0.14);
+    color: #475569;
+}
+
+.ui-stat-card-secondary:hover {
+    background: rgba(100, 116, 139, 0.14);
+    border-color: rgba(100, 116, 139, 0.18);
+    color: #334155;
+}
+
+
+/* =========================================================
+   DASHBOARD PURPLE
+========================================================= */
+
+.ui-stat-card-purple {
+    background: rgba(124, 58, 237, 0.10);
+    border-color: rgba(124, 58, 237, 0.14);
+    color: #6d28d9;
+}
+
+.ui-stat-card-purple:hover {
+    background: rgba(124, 58, 237, 0.14);
+    border-color: rgba(124, 58, 237, 0.18);
+    color: #5b21b6;
+}
+
+/* =========================================================
+   BARRA DE PROGRESO DASHBOARD
+========================================================= */
+
+.ui-progress {
+    height: 8px;
+
+    overflow: hidden;
+
+    background: #e2e8f0;
+
+    border-radius: 999px;
+}
+
+.ui-progress-bar {
+    height: 100%;
+
+    background: #93c5fd;
+
+    border-radius: 999px;
+
+    transition: width 0.3s ease;
+}
+
+/* =========================================================
+   ACCIONES EN TABLAS
+========================================================= */
+
+.app-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.app-actions-table {
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+
+.app-actions-cell {
+    width: 280px;
+    min-width: 280px;
+
+    text-align: right;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.app-actions-column {
+    width: 280px;
+    min-width: 280px;
+
+    text-align: right;
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   TABLAS
+========================================================= */
+
+.app-table {
+    width: 100%;
+}
+
+.app-table th,
+.app-table td {
+    vertical-align: middle;
+}
+
+/* =========================================================
+   ALERTAS
+========================================================= */
+
+.app-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+
+    padding: 14px 16px;
+
+    border: 1px solid transparent;
+    border-radius: var(--app-radius);
+
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.app-alert i {
+    margin-top: 2px;
+    flex-shrink: 0;
+    font-size: 1rem;
+}
+
+
+/* PRIMARY / INFORMACIÓN */
+
+.app-alert-primary {
+    background: rgba(37, 99, 235, 0.06);
+    border-color: rgba(37, 99, 235, 0.12);
+    color: #1d4ed8;
+}
+
+/* ALERTA INFO */
+
+.app-alert-info {
+    background: rgba(8, 145, 178, 0.06);
+    border-color: rgba(8, 145, 178, 0.12);
+    color: #0e7490;
+}
+
+.app-alert-info-danger-text {
+    background: rgba(8, 145, 178, 0.06);
+    border-color: rgba(8, 145, 178, 0.12);
+    color: #b91c1c;
+}
+
+/* SUCCESS */
+
+.app-alert-success {
+    background: rgba(22, 163, 74, 0.06);
+    border-color: rgba(22, 163, 74, 0.12);
+    color: #15803d;
+}
+
+
+/* WARNING */
+
+.app-alert-warning {
+    background: rgba(217, 119, 6, 0.06);
+    border-color: rgba(217, 119, 6, 0.12);
+    color: #b45309;
+}
+
+
+/* DANGER */
+
+.app-alert-danger {
+    background: rgba(220, 38, 38, 0.06);
+    border-color: rgba(220, 38, 38, 0.12);
+    color: #b91c1c;
+}
+

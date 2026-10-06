@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Usuarios;
 using Proyecto_Final.ViewModels.Usuarios;
+using Proyecto_Final.Data;
 
 namespace Proyecto_Final.Controllers;
 
@@ -92,7 +93,9 @@ public class UsuariosController : Controller
         if (resultado.Tipo ==
             TipoResultadoUsuario.Validacion)
         {
-            AgregarErrores(resultado.Errores);
+            AgregarErrores(
+                resultado.Errores
+            );
 
             await CargarRolesDisponiblesAsync();
 
@@ -101,6 +104,9 @@ public class UsuariosController : Controller
 
         TempData["Exito"] =
             resultado.Mensaje;
+
+        ViewData["TipoOperacion"] =
+            "Creacion";
 
         return View(
             "ResultadoContrasenaTemporal",
@@ -203,13 +209,66 @@ public class UsuariosController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    // RESTABLECER CONTRASEÑA DE USUARIO
+    // ENVIAR RESTABLECIMIENTO DE CONTRASEÑA POR CORREO
     [Authorize(
         Policy = Permisos.Usuarios.RestablecerContrasena
     )]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RestablecerContrasena(
+    public async Task<IActionResult> EnviarRestablecimientoContrasena(
+        string id)
+    {
+        var resultado =
+            await usuarioServicio
+                .EnviarRestablecimientoContrasenaAsync(
+                    id,
+                    User
+                );
+
+        if (resultado.Tipo ==
+            TipoResultadoUsuario.NoAutenticado)
+        {
+            return Challenge();
+        }
+
+        if (resultado.Tipo ==
+            TipoResultadoUsuario.Prohibido)
+        {
+            return Forbid();
+        }
+
+        if (resultado.Tipo ==
+            TipoResultadoUsuario.Advertencia)
+        {
+            TempData["Advertencia"] =
+                resultado.Mensaje;
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (resultado.Tipo ==
+            TipoResultadoUsuario.Error)
+        {
+            TempData["Error"] =
+                resultado.Mensaje;
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        TempData["Exito"] =
+            resultado.Mensaje;
+
+        return RedirectToAction(nameof(Index));
+    }
+
+
+    // RESTABLECER CONTRASEÑA MANUALMENTE
+    [Authorize(
+        Policy = Permisos.Usuarios.RestablecerContrasena
+    )]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RestablecerContrasenaManual(
         string id)
     {
         var resultado =
@@ -248,6 +307,9 @@ public class UsuariosController : Controller
 
             return RedirectToAction(nameof(Index));
         }
+
+        ViewData["TipoOperacion"] =
+            "Restablecimiento";
 
         return View(
             "ResultadoContrasenaTemporal",
@@ -401,6 +463,35 @@ public class UsuariosController : Controller
 
             errores =
                 resultado.Errores
+        });
+    }
+
+    [Authorize(Policy = Permisos.Usuarios.Crear)]
+    [HttpGet]
+    public async Task<IActionResult> GenerarNombreUsuario(
+    string primerNombre,
+    string primerApellido,
+    string? segundoApellido)
+    {
+        if (string.IsNullOrWhiteSpace(primerNombre) ||
+            string.IsNullOrWhiteSpace(primerApellido))
+        {
+            return Json(new
+            {
+                usuario = string.Empty
+            });
+        }
+
+        var usuario =
+            await usuarioServicio.GenerarNombreUsuarioAsync(
+                primerNombre,
+                primerApellido,
+                segundoApellido
+            );
+
+        return Json(new
+        {
+            usuario
         });
     }
 }
