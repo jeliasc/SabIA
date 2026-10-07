@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Proyecto_Final.Data;
@@ -11,9 +12,11 @@ using Proyecto_Final.Data;
 namespace Proyecto_Final.Data.Migraciones
 {
     [DbContext(typeof(Contexto))]
-    partial class ContextoModelSnapshot : ModelSnapshot
+    [Migration("20261006232615_CrearTareasCuestionariosYEntregas")]
+    partial class CrearTareasCuestionariosYEntregas
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -126,71 +129,6 @@ namespace Proyecto_Final.Data.Migraciones
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.ActividadEvaluable", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Activa")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("AsignacionId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("CategoriaEvaluacionId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ConfiguracionEvaluacionId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("Orden")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Origen")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("PunteoMaximo")
-                        .HasPrecision(9, 2)
-                        .HasColumnType("numeric(9,2)");
-
-                    b.Property<int?>("TareaId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TareaId")
-                        .IsUnique();
-
-                    b.HasIndex("CategoriaEvaluacionId", "ConfiguracionEvaluacionId");
-
-                    b.HasIndex("ConfiguracionEvaluacionId", "AsignacionId");
-
-                    b.HasIndex("ConfiguracionEvaluacionId", "Orden")
-                        .IsUnique();
-
-                    b.HasIndex("TareaId", "AsignacionId");
-
-                    b.ToTable("ActividadesEvaluables", t =>
-                        {
-                            t.HasCheckConstraint("CK_ActividadesEvaluables_Orden", "\"Orden\" >= 1");
-
-                            t.HasCheckConstraint("CK_ActividadesEvaluables_Origen", "(\"Origen\" = 1 AND \"TareaId\" IS NOT NULL) OR (\"Origen\" = 2 AND \"TareaId\" IS NULL)");
-
-                            t.HasCheckConstraint("CK_ActividadesEvaluables_Punteo", "\"PunteoMaximo\" > 0");
-                        });
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.Alumno", b =>
@@ -324,91 +262,6 @@ namespace Proyecto_Final.Data.Migraciones
                     b.ToTable("Asignaciones");
                 });
 
-            modelBuilder.Entity("Proyecto_Final.Models.CalificacionManual", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ActividadEvaluableId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("AlumnoId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("CalificadoPorUsuarioId")
-                        .HasColumnType("text");
-
-                    b.Property<int>("Estado")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("FechaCalificacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal?>("Nota")
-                        .HasPrecision(9, 2)
-                        .HasColumnType("numeric(9,2)");
-
-                    b.Property<string>("Observaciones")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AlumnoId");
-
-                    b.HasIndex("CalificadoPorUsuarioId");
-
-                    b.HasIndex("ActividadEvaluableId", "AlumnoId")
-                        .IsUnique();
-
-                    b.ToTable("CalificacionesManuales", t =>
-                        {
-                            t.HasCheckConstraint("CK_CalificacionesManuales_Nota", "\"Nota\" IS NULL OR \"Nota\" >= 0");
-                        });
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.CategoriaEvaluacion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ConfiguracionEvaluacionId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("Orden")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("Porcentaje")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ConfiguracionEvaluacionId", "Nombre")
-                        .IsUnique();
-
-                    b.HasIndex("ConfiguracionEvaluacionId", "Orden")
-                        .IsUnique();
-
-                    b.ToTable("CategoriasEvaluacion", t =>
-                        {
-                            t.HasCheckConstraint("CK_CategoriasEvaluacion_Orden", "\"Orden\" >= 1");
-
-                            t.HasCheckConstraint("CK_CategoriasEvaluacion_Porcentaje", "\"Porcentaje\" >= 0 AND \"Porcentaje\" <= 100");
-                        });
-                });
-
             modelBuilder.Entity("Proyecto_Final.Models.CicloEscolar", b =>
                 {
                     b.Property<int>("Id")
@@ -438,125 +291,6 @@ namespace Proyecto_Final.Data.Migraciones
                         {
                             t.HasCheckConstraint("CK_CiclosEscolares_Fechas", "\"FechaInicio\" <= \"FechaFin\"");
                         });
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.CierreCalificaciones", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CerradoPorUsuarioId")
-                        .HasColumnType("text");
-
-                    b.Property<int>("ConfiguracionEvaluacionId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Estado")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("FechaCierre")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CerradoPorUsuarioId");
-
-                    b.HasIndex("ConfiguracionEvaluacionId")
-                        .IsUnique();
-
-                    b.ToTable("CierresCalificaciones");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.ConfiguracionEvaluacion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AsignacionId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("CicloEscolarId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ConfiguradoPorUsuarioId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Estado")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("FechaActivacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("MetodoCalculo")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("PeriodoId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SeccionId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ConfiguradoPorUsuarioId");
-
-                    b.HasIndex("AsignacionId", "PeriodoId")
-                        .IsUnique();
-
-                    b.HasIndex("AsignacionId", "SeccionId");
-
-                    b.HasIndex("PeriodoId", "CicloEscolarId");
-
-                    b.HasIndex("SeccionId", "CicloEscolarId");
-
-                    b.ToTable("ConfiguracionesEvaluacion");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.ConfiguracionNotaAnual", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Activa")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("CicloEscolarId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ConfiguradoPorUsuarioId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("FechaActivacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("MetodoCalculo")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CicloEscolarId")
-                        .IsUnique();
-
-                    b.HasIndex("ConfiguradoPorUsuarioId");
-
-                    b.ToTable("ConfiguracionesNotasAnuales");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.Cuestionario", b =>
@@ -833,71 +567,6 @@ namespace Proyecto_Final.Data.Migraciones
                     b.ToTable("Grados");
                 });
 
-            modelBuilder.Entity("Proyecto_Final.Models.HistorialCalificacion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("CalificacionManualId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("EntregaId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("FechaCambio")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("IntentoCuestionarioId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ModificadoPorUsuarioId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Motivo")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<decimal?>("NotaAnterior")
-                        .HasPrecision(9, 2)
-                        .HasColumnType("numeric(9,2)");
-
-                    b.Property<decimal?>("NotaNueva")
-                        .HasPrecision(9, 2)
-                        .HasColumnType("numeric(9,2)");
-
-                    b.Property<int?>("RespuestaAlumnoId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TipoOrigen")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CalificacionManualId");
-
-                    b.HasIndex("EntregaId");
-
-                    b.HasIndex("FechaCambio");
-
-                    b.HasIndex("IntentoCuestionarioId");
-
-                    b.HasIndex("ModificadoPorUsuarioId");
-
-                    b.HasIndex("RespuestaAlumnoId");
-
-                    b.ToTable("HistorialesCalificaciones", t =>
-                        {
-                            t.HasCheckConstraint("CK_HistorialesCalificaciones_Notas", "(\"NotaAnterior\" IS NULL OR \"NotaAnterior\" >= 0) AND (\"NotaNueva\" IS NULL OR \"NotaNueva\" >= 0)");
-
-                            t.HasCheckConstraint("CK_HistorialesCalificaciones_Origen", "(\"TipoOrigen\" = 1 AND \"CalificacionManualId\" IS NOT NULL AND \"EntregaId\" IS NULL AND \"IntentoCuestionarioId\" IS NULL AND \"RespuestaAlumnoId\" IS NULL) OR (\"TipoOrigen\" = 2 AND \"EntregaId\" IS NOT NULL AND \"CalificacionManualId\" IS NULL AND \"IntentoCuestionarioId\" IS NULL AND \"RespuestaAlumnoId\" IS NULL) OR (\"TipoOrigen\" = 3 AND \"IntentoCuestionarioId\" IS NOT NULL AND \"CalificacionManualId\" IS NULL AND \"EntregaId\" IS NULL AND \"RespuestaAlumnoId\" IS NULL) OR (\"TipoOrigen\" = 4 AND \"RespuestaAlumnoId\" IS NOT NULL AND \"CalificacionManualId\" IS NULL AND \"EntregaId\" IS NULL AND \"IntentoCuestionarioId\" IS NULL)");
-                        });
-                });
-
             modelBuilder.Entity("Proyecto_Final.Models.HistorialTraslado", b =>
                 {
                     b.Property<int>("Id")
@@ -1080,44 +749,6 @@ namespace Proyecto_Final.Data.Migraciones
                         {
                             t.HasCheckConstraint("CK_Materiales_Fuente", "(\"ArchivoId\" IS NOT NULL AND \"UrlExterna\" IS NULL) OR (\"ArchivoId\" IS NULL AND \"UrlExterna\" IS NOT NULL AND LENGTH(TRIM(\"UrlExterna\")) > 0)");
                         });
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.MovimientoCierreCalificaciones", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CierreCalificacionesId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("EstadoAnterior")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("EstadoNuevo")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("Fecha")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Motivo")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("RealizadoPorUsuarioId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RealizadoPorUsuarioId");
-
-                    b.HasIndex("CierreCalificacionesId", "Fecha");
-
-                    b.ToTable("MovimientosCierresCalificaciones");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.OpcionPregunta", b =>
@@ -1393,42 +1024,6 @@ namespace Proyecto_Final.Data.Migraciones
                     b.ToTable("PlanificacionesDetalles");
                 });
 
-            modelBuilder.Entity("Proyecto_Final.Models.PonderacionPeriodoAnual", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CicloEscolarId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ConfiguracionNotaAnualId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("PeriodoId")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("Porcentaje")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ConfiguracionNotaAnualId", "CicloEscolarId");
-
-                    b.HasIndex("ConfiguracionNotaAnualId", "PeriodoId")
-                        .IsUnique();
-
-                    b.HasIndex("PeriodoId", "CicloEscolarId");
-
-                    b.ToTable("PonderacionesPeriodosAnuales", t =>
-                        {
-                            t.HasCheckConstraint("CK_PonderacionesPeriodosAnuales_Porcentaje", "\"Porcentaje\" >= 0 AND \"Porcentaje\" <= 100");
-                        });
-                });
-
             modelBuilder.Entity("Proyecto_Final.Models.Pregunta", b =>
                 {
                     b.Property<int>("Id")
@@ -1556,14 +1151,9 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Property<int>("OpcionPreguntaId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("PreguntaId")
-                        .HasColumnType("integer");
-
                     b.HasKey("RespuestaAlumnoId", "OpcionPreguntaId");
 
-                    b.HasIndex("OpcionPreguntaId", "PreguntaId");
-
-                    b.HasIndex("RespuestaAlumnoId", "PreguntaId");
+                    b.HasIndex("OpcionPreguntaId");
 
                     b.ToTable("RespuestasAlumnosOpciones");
                 });
@@ -2016,34 +1606,6 @@ namespace Proyecto_Final.Data.Migraciones
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Proyecto_Final.Models.ActividadEvaluable", b =>
-                {
-                    b.HasOne("Proyecto_Final.Models.CategoriaEvaluacion", "CategoriaEvaluacion")
-                        .WithMany("Actividades")
-                        .HasForeignKey("CategoriaEvaluacionId", "ConfiguracionEvaluacionId")
-                        .HasPrincipalKey("Id", "ConfiguracionEvaluacionId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Proyecto_Final.Models.ConfiguracionEvaluacion", "ConfiguracionEvaluacion")
-                        .WithMany("Actividades")
-                        .HasForeignKey("ConfiguracionEvaluacionId", "AsignacionId")
-                        .HasPrincipalKey("Id", "AsignacionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Final.Models.Tarea", "Tarea")
-                        .WithMany()
-                        .HasForeignKey("TareaId", "AsignacionId")
-                        .HasPrincipalKey("Id", "AsignacionId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("CategoriaEvaluacion");
-
-                    b.Navigation("ConfiguracionEvaluacion");
-
-                    b.Navigation("Tarea");
-                });
-
             modelBuilder.Entity("Proyecto_Final.Models.Alumno", b =>
                 {
                     b.HasOne("Proyecto_Final.Models.Usuario", "Usuario")
@@ -2112,116 +1674,6 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Docente");
 
                     b.Navigation("Seccion");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.CalificacionManual", b =>
-                {
-                    b.HasOne("Proyecto_Final.Models.ActividadEvaluable", "ActividadEvaluable")
-                        .WithMany("CalificacionesManuales")
-                        .HasForeignKey("ActividadEvaluableId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Final.Models.Alumno", "Alumno")
-                        .WithMany()
-                        .HasForeignKey("AlumnoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Final.Models.Usuario", "CalificadoPorUsuario")
-                        .WithMany()
-                        .HasForeignKey("CalificadoPorUsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("ActividadEvaluable");
-
-                    b.Navigation("Alumno");
-
-                    b.Navigation("CalificadoPorUsuario");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.CategoriaEvaluacion", b =>
-                {
-                    b.HasOne("Proyecto_Final.Models.ConfiguracionEvaluacion", "ConfiguracionEvaluacion")
-                        .WithMany("Categorias")
-                        .HasForeignKey("ConfiguracionEvaluacionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ConfiguracionEvaluacion");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.CierreCalificaciones", b =>
-                {
-                    b.HasOne("Proyecto_Final.Models.Usuario", "CerradoPorUsuario")
-                        .WithMany()
-                        .HasForeignKey("CerradoPorUsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Proyecto_Final.Models.ConfiguracionEvaluacion", "ConfiguracionEvaluacion")
-                        .WithOne()
-                        .HasForeignKey("Proyecto_Final.Models.CierreCalificaciones", "ConfiguracionEvaluacionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CerradoPorUsuario");
-
-                    b.Navigation("ConfiguracionEvaluacion");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.ConfiguracionEvaluacion", b =>
-                {
-                    b.HasOne("Proyecto_Final.Models.Usuario", "ConfiguradoPorUsuario")
-                        .WithMany()
-                        .HasForeignKey("ConfiguradoPorUsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Final.Models.Asignacion", "Asignacion")
-                        .WithMany()
-                        .HasForeignKey("AsignacionId", "SeccionId")
-                        .HasPrincipalKey("Id", "SeccionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Final.Models.Periodo", "Periodo")
-                        .WithMany()
-                        .HasForeignKey("PeriodoId", "CicloEscolarId")
-                        .HasPrincipalKey("Id", "CicloEscolarId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Final.Models.Seccion", null)
-                        .WithMany()
-                        .HasForeignKey("SeccionId", "CicloEscolarId")
-                        .HasPrincipalKey("Id", "CicloEscolarId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Asignacion");
-
-                    b.Navigation("ConfiguradoPorUsuario");
-
-                    b.Navigation("Periodo");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.ConfiguracionNotaAnual", b =>
-                {
-                    b.HasOne("Proyecto_Final.Models.CicloEscolar", "CicloEscolar")
-                        .WithMany()
-                        .HasForeignKey("CicloEscolarId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Final.Models.Usuario", "ConfiguradoPorUsuario")
-                        .WithMany()
-                        .HasForeignKey("ConfiguradoPorUsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CicloEscolar");
-
-                    b.Navigation("ConfiguradoPorUsuario");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.Cuestionario", b =>
@@ -2300,45 +1752,6 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Archivo");
 
                     b.Navigation("Entrega");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.HistorialCalificacion", b =>
-                {
-                    b.HasOne("Proyecto_Final.Models.CalificacionManual", "CalificacionManual")
-                        .WithMany()
-                        .HasForeignKey("CalificacionManualId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Proyecto_Final.Models.Entrega", "Entrega")
-                        .WithMany()
-                        .HasForeignKey("EntregaId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Proyecto_Final.Models.IntentoCuestionario", "IntentoCuestionario")
-                        .WithMany()
-                        .HasForeignKey("IntentoCuestionarioId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Proyecto_Final.Models.Usuario", "ModificadoPorUsuario")
-                        .WithMany()
-                        .HasForeignKey("ModificadoPorUsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Final.Models.RespuestaAlumno", "RespuestaAlumno")
-                        .WithMany()
-                        .HasForeignKey("RespuestaAlumnoId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("CalificacionManual");
-
-                    b.Navigation("Entrega");
-
-                    b.Navigation("IntentoCuestionario");
-
-                    b.Navigation("ModificadoPorUsuario");
-
-                    b.Navigation("RespuestaAlumno");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.HistorialTraslado", b =>
@@ -2434,25 +1847,6 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Archivo");
 
                     b.Navigation("Unidad");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.MovimientoCierreCalificaciones", b =>
-                {
-                    b.HasOne("Proyecto_Final.Models.CierreCalificaciones", "CierreCalificaciones")
-                        .WithMany("Movimientos")
-                        .HasForeignKey("CierreCalificacionesId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Final.Models.Usuario", "RealizadoPorUsuario")
-                        .WithMany()
-                        .HasForeignKey("RealizadoPorUsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CierreCalificaciones");
-
-                    b.Navigation("RealizadoPorUsuario");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.OpcionPregunta", b =>
@@ -2565,27 +1959,6 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Planificacion");
                 });
 
-            modelBuilder.Entity("Proyecto_Final.Models.PonderacionPeriodoAnual", b =>
-                {
-                    b.HasOne("Proyecto_Final.Models.ConfiguracionNotaAnual", "ConfiguracionNotaAnual")
-                        .WithMany("Ponderaciones")
-                        .HasForeignKey("ConfiguracionNotaAnualId", "CicloEscolarId")
-                        .HasPrincipalKey("Id", "CicloEscolarId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Final.Models.Periodo", "Periodo")
-                        .WithMany()
-                        .HasForeignKey("PeriodoId", "CicloEscolarId")
-                        .HasPrincipalKey("Id", "CicloEscolarId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ConfiguracionNotaAnual");
-
-                    b.Navigation("Periodo");
-                });
-
             modelBuilder.Entity("Proyecto_Final.Models.Pregunta", b =>
                 {
                     b.HasOne("Proyecto_Final.Models.Cuestionario", "Cuestionario")
@@ -2638,15 +2011,13 @@ namespace Proyecto_Final.Data.Migraciones
                 {
                     b.HasOne("Proyecto_Final.Models.OpcionPregunta", "OpcionPregunta")
                         .WithMany()
-                        .HasForeignKey("OpcionPreguntaId", "PreguntaId")
-                        .HasPrincipalKey("Id", "PreguntaId")
+                        .HasForeignKey("OpcionPreguntaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Proyecto_Final.Models.RespuestaAlumno", "RespuestaAlumno")
                         .WithMany("OpcionesSeleccionadas")
-                        .HasForeignKey("RespuestaAlumnoId", "PreguntaId")
-                        .HasPrincipalKey("Id", "PreguntaId")
+                        .HasForeignKey("RespuestaAlumnoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -2797,19 +2168,9 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Unidad");
                 });
 
-            modelBuilder.Entity("Proyecto_Final.Models.ActividadEvaluable", b =>
-                {
-                    b.Navigation("CalificacionesManuales");
-                });
-
             modelBuilder.Entity("Proyecto_Final.Models.Alumno", b =>
                 {
                     b.Navigation("AlumnoEncargados");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.CategoriaEvaluacion", b =>
-                {
-                    b.Navigation("Actividades");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.CicloEscolar", b =>
@@ -2817,23 +2178,6 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Periodos");
 
                     b.Navigation("Secciones");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.CierreCalificaciones", b =>
-                {
-                    b.Navigation("Movimientos");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.ConfiguracionEvaluacion", b =>
-                {
-                    b.Navigation("Actividades");
-
-                    b.Navigation("Categorias");
-                });
-
-            modelBuilder.Entity("Proyecto_Final.Models.ConfiguracionNotaAnual", b =>
-                {
-                    b.Navigation("Ponderaciones");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.Cuestionario", b =>
