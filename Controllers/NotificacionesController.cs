@@ -1,6 +1,13 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Proyecto_Final.Seguridad;
+using Proyecto_Final.Servicios.GestionNotificaciones;
+
 namespace Proyecto_Final.Controllers;
 
-public class NotificacionesController : ModuloPrototipoController
+[Authorize(Policy = Permisos.Notificaciones.Ver)]
+public class NotificacionesController(INotificacionServicio s) : Controller
 {
-    protected override string ClaveModulo => "notificaciones";
+    public async Task<IActionResult> Index() =>
+        View(await s.ObtenerAsync());
 }

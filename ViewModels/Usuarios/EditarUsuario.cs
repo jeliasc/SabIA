@@ -10,4 +10,6 @@ public class EditarUsuario : FormularioUsuario
     [StringLength(100)]
     [Display(Name = "Usuario")]
     public string Usuario { get; set; } = string.Empty;
+
+    public string? AdvertenciaConfiguracionRol { get; set; }
 }

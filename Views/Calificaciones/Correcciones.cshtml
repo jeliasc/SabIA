@@ -1,0 +1,110 @@
+@model Proyecto_Final.ViewModels.Calificaciones.CorreccionesCalificaciones
+
+@{
+    ViewData["Title"] = "Correcciones de calificaciones";
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Correcciones extraordinarias</h2>
+            <p class="text-muted mb-0">Solicitudes auditadas para resultados bimestrales cerrados.</p>
+        </div>
+        <a asp-action="Index" class="app-btn app-btn-soft-secondary">Regresar</a>
+    </div>
+
+    @if (Model.Solicitudes.Count == 0)
+    {
+        <div class="app-alert app-alert-info" role="status">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+            <div>No existen solicitudes de corrección en su ámbito autorizado.</div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var solicitud in Model.Solicitudes)
+            {
+                <div class="col-12">
+                    <article class="card shadow-sm border border-secondary">
+                        <div class="card-body">
+                            <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
+                                <div>
+                                    <h5 class="fw-bold mb-1">@solicitud.Alumno · @solicitud.Actividad</h5>
+                                    <div class="text-muted small">@solicitud.Curso · @solicitud.Periodo · @solicitud.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</div>
+                                </div>
+                                <span class="app-badge align-self-start @(solicitud.Estado == EstadoSolicitudCorreccion.Aplicada ? "app-badge-success" : solicitud.Estado == EstadoSolicitudCorreccion.Rechazada ? "app-badge-danger" : "app-badge-warning")">
+                                    @solicitud.Estado
+                                </span>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-2"><div class="text-muted small">Nota anterior</div><div class="fw-bold">@solicitud.NotaAnterior</div></div>
+                                <div class="col-md-2"><div class="text-muted small">Nota propuesta</div><div class="fw-bold">@solicitud.NotaPropuesta</div></div>
+                                <div class="col-md-8"><div class="text-muted small">Motivo</div><div>@solicitud.Motivo</div></div>
+                            </div>
+
+                            @if (Model.PuedeRevisar && solicitud.Estado == EstadoSolicitudCorreccion.Pendiente)
+                            {
+                                <div class="row g-2">
+                                    <div class="col-lg-6">
+                                        <form asp-action="RevisarCorreccion" method="post"
+                                              data-confirmar-accion-academica
+                                              data-confirmar-titulo="Aprobar corrección"
+                                              data-confirmar-mensaje="La aprobación permitirá al docente aplicar una única corrección sobre el resultado cerrado."
+                                              data-confirmar-texto="Aprobar"
+                                              data-confirmar-color="#dc3545">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="Id" value="@solicitud.Id" />
+                                            <input type="hidden" name="Aprobar" value="true" />
+                                            <input type="hidden" name="VersionConcurrencia" value="@solicitud.VersionConcurrencia" />
+                                            <label class="form-label">Observación (opcional)</label>
+                                            <textarea name="Observacion" class="form-control mb-2" maxlength="1000"></textarea>
+                                            <button type="submit" class="app-btn app-btn-soft-success app-btn-sm">Aprobar</button>
+                                        </form>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <form asp-action="RevisarCorreccion" method="post"
+                                              data-confirmar-accion-academica
+                                              data-confirmar-titulo="Rechazar corrección"
+                                              data-confirmar-mensaje="La solicitud quedará rechazada y no podrá aplicarse."
+                                              data-confirmar-texto="Rechazar"
+                                              data-confirmar-color="#dc3545">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="Id" value="@solicitud.Id" />
+                                            <input type="hidden" name="Aprobar" value="false" />
+                                            <input type="hidden" name="VersionConcurrencia" value="@solicitud.VersionConcurrencia" />
+                                            <label class="form-label">Motivo del rechazo</label>
+                                            <textarea name="Observacion" class="form-control mb-2" maxlength="1000" required></textarea>
+                                            <button type="submit" class="app-btn app-btn-soft-danger app-btn-sm">Rechazar</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            }
+
+                            @if (solicitud.PuedeAplicar)
+                            {
+                                <form asp-action="AplicarCorreccion" method="post" class="mt-3"
+                                      data-confirmar-accion-academica
+                                      data-confirmar-titulo="Aplicar corrección autorizada"
+                                      data-confirmar-mensaje="La nota de origen y el resultado histórico cerrado serán actualizados y auditados. Esta autorización se consumirá."
+                                      data-confirmar-texto="Aplicar corrección"
+                                      data-confirmar-color="#dc3545">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="Id" value="@solicitud.Id" />
+                                    <input type="hidden" name="VersionConcurrencia" value="@solicitud.VersionConcurrencia" />
+                                    <button type="submit" class="app-btn app-btn-soft-danger app-btn-sm">Aplicar corrección</button>
+                                </form>
+                            }
+                        </div>
+                    </article>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+}

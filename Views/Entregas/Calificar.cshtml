@@ -1,0 +1,80 @@
+@model Proyecto_Final.ViewModels.Entregas.CalificarEntrega
+
+@{
+    ViewData["Title"] = "Calificar entrega";
+}
+
+<div class="container-fluid">
+    <h2 class="fw-bold mb-1">
+        Calificar entrega
+    </h2>
+
+    <p class="text-muted mb-4">
+        @Model.Alumno · @Model.Tarea
+    </p>
+
+    <div class="app-alert app-alert-info mb-4">
+        Esta calificación es de apoyo y no sustituye el sistema oficial de notas de la institución.
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <form method="post">
+                @Html.AntiForgeryToken()
+
+                <input asp-for="Id"
+                       type="hidden" />
+
+                <input asp-for="PunteoMaximo"
+                       type="hidden" />
+
+                <div asp-validation-summary="ModelOnly"
+                     class="text-danger">
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Calificacion"
+                           class="form-label">
+                        Calificación (máximo @Model.PunteoMaximo)
+                    </label>
+
+                    <input asp-for="Calificacion"
+                           class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Retroalimentacion"
+                           class="form-label">
+                        Retroalimentación
+                    </label>
+
+                    <textarea asp-for="Retroalimentacion"
+                              class="form-control"
+                              rows="5">
+                    </textarea>
+                </div>
+
+                <div class="form-check mb-4">
+                    <input asp-for="Devolver"
+                           class="form-check-input" />
+
+                    <label asp-for="Devolver"
+                           class="form-check-label">
+                        Devolver al alumno para corrección
+                    </label>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-action="Index"
+                       class="app-btn app-btn-secondary">
+                        Cancelar
+                    </a>
+
+                    <button class="app-btn app-btn-soft-primary">
+                        Guardar revisión
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

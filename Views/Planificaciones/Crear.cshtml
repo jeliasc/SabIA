@@ -1,0 +1,36 @@
+@model Proyecto_Final.ViewModels.Planificaciones.CrearPlanificacion
+
+@{
+    ViewData["Title"] = "Nueva planificación";
+}
+
+<div class="container-fluid">
+    <h2 class="fw-bold mb-4">
+        Nueva planificación
+    </h2>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <form method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+
+                <partial name="Formulario" model="Model" />
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a asp-action="Index" class="app-btn app-btn-secondary">
+                        Cancelar
+                    </a>
+
+                    <button class="app-btn app-btn-soft-primary">
+                        Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <partial name="_ValidationScriptsPartial" />
+}

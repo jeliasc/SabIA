@@ -184,7 +184,9 @@ public class UsuarioServicio : IUsuarioServicio
 
         var roles =
             await administradorRoles.Roles
-                .Where(rol => rol.Name != null)
+                .Where(rol =>
+                    rol.Name != null &&
+                    rol.Activo)
                 .Select(rol => rol.Name!)
                 .OrderBy(nombre => nombre)
                 .ToListAsync();
@@ -659,13 +661,17 @@ public class UsuarioServicio : IUsuarioServicio
                 usuario
             );
 
-        if (rolesUsuario.Count != 1)
+        if (false)
         {
             return ResultadoUsuario<EditarUsuario>
                 .Error(
                     "El usuario no tiene una configuración de rol válida."
                 );
         }
+
+        var configuracionRolValida =
+            rolesUsuario.Count == 1 &&
+            await EsRolActivoAsync(rolesUsuario[0]);
 
         var modelo = new EditarUsuario
         {
@@ -695,8 +701,15 @@ public class UsuarioServicio : IUsuarioServicio
                 usuario.Email ??
                 string.Empty,
 
-            Rol =
-                rolesUsuario[0]
+            Rol = configuracionRolValida
+                ? rolesUsuario[0]
+                : string.Empty,
+
+            AdvertenciaConfiguracionRol =
+                ObtenerAdvertenciaConfiguracionRol(
+                    rolesUsuario,
+                    configuracionRolValida
+                )
         };
 
         return ResultadoUsuario<EditarUsuario>
@@ -777,10 +790,13 @@ public class UsuarioServicio : IUsuarioServicio
                 .Prohibido();
         }
 
-        var existeRol =
-            await administradorRoles.RoleExistsAsync(
-                modelo.Rol
+        var rolSeleccionado =
+            await administradorRoles.FindByNameAsync(
+                modelo.Rol.Trim()
             );
+
+        var existeRol =
+            rolSeleccionado?.Activo == true;
 
         if (!existeRol)
         {
@@ -796,7 +812,7 @@ public class UsuarioServicio : IUsuarioServicio
                 usuario
             );
 
-        if (rolesUsuario.Count != 1)
+        if (false)
         {
             return ResultadoUsuario<bool>
                 .Validacion(
@@ -806,7 +822,9 @@ public class UsuarioServicio : IUsuarioServicio
         }
 
         var rolActual =
-            rolesUsuario[0];
+            rolesUsuario.Count == 1
+                ? rolesUsuario[0]
+                : null;
 
         if (usuario.Id == administrador.Id &&
             !string.Equals(
@@ -905,9 +923,9 @@ public class UsuarioServicio : IUsuarioServicio
             {
                 var resultadoEliminarRol =
                     await administradorUsuarios
-                        .RemoveFromRoleAsync(
-                            usuario,
-                            rolActual
+                    .RemoveFromRolesAsync(
+                        usuario,
+                        rolesUsuario
                         );
 
                 if (!resultadoEliminarRol.Succeeded)
@@ -956,6 +974,35 @@ public class UsuarioServicio : IUsuarioServicio
     }
 
     // ENVIAR RESTABLECIMIENTO DE CONTRASEÑA POR CORREO
+    private async Task<bool> EsRolActivoAsync(string nombreRol)
+    {
+        var rol = await administradorRoles.FindByNameAsync(nombreRol);
+
+        return rol?.Activo == true;
+    }
+
+    private static string? ObtenerAdvertenciaConfiguracionRol(
+        IEnumerable<string> rolesUsuario,
+        bool configuracionRolValida)
+    {
+        if (configuracionRolValida)
+        {
+            return null;
+        }
+
+        if (!rolesUsuario.Any())
+        {
+            return "El usuario no tiene un rol asignado. Seleccione un rol válido y activo antes de guardar los cambios.";
+        }
+
+        if (rolesUsuario.Skip(1).Any())
+        {
+            return "El usuario tiene múltiples roles asignados. Seleccione el único rol válido y activo que debe conservarse.";
+        }
+
+        return "El rol asignado al usuario no es válido o está inactivo. Seleccione un rol válido y activo antes de guardar los cambios.";
+    }
+
     public async Task<ResultadoUsuario<bool>>
         EnviarRestablecimientoContrasenaAsync(
             string id,

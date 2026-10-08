@@ -1,0 +1,218 @@
+@model Proyecto_Final.ViewModels.Docentes.DetalleDocente
+@using Proyecto_Final.Models
+
+@{
+    ViewData["Title"] = "Ver docente";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-xl-10">
+            <div class="mb-4">
+                <h2 class="fw-bold mb-1">Detalle de docente</h2>
+                <p class="text-muted mb-0">Información personal, académica y administrativa registrada.</p>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">Información personal</h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="detalle-primer-nombre" class="form-label">Primer nombre</label>
+                            <input id="detalle-primer-nombre" type="text" class="form-control"
+                                   value="@Model.PrimerNombre" readonly />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="detalle-segundo-nombre" class="form-label">Segundo nombre</label>
+                            <input id="detalle-segundo-nombre" type="text" class="form-control"
+                                   value="@(Model.SegundoNombre ?? "-")" readonly />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="detalle-tercer-nombre" class="form-label">Tercer nombre</label>
+                            <input id="detalle-tercer-nombre" type="text" class="form-control"
+                                   value="@(Model.TercerNombre ?? "-")" readonly />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="detalle-primer-apellido" class="form-label">Primer apellido</label>
+                            <input id="detalle-primer-apellido" type="text" class="form-control"
+                                   value="@Model.PrimerApellido" readonly />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="detalle-segundo-apellido" class="form-label">Segundo apellido</label>
+                            <input id="detalle-segundo-apellido" type="text" class="form-control"
+                                   value="@(Model.SegundoApellido ?? "-")" readonly />
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <h5 class="fw-bold mb-3">Contacto y cuenta de acceso</h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="detalle-correo" class="form-label">Correo electrónico</label>
+                            <input id="detalle-correo" type="text" class="form-control"
+                                   value="@Model.Correo" readonly />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="detalle-usuario" class="form-label">Usuario</label>
+                            <input id="detalle-usuario" type="text" class="form-control"
+                                   value="@Model.Usuario" readonly />
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <h5 class="fw-bold mb-3">Información académica y administrativa</h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="detalle-carnet" class="form-label">Carnet</label>
+                            <input id="detalle-carnet" type="text" class="form-control"
+                                   value="@Model.Carnet" readonly />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="detalle-nit" class="form-label">NIT</label>
+                            <input id="detalle-nit" type="text" class="form-control"
+                                   value="@(Model.Nit ?? "Sin registro")" readonly />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="detalle-nivel" class="form-label">Nivel académico</label>
+                            <input id="detalle-nivel" type="text" class="form-control"
+                                   value="@(Model.NivelAcademico?.ToString() ?? "Sin registro")" readonly />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="detalle-titulo" class="form-label">Título profesional</label>
+                            <input id="detalle-titulo" type="text" class="form-control"
+                                   value="@(Model.Titulo ?? "Sin registro")" readonly />
+                        </div>
+
+                        <div class="col-12">
+                            <label for="detalle-institucion" class="form-label">Institución otorgante</label>
+                            <input id="detalle-institucion" type="text" class="form-control"
+                                   value="@(Model.InstitucionOtorgante ?? "Sin registro")" readonly />
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <h5 class="fw-bold mb-3">Estado de la cuenta</h5>
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <span class="form-label d-block">Estado</span>
+                            <span class="app-badge @(Model.Activo ? "app-badge-success" : "app-badge-danger")">
+                                @(Model.Activo ? "Activo" : "Inactivo")
+                            </span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <span class="form-label d-block">Cambio de contraseña</span>
+                            <span class="app-badge @(Model.CambiarContrasena ? "app-badge-warning" : "app-badge-success")">
+                                @(Model.CambiarContrasena ? "Pendiente" : "Actualizada")
+                            </span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="detalle-fecha-creacion" class="form-label">Fecha de creación</label>
+                            <input id="detalle-fecha-creacion" type="text" class="form-control"
+                                   value="@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")" readonly />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="detalle-ultimo-cambio" class="form-label">Último cambio de contraseña</label>
+                            <input id="detalle-ultimo-cambio" type="text" class="form-control"
+                                   value="@(Model.FechaUltimoCambioContrasena?.ToString("dd/MM/yyyy HH:mm") ?? "Sin registro")"
+                                   readonly />
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                        <h5 class="fw-bold mb-0">Asignaciones académicas</h5>
+                        <span class="text-muted small">
+                            @Model.Asignaciones.Count asignación(es) registrada(s)
+                        </span>
+                    </div>
+
+                    @if (Model.Asignaciones.Count == 0)
+                    {
+                        <div class="app-alert app-alert-info mb-0" role="status">
+                            <i class="bi bi-info-circle" aria-hidden="true"></i>
+                            <div>El docente no tiene asignaciones académicas registradas.</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive d-none d-md-block">
+                            <table class="table app-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Ciclo</th>
+                                        <th>Grado y sección</th>
+                                        <th>Curso</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var asignacion in Model.Asignaciones)
+                                    {
+                                        <tr>
+                                            <td>@asignacion.AnioCicloEscolar</td>
+                                            <td>
+                                                <div class="fw-semibold">@asignacion.Grado @asignacion.Seccion</div>
+                                                <div class="text-muted small">@asignacion.Carrera</div>
+                                            </td>
+                                            <td>@asignacion.Curso</td>
+                                            <td>
+                                                <span class="app-badge @(asignacion.Estado == EstadoRegistro.Activo ? "app-badge-success" : "app-badge-danger")">
+                                                    @asignacion.Estado
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-md-none">
+                            @foreach (var asignacion in Model.Asignaciones)
+                            {
+                                <div class="card border-0 bg-light mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                            <div class="fw-semibold">@asignacion.Curso</div>
+                                            <span class="app-badge @(asignacion.Estado == EstadoRegistro.Activo ? "app-badge-success" : "app-badge-danger")">
+                                                @asignacion.Estado
+                                            </span>
+                                        </div>
+                                        <div>@asignacion.Grado @asignacion.Seccion</div>
+                                        <div class="text-muted small">@asignacion.Carrera</div>
+                                        <div class="text-muted small mt-2">Ciclo @asignacion.AnioCicloEscolar</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <div class="d-flex justify-content-end mt-4">
+                        <a asp-controller="Docentes" asp-action="Index"
+                           class="app-btn app-btn-soft-primary">
+                            Regresar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

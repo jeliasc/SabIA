@@ -1,0 +1,126 @@
+@model IEnumerable<Proyecto_Final.ViewModels.Materiales.MaterialLista>
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@using Proyecto_Final.Models
+@inject IAuthorizationService A
+@{
+    ViewData["Title"] = "Materiales";
+    var puedeCrear = (await A.AuthorizeAsync(User, Permisos.Materiales.Crear)).Succeeded;
+    var puedeEditar = (await A.AuthorizeAsync(User, Permisos.Materiales.Editar)).Succeeded;
+    var puedePublicar = (await A.AuthorizeAsync(User, Permisos.Materiales.Publicar)).Succeeded;
+    var puedeDescargar = (await A.AuthorizeAsync(User, Permisos.Materiales.Descargar)).Succeeded;
+    var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
+    var hayAcciones = !soloLectura && (puedeEditar || puedePublicar);
+}
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+    <div class="d-flex justify-content-between mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Materiales</h2>
+            <p class="text-muted mb-0">Archivos y enlaces de apoyo organizados por unidad.</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+        @if (!soloLectura && puedeCrear)
+        {
+            <a asp-action="Crear" class="app-btn app-btn-soft-primary">Nuevo material</a>
+        }
+            <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-secondary">
+                @(soloLectura ? "Ver vigentes" : "Ver historial")
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border border-secondary">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table app-table w-100" data-tabla-index
+                       data-actions-column="@(hayAcciones ? "true" : "false")">
+                    <thead>
+                        <tr>
+                            <th>Orden</th>
+                            <th>Material</th>
+                            <th>Unidad</th>
+                            <th>Tipo</th>
+                            <th>Recurso</th>
+                            <th>Estado</th>
+                            @if (hayAcciones)
+                            {
+                                <th>Acciones</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td>@item.Orden</td>
+                                <td class="fw-semibold">@item.Titulo</td>
+                                <td>@item.Unidad</td>
+                                <td>@item.Tipo</td>
+                                @if (hayAcciones)
+                                {
+                                <td>
+                                    @if (item.Archivo != null && puedeDescargar && !soloLectura)
+                                    {
+                                        <a asp-action="Descargar" asp-route-id="@item.Id">@item.Archivo</a>
+                                    }
+                                    else if (item.Url != null)
+                                    {
+                                        <a href="@item.Url" target="_blank" rel="noopener">Abrir enlace</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Sin recurso</span>
+                                    }
+                                </td>
+                                }
+                                <td><span
+                                    class="app-badge @(item.Estado == EstadoPublicacionMaterial.Publicado ? "app-badge-success" : item.Estado == EstadoPublicacionMaterial.Oculto ? "app-badge-danger" : "app-badge-secondary")">@item.Estado</span>
+                                </td>
+                                <td>
+                                    <div class="app-actions app-actions-table">
+                                        @if (puedeEditar)
+                                        {
+                                            <a asp-action="Editar" asp-route-id="@item.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">Editar</a>
+                                        }
+                                        @if (puedePublicar && item.Estado != EstadoPublicacionMaterial.Publicado)
+                                        {
+                                            <form asp-action="Publicar" asp-route-id="@item.Id" method="post"
+                                                  data-confirmar-accion-academica
+                                                  data-confirmar-titulo="Publicar material"
+                                                  data-confirmar-mensaje="El material quedará disponible para los alumnos autorizados."
+                                                  data-confirmar-texto="Publicar"
+                                                  data-confirmar-color="#198754">
+                                                @Html.AntiForgeryToken()
+                                                <button class="app-btn app-btn-soft-success app-btn-sm"
+                                                        type="submit">Publicar</button>
+                                            </form>
+                                        }
+                                        @if (puedePublicar && item.Estado == EstadoPublicacionMaterial.Publicado)
+                                        {
+                                            <form asp-action="Ocultar" asp-route-id="@item.Id" method="post"
+                                                  data-confirmar-accion-academica
+                                                  data-confirmar-titulo="Ocultar material"
+                                                  data-confirmar-mensaje="El material dejará de estar disponible para los alumnos."
+                                                  data-confirmar-texto="Ocultar">
+                                                @Html.AntiForgeryToken()
+                                                <button class="app-btn app-btn-soft-danger app-btn-sm"
+                                                        type="submit">Ocultar</button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+}

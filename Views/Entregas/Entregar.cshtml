@@ -1,0 +1,84 @@
+@model Proyecto_Final.ViewModels.Entregas.EntregarTarea
+
+@{
+    ViewData["Title"] = "Entregar tarea";
+}
+
+<div class="container-fluid">
+    <h2 class="fw-bold mb-1">
+        @Model.Tarea
+    </h2>
+
+    <p class="text-muted">
+        Fecha límite:
+        @(Model.FechaLimite?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Sin límite")
+    </p>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="white-space-pre-line">
+                @Model.Instrucciones
+            </div>
+
+            @if (Model.ArchivosApoyo.Count > 0)
+            {
+                <hr />
+
+                <div class="fw-semibold mb-2">
+                    Archivos de apoyo
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var archivo in Model.ArchivosApoyo)
+                    {
+                        <a asp-action="ArchivoTarea" asp-route-id="@archivo.Id"
+                           class="app-btn app-btn-soft-secondary app-btn-sm">
+                            <i class="bi bi-paperclip"></i>
+                            @archivo.Nombre
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <form method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+
+                <input asp-for="Id" type="hidden" />
+
+                <div asp-validation-summary="ModelOnly" class="text-danger">
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Archivo" class="form-label">
+                        Archivo de respuesta
+                    </label>
+
+                    <input asp-for="Archivo" type="file" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Comentario" class="form-label">
+                        Comentario
+                    </label>
+
+                    <textarea asp-for="Comentario" class="form-control" rows="3">
+                    </textarea>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-action="Index" class="app-btn app-btn-secondary">
+                        Cancelar
+                    </a>
+
+                    <button class="app-btn app-btn-soft-primary">
+                        Confirmar entrega
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

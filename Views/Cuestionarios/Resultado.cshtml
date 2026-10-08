@@ -1,0 +1,28 @@
+@model Proyecto_Final.ViewModels.Cuestionarios.ResultadoIntento
+@{
+    ViewData["Title"] = "Resultado del cuestionario";
+}
+<div class="container-fluid">
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-5 text-center">
+            <i class="bi bi-check2-circle fs-1"></i>
+            <h2 class="fw-bold mt-3">Cuestionario finalizado</h2>
+
+            @if (Model.MostrarResultados)
+            {
+                <div class="display-5 fw-bold my-3">@Model.Calificacion.ToString("0.##")%</div>
+                <p class="text-muted">Punteo obtenido: @Model.PunteoObtenido de @Model.PunteoTotal.</p>
+                @if (Model.CalificacionAplicada != Model.Calificacion)
+                {
+                    <p class="small text-muted">Calificación aplicada según el criterio de intentos: @Model.CalificacionAplicada.ToString("0.##")%.</p>
+                }
+            }
+            else
+            {
+                <p class="text-muted my-4">El intento fue registrado correctamente. El docente configuró este cuestionario para no mostrar el resultado al finalizar.</p>
+            }
+
+            <a asp-action="Index" class="app-btn app-btn-soft-primary">Volver a cuestionarios</a>
+        </div>
+    </div>
+</div>

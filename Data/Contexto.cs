@@ -83,6 +83,9 @@ public class Contexto
 
     public DbSet<Entrega> Entregas => Set<Entrega>();
 
+    public DbSet<ReaperturaEntrega> ReaperturasEntregas =>
+        Set<ReaperturaEntrega>();
+
     public DbSet<EntregaArchivo> EntregasArchivos =>
         Set<EntregaArchivo>();
 
@@ -133,6 +136,15 @@ public class Contexto
 
     public DbSet<HistorialCalificacion> HistorialesCalificaciones =>
         Set<HistorialCalificacion>();
+
+    public DbSet<PlantillaEvaluacion> PlantillasEvaluacion =>
+        Set<PlantillaEvaluacion>();
+
+    public DbSet<ResultadoCalificacionPeriodo> ResultadosCalificacionesPeriodos =>
+        Set<ResultadoCalificacionPeriodo>();
+
+    public DbSet<SolicitudCorreccionCalificacion> SolicitudesCorreccionesCalificaciones =>
+        Set<SolicitudCorreccionCalificacion>();
 
     protected override void OnModelCreating(
     ModelBuilder builder)
@@ -356,7 +368,25 @@ public class Contexto
                 inscripcion.AlumnoId,
                 inscripcion.CicloEscolarId
             })
+            .HasDatabaseName(
+                "IX_Inscripciones_AlumnoId_CicloEscolarId_Activa")
+            .HasFilter("\"Estado\" = 1")
             .IsUnique();
+
+        builder.Entity<Inscripcion>()
+            .HasIndex(inscripcion => new
+            {
+                inscripcion.AlumnoId,
+                inscripcion.CicloEscolarId,
+                inscripcion.Estado
+            });
+
+        builder.Entity<Inscripcion>()
+            .HasAlternateKey(inscripcion => new
+            {
+                inscripcion.Id,
+                inscripcion.AlumnoId
+            });
 
         builder.Entity<Inscripcion>()
             .HasOne(inscripcion => inscripcion.Alumno)
@@ -788,6 +818,16 @@ public class Contexto
                 e.AlumnoId,
                 e.NumeroEnvio
             })
+            .IsUnique()
+            .HasFilter("\"InscripcionId\" IS NULL");
+
+        builder.Entity<Entrega>()
+            .HasIndex(e => new
+            {
+                e.TareaId,
+                e.InscripcionId,
+                e.NumeroEnvio
+            })
             .IsUnique();
 
         builder.Entity<Entrega>()
@@ -807,6 +847,37 @@ public class Contexto
             .WithMany()
             .HasForeignKey(e => e.CalificadoPorUsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Entrega>()
+            .HasOne(e => e.Inscripcion)
+            .WithMany()
+            .HasForeignKey(e => new { e.InscripcionId, e.AlumnoId })
+            .HasPrincipalKey(i => new { i.Id, i.AlumnoId })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ReaperturaEntrega>()
+            .ToTable(tabla => tabla.HasCheckConstraint(
+                "CK_ReaperturasEntregas_Fechas",
+                "\"FechaLimite\" > \"FechaReapertura\""));
+
+        builder.Entity<ReaperturaEntrega>()
+            .HasOne(reapertura => reapertura.Entrega)
+            .WithMany(entrega => entrega.Reaperturas)
+            .HasForeignKey(reapertura => reapertura.EntregaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ReaperturaEntrega>()
+            .HasOne(reapertura => reapertura.ReabiertaPorUsuario)
+            .WithMany()
+            .HasForeignKey(reapertura => reapertura.ReabiertaPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ReaperturaEntrega>()
+            .HasIndex(reapertura => new
+            {
+                reapertura.EntregaId,
+                reapertura.FechaReapertura
+            });
 
         // Archivos de entregas
 
@@ -897,6 +968,16 @@ public class Contexto
                 i.AlumnoId,
                 i.NumeroIntento
             })
+            .IsUnique()
+            .HasFilter("\"InscripcionId\" IS NULL");
+
+        builder.Entity<IntentoCuestionario>()
+            .HasIndex(i => new
+            {
+                i.CuestionarioId,
+                i.InscripcionId,
+                i.NumeroIntento
+            })
             .IsUnique();
 
         builder.Entity<IntentoCuestionario>()
@@ -909,6 +990,13 @@ public class Contexto
             .HasOne(i => i.Alumno)
             .WithMany()
             .HasForeignKey(i => i.AlumnoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<IntentoCuestionario>()
+            .HasOne(i => i.Inscripcion)
+            .WithMany()
+            .HasForeignKey(i => new { i.InscripcionId, i.AlumnoId })
+            .HasPrincipalKey(i => new { i.Id, i.AlumnoId })
             .OnDelete(DeleteBehavior.Restrict);
 
         // Respuestas de alumnos
@@ -1233,6 +1321,15 @@ public class Contexto
                 c.ActividadEvaluableId,
                 c.AlumnoId
             })
+            .IsUnique()
+            .HasFilter("\"InscripcionId\" IS NULL");
+
+        builder.Entity<CalificacionManual>()
+            .HasIndex(c => new
+            {
+                c.ActividadEvaluableId,
+                c.InscripcionId
+            })
             .IsUnique();
 
         builder.Entity<CalificacionManual>()
@@ -1245,6 +1342,13 @@ public class Contexto
             .HasOne(c => c.Alumno)
             .WithMany()
             .HasForeignKey(c => c.AlumnoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<CalificacionManual>()
+            .HasOne(c => c.Inscripcion)
+            .WithMany()
+            .HasForeignKey(c => new { c.InscripcionId, c.AlumnoId })
+            .HasPrincipalKey(i => new { i.Id, i.AlumnoId })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<CalificacionManual>()
@@ -1405,6 +1509,126 @@ public class Contexto
             .HasForeignKey(h => h.ModificadoPorUsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Plantillas reutilizables de evaluación
+
+        builder.Entity<PlantillaEvaluacion>()
+            .HasIndex(x => new { x.CursoId, x.Nombre })
+            .IsUnique()
+            .HasFilter("\"CursoId\" IS NOT NULL");
+
+        builder.Entity<PlantillaEvaluacion>()
+            .HasIndex(x => x.Nombre)
+            .IsUnique()
+            .HasFilter("\"CursoId\" IS NULL");
+
+        builder.Entity<PlantillaEvaluacion>()
+            .HasOne(x => x.Curso)
+            .WithMany()
+            .HasForeignKey(x => x.CursoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<PlantillaEvaluacion>()
+            .HasOne(x => x.CreadoPorUsuario)
+            .WithMany()
+            .HasForeignKey(x => x.CreadoPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Resultados bimestrales inmutables
+
+        builder.Entity<ResultadoCalificacionPeriodo>()
+            .HasAlternateKey(x => new
+            {
+                x.Id,
+                x.InscripcionId,
+                x.AlumnoId
+            });
+
+        builder.Entity<ResultadoCalificacionPeriodo>()
+            .HasIndex(x => new { x.ConfiguracionEvaluacionId, x.InscripcionId })
+            .IsUnique();
+
+        builder.Entity<ResultadoCalificacionPeriodo>()
+            .HasOne(x => x.ConfiguracionEvaluacion)
+            .WithMany()
+            .HasForeignKey(x => x.ConfiguracionEvaluacionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ResultadoCalificacionPeriodo>()
+            .HasOne(x => x.Inscripcion)
+            .WithMany()
+            .HasForeignKey(x => new { x.InscripcionId, x.AlumnoId })
+            .HasPrincipalKey(i => new { i.Id, i.AlumnoId })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ResultadoCalificacionPeriodo>()
+            .HasOne(x => x.Alumno)
+            .WithMany()
+            .HasForeignKey(x => x.AlumnoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Solicitudes de corrección extraordinaria
+
+        builder.Entity<SolicitudCorreccionCalificacion>()
+            .HasIndex(x => new { x.ResultadoCalificacionPeriodoId, x.Estado });
+
+        builder.Entity<SolicitudCorreccionCalificacion>()
+            .Property(x => x.VersionConcurrencia)
+            .IsConcurrencyToken();
+
+        builder.Entity<SolicitudCorreccionCalificacion>()
+            .HasOne(x => x.ResultadoCalificacionPeriodo)
+            .WithMany()
+            .HasForeignKey(x => new
+            {
+                x.ResultadoCalificacionPeriodoId,
+                x.InscripcionId,
+                x.AlumnoId
+            })
+            .HasPrincipalKey(x => new
+            {
+                x.Id,
+                x.InscripcionId,
+                x.AlumnoId
+            })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SolicitudCorreccionCalificacion>()
+            .HasOne(x => x.ActividadEvaluable)
+            .WithMany()
+            .HasForeignKey(x => x.ActividadEvaluableId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SolicitudCorreccionCalificacion>()
+            .HasOne(x => x.Inscripcion)
+            .WithMany()
+            .HasForeignKey(x => new { x.InscripcionId, x.AlumnoId })
+            .HasPrincipalKey(i => new { i.Id, i.AlumnoId })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SolicitudCorreccionCalificacion>()
+            .HasOne(x => x.Alumno)
+            .WithMany()
+            .HasForeignKey(x => x.AlumnoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SolicitudCorreccionCalificacion>()
+            .HasOne(x => x.SolicitadaPorUsuario)
+            .WithMany()
+            .HasForeignKey(x => x.SolicitadaPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SolicitudCorreccionCalificacion>()
+            .HasOne(x => x.RevisadaPorUsuario)
+            .WithMany()
+            .HasForeignKey(x => x.RevisadaPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SolicitudCorreccionCalificacion>()
+            .HasOne(x => x.AplicadaPorUsuario)
+            .WithMany()
+            .HasForeignKey(x => x.AplicadaPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Restricciones de categorías
 
         builder.Entity<CategoriaEvaluacion>()
@@ -1417,6 +1641,10 @@ public class Contexto
                 tabla.HasCheckConstraint(
                     "CK_CategoriasEvaluacion_Orden",
                     "\"Orden\" >= 1");
+
+                tabla.HasCheckConstraint(
+                    "CK_CategoriasEvaluacion_Tipo",
+                    "\"Tipo\" >= 1 AND \"Tipo\" <= 3");
             });
 
         // Restricciones de actividades
@@ -1476,6 +1704,37 @@ public class Contexto
                     "CK_HistorialesCalificaciones_Notas",
                     "(\"NotaAnterior\" IS NULL OR \"NotaAnterior\" >= 0) AND " +
                     "(\"NotaNueva\" IS NULL OR \"NotaNueva\" >= 0)");
+            });
+
+        builder.Entity<PlantillaEvaluacion>()
+            .ToTable(tabla => tabla.HasCheckConstraint(
+                "CK_PlantillasEvaluacion_Definicion",
+                "length(\"DefinicionJson\") > 0"));
+
+        builder.Entity<ResultadoCalificacionPeriodo>()
+            .ToTable(tabla => tabla.HasCheckConstraint(
+                "CK_ResultadosCalificacionesPeriodos_Notas",
+                "\"Desempeno\" >= 0 AND \"Actitudinal\" >= 0 AND " +
+                "\"NotaBimestral\" >= 0 AND \"AbacusDesempeno\" >= 0 AND " +
+                "\"AbacusActitudinal\" >= 0"));
+
+        builder.Entity<SolicitudCorreccionCalificacion>()
+            .ToTable(tabla =>
+            {
+                tabla.HasCheckConstraint(
+                    "CK_SolicitudesCorreccionesCalificaciones_Notas",
+                    "\"NotaAnterior\" >= 0 AND \"NotaPropuesta\" >= 0");
+                tabla.HasCheckConstraint(
+                    "CK_SolicitudesCorreccionesCalificaciones_Estado",
+                    "(\"Estado\" = 1 AND \"RevisadaPorUsuarioId\" IS NULL AND " +
+                    "\"FechaRevision\" IS NULL AND \"AplicadaPorUsuarioId\" IS NULL AND " +
+                    "\"FechaAplicacion\" IS NULL) OR " +
+                    "(\"Estado\" IN (2, 3) AND \"RevisadaPorUsuarioId\" IS NOT NULL AND " +
+                    "\"FechaRevision\" IS NOT NULL AND \"AplicadaPorUsuarioId\" IS NULL AND " +
+                    "\"FechaAplicacion\" IS NULL) OR " +
+                    "(\"Estado\" = 4 AND \"RevisadaPorUsuarioId\" IS NOT NULL AND " +
+                    "\"FechaRevision\" IS NOT NULL AND \"AplicadaPorUsuarioId\" IS NOT NULL AND " +
+                    "\"FechaAplicacion\" IS NOT NULL)");
             });
     }
 }

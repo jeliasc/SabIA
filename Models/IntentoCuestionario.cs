@@ -14,6 +14,9 @@ public class IntentoCuestionario
     public int AlumnoId { get; set; }
     public Alumno Alumno { get; set; } = null!;
 
+    public int? InscripcionId { get; set; }
+    public Inscripcion? Inscripcion { get; set; }
+
     [Range(1, int.MaxValue)]
     public int NumeroIntento { get; set; }
 

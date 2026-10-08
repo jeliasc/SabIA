@@ -14,14 +14,17 @@ public class Entrega
     public int AlumnoId { get; set; }
     public Alumno Alumno { get; set; } = null!;
 
+    public int? InscripcionId { get; set; }
+    public Inscripcion? Inscripcion { get; set; }
+
     [Range(1, int.MaxValue)]
     public int NumeroEnvio { get; set; } = 1;
 
-    public EstadoEntrega Estado { get; set; } = EstadoEntrega.Enviada;
+    public EstadoEntrega Estado { get; set; } = EstadoEntrega.Pendiente;
 
     public string? ComentarioAlumno { get; set; }
 
-    public DateTime FechaEntrega { get; set; }
+    public DateTime? FechaEntrega { get; set; }
 
     [Precision(9, 2)]
     public decimal? Calificacion { get; set; }
@@ -33,5 +36,9 @@ public class Entrega
     public string? CalificadoPorUsuarioId { get; set; }
     public Usuario? CalificadoPorUsuario { get; set; }
 
+    public DateTime? FechaLimiteIndividual { get; set; }
+
     public ICollection<EntregaArchivo> Archivos { get; set; } = new List<EntregaArchivo>();
+
+    public ICollection<ReaperturaEntrega> Reaperturas { get; set; } = new List<ReaperturaEntrega>();
 }

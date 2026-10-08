@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", function () {
             ?? "No se encontraron registros";
 
         const columnaAcciones =
-            tabla.dataset.actionsColumn !== "false";
+            tabla.dataset.actionsColumn === "true";
 
         const configuracion = {
 
@@ -80,8 +80,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 {
                     targets: -1,
                     orderable: false,
-                    searchable: false,
-                    width: "280px"
+                    searchable: false
                 }
             ];
 

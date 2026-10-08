@@ -1,0 +1,18 @@
+@model Proyecto_Final.ViewModels.ContenidoIA.GenerarContenidoIa
+@{ ViewData["Title"] = "Generar contenido con IA"; }
+<div class="container-fluid">
+    <div class="mb-4"><h2 class="fw-bold mb-1">Generar contenido con IA</h2><p class="text-muted mb-0">Seleccione una planificación con PDF y los materiales que desea solicitar.</p></div>
+    <div class="card border-0 shadow-sm"><div class="card-body p-4">
+        <form asp-action="Generar" method="post">@Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="mb-4"><label asp-for="PlanificacionId" class="form-label">Planificación</label><select asp-for="PlanificacionId" class="form-select" data-select-busqueda><option value="">Seleccione...</option>@foreach(var x in Model.Planificaciones){<option value="@x.Id">@x.Texto</option>}</select></div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3"><div class="form-check"><input asp-for="Resumen" class="form-check-input"/><label asp-for="Resumen" class="form-check-label">Resumen</label></div></div>
+                <div class="col-md-3"><div class="form-check"><input asp-for="Cuestionario" class="form-check-input"/><label asp-for="Cuestionario" class="form-check-label">Cuestionario</label></div></div>
+                <div class="col-md-3"><div class="form-check"><input asp-for="HojaTrabajo" class="form-check-input"/><label asp-for="HojaTrabajo" class="form-check-label">Hoja de trabajo</label></div></div>
+                <div class="col-md-3"><div class="form-check"><input asp-for="Glosario" class="form-check-input"/><label asp-for="Glosario" class="form-check-label">Glosario</label></div></div>
+            </div>
+            <div class="d-flex justify-content-end"><button class="app-btn app-btn-soft-primary" type="submit"><i class="bi bi-stars"></i> Generar contenido</button></div>
+        </form>
+    </div></div>
+</div>

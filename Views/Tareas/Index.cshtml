@@ -1,0 +1,191 @@
+@model IEnumerable<Proyecto_Final.ViewModels.Tareas.TareaLista>
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@inject IAuthorizationService A
+
+@{
+    ViewData["Title"] = "Tareas";
+
+    var c = (await A.AuthorizeAsync(
+        User,
+        Permisos.Tareas.Crear
+    )).Succeeded;
+
+    var e = (await A.AuthorizeAsync(
+        User,
+        Permisos.Tareas.Editar
+    )).Succeeded;
+
+    var p = (await A.AuthorizeAsync(
+        User,
+        Permisos.Tareas.Publicar
+    )).Succeeded;
+
+    var cerrar = (await A.AuthorizeAsync(
+        User,
+        Permisos.Tareas.Cerrar
+    )).Succeeded;
+
+    var cuest = (await A.AuthorizeAsync(
+        User,
+        Permisos.Cuestionarios.Crear
+    )).Succeeded;
+
+    var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
+    var hayAcciones = !soloLectura && (e || p || cerrar || cuest);
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex justify-content-between mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                Tareas
+            </h2>
+
+            <p class="text-muted mb-0">
+                Actividades por curso, publicación y seguimiento de entregas.
+            </p>
+        </div>
+
+        @if (!soloLectura && c)
+        {
+            <a asp-action="Crear" class="app-btn app-btn-soft-primary">
+                Nueva tarea
+            </a>
+        }
+        else
+        {
+            <a asp-action="Index" class="app-btn app-btn-soft-secondary">Ver vigentes</a>
+        }
+        @if (!soloLectura)
+        {
+            <a asp-action="Historial" class="app-btn app-btn-soft-secondary">Ver historial</a>
+        }
+    </div>
+
+    <div class="card shadow-sm border border-secondary">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table app-table w-100" data-tabla-index
+                       data-actions-column="@(hayAcciones ? "true" : "false")">
+                    <thead>
+                        <tr>
+                            <th>Tarea</th>
+                            <th>Curso</th>
+                            <th>Sección</th>
+                            <th>Tipo</th>
+                            <th>Límite</th>
+                            <th>Seguimiento</th>
+                            <th>Estado</th>
+                            @if (hayAcciones)
+                            {
+                                <th>Acciones</th>
+                            }
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var x in Model)
+                        {
+                            <tr>
+                                <td class="fw-semibold">
+                                    @x.Titulo
+                                </td>
+
+                                <td>@x.Curso</td>
+
+                                <td>@x.Seccion</td>
+
+                                <td>@x.Tipo</td>
+
+                                @if (hayAcciones)
+                                {
+                                <td>
+                                    @(x.Limite?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Sin límite")
+                                </td>
+
+                                <td>
+                                    @x.Entregadas entregadas / @x.Pendientes pendientes
+                                </td>
+
+                                <td>
+                                    <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada
+                                          ? "app-badge-success"
+                                          : x.Estado == Proyecto_Final.Models.EstadoTarea.Cerrada
+                                            ? "app-badge-danger"
+                                            : "app-badge-secondary")">
+                                        @x.Estado
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <div class="app-actions app-actions-table">
+                                        @if (e &&
+                                            x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador)
+                                        {
+                                            <a asp-action="Editar" asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Editar
+                                            </a>
+                                        }
+
+                                        @if (cuest &&
+                                            x.Tipo == Proyecto_Final.Models.TipoTarea.Cuestionario &&
+                                            x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador)
+                                        {
+                                            <a asp-controller="Cuestionarios" asp-action="Configurar" asp-route-tareaId="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Cuestionario
+                                            </a>
+                                        }
+
+                                        @if (p &&
+                                            x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador)
+                                        {
+                                            <form asp-action="Publicar" asp-route-id="@x.Id" method="post"
+                                                  data-confirmar-accion-academica
+                                                  data-confirmar-titulo="Publicar tarea"
+                                                  data-confirmar-mensaje="La tarea se habilitará para los alumnos vigentes de la sección."
+                                                  data-confirmar-texto="Publicar"
+                                                  data-confirmar-color="#198754">
+                                                @Html.AntiForgeryToken()
+
+                                                <button class="app-btn app-btn-soft-success app-btn-sm">
+                                                    Publicar
+                                                </button>
+                                            </form>
+                                        }
+
+                                        @if (cerrar &&
+                                            x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada)
+                                        {
+                                            <form asp-action="Cerrar" asp-route-id="@x.Id" method="post"
+                                                  data-confirmar-accion-academica
+                                                  data-confirmar-titulo="Cerrar tarea"
+                                                  data-confirmar-mensaje="Los alumnos ya no podrán realizar entregas ordinarias para esta tarea."
+                                                  data-confirmar-texto="Cerrar">
+                                                @Html.AntiForgeryToken()
+
+                                                <button class="app-btn app-btn-soft-danger app-btn-sm">
+                                                    Cerrar
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+}

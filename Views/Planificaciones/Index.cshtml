@@ -1,0 +1,174 @@
+@model IEnumerable<Proyecto_Final.ViewModels.Planificaciones.PlanificacionLista>
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@inject IAuthorizationService A
+
+@{
+    ViewData["Title"] = "Planificaciones";
+
+    var c = (await A.AuthorizeAsync(
+        User,
+        Permisos.Planificaciones.Crear
+    )).Succeeded;
+
+    var e = (await A.AuthorizeAsync(
+        User,
+        Permisos.Planificaciones.Editar
+    )).Succeeded;
+
+    var enviar = (await A.AuthorizeAsync(
+        User,
+        Permisos.Planificaciones.EnviarRevision
+    )).Succeeded;
+
+    var revisar = (await A.AuthorizeAsync(
+        User,
+        Permisos.Planificaciones.Revisar
+    )).Succeeded;
+
+    var ia = (await A.AuthorizeAsync(
+        User,
+        Permisos.ContenidoIA.Generar
+    )).Succeeded;
+    var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
+    var hayAcciones = !soloLectura && (e || enviar || revisar || ia);
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex justify-content-between mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                Planificaciones
+            </h2>
+
+            <p class="text-muted mb-0">
+                Planificación académica, revisión y base para contenido con IA.
+            </p>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+        @if (!soloLectura && c)
+        {
+            <a asp-action="Crear" class="app-btn app-btn-soft-primary">
+                Nueva planificación
+            </a>
+        }
+            <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-secondary">
+                @(soloLectura ? "Ver vigentes" : "Ver historial")
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border border-secondary">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table app-table w-100" data-tabla-index
+                       data-actions-column="@(hayAcciones ? "true" : "false")">
+                    <thead>
+                        <tr>
+                            <th>Planificación</th>
+                            <th>Tipo</th>
+                            <th>Curso</th>
+                            <th>Docente</th>
+                            <th>Versión</th>
+                            <th>Estado</th>
+                            @if (hayAcciones)
+                            {
+                                <th>Acciones</th>
+                            }
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var x in Model)
+                        {
+                            <tr>
+                                <td class="fw-semibold">
+                                    @x.Titulo
+                                </td>
+
+                                <td>@x.Tipo</td>
+
+                                <td>@x.Curso</td>
+
+                                <td>@x.Docente</td>
+
+                                <td>@x.Version</td>
+
+                                @if (hayAcciones)
+                                {
+                                <td>
+                                    <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Aprobada
+                                          ? "app-badge-success"
+                                          : x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta
+                                            ? "app-badge-danger"
+                                            : "app-badge-secondary")">
+                                        @x.Estado
+                                    </span>
+                                </td>
+                                }
+
+                                <td>
+                                    <div class="app-actions app-actions-table">
+                                        @if (e &&
+                                            (x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Borrador ||
+                                             x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta))
+                                        {
+                                            <a asp-action="Editar" asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Editar
+                                            </a>
+                                        }
+
+                                        @if (enviar &&
+                                            (x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Borrador ||
+                                             x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta))
+                                        {
+                                            <form asp-action="EnviarRevision" asp-route-id="@x.Id" method="post"
+                                                  data-confirmar-accion-academica
+                                                  data-confirmar-titulo="Enviar a revisión"
+                                                  data-confirmar-mensaje="La planificación quedará pendiente de revisión y no podrá editarse mientras esté en ese estado."
+                                                  data-confirmar-texto="Enviar"
+                                                  data-confirmar-color="#198754">
+                                                @Html.AntiForgeryToken()
+
+                                                <button class="app-btn app-btn-soft-primary app-btn-sm">
+                                                    Enviar a revisión
+                                                </button>
+                                            </form>
+                                        }
+
+                                        @if (revisar &&
+                                            x.Estado == Proyecto_Final.Models.EstadoPlanificacion.EnRevision)
+                                        {
+                                            <a asp-action="Revisar" asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-success app-btn-sm">
+                                                Revisar
+                                            </a>
+                                        }
+
+                                        @if (ia)
+                                        {
+                                            <a asp-controller="ContenidoIA" asp-action="Generar"
+                                               asp-route-planificacionId="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Generar IA
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+}

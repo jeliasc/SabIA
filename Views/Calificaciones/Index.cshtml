@@ -1,0 +1,165 @@
+@model Proyecto_Final.ViewModels.Calificaciones.CalificacionesIndex
+
+@{
+    ViewData["Title"] = "Calificaciones";
+    var puedeSolicitar = (await Autorizacion.AuthorizeAsync(
+        User, Permisos.Calificaciones.SolicitarCorreccion)).Succeeded;
+    var puedeRevisar = (await Autorizacion.AuthorizeAsync(
+        User, Permisos.Calificaciones.AprobarCorreccion)).Succeeded;
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Calificaciones</h2>
+            <p class="text-muted mb-0">Configuración, registro, cierre e historial bimestral.</p>
+        </div>
+        @if (puedeSolicitar || puedeRevisar)
+        {
+            <div>
+                <a asp-action="Correcciones" class="app-btn app-btn-soft-secondary">
+                    <i class="bi bi-clock-history" aria-hidden="true"></i>
+                    Correcciones
+                </a>
+            </div>
+        }
+    </div>
+
+    @if (Model.PuedeConfigurar)
+    {
+        <div class="card shadow-sm border border-secondary mb-4">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3">Configurar evaluación</h5>
+                <form asp-action="Configurar" method="get" class="row g-3 align-items-end">
+                    <div class="col-lg-6">
+                        <label for="asignacionId" class="form-label">Asignación</label>
+                        <select id="asignacionId" name="asignacionId" class="form-select"
+                                required data-select-busqueda
+                                data-search-placeholder="Buscar curso, grado o sección...">
+                            <option value="">Seleccione una asignación</option>
+                            @foreach (var opcion in Model.Asignaciones)
+                            {
+                                <option value="@opcion.Id">@opcion.Texto</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-lg-4">
+                        <label for="periodoId" class="form-label">Período</label>
+                        <select id="periodoId" name="periodoId" class="form-select" required data-select-busqueda>
+                            <option value="">Seleccione un período</option>
+                            @foreach (var opcion in Model.Periodos)
+                            {
+                                <option value="@opcion.Id">@opcion.Texto</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-lg-2 d-grid">
+                        <button type="submit" class="app-btn app-btn-soft-primary">Continuar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (Model.Configuraciones.Count == 0)
+    {
+        <div class="app-alert app-alert-info" role="status">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+            <div>No existen libros de calificaciones disponibles para su ámbito académico.</div>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm border border-secondary d-none d-md-block">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table app-table w-100" data-tabla-index
+                           data-actions-column="true"
+                           data-search-placeholder="Curso, docente, grado o período...">
+                        <thead>
+                            <tr>
+                                <th>Curso</th>
+                                <th>Grado y sección</th>
+                                <th>Período</th>
+                                <th>Docente</th>
+                                <th>Actividades</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Configuraciones)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@item.Curso</td>
+                                    <td>@item.GradoSeccion</td>
+                                    <td>@item.Periodo</td>
+                                    <td>@item.Docente</td>
+                                    <td>@item.Actividades</td>
+                                    <td>
+                                        <span class="app-badge @(item.EstadoCierre == EstadoCierreCalificaciones.Cerrado ? "app-badge-secondary" : "app-badge-success")">
+                                            @item.EstadoCierre
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="app-actions app-actions-table">
+                                            <a asp-action="Libro" asp-route-id="@item.Id"
+                                               class="app-btn app-btn-soft-primary app-btn-sm">Libro</a>
+                                            <a asp-action="Abacus" asp-route-id="@item.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">Resumen</a>
+                                            @if (Model.PuedeConfigurar && item.EstadoCierre != EstadoCierreCalificaciones.Cerrado)
+                                            {
+                                                <a asp-action="Configurar"
+                                                   asp-route-asignacionId="@item.AsignacionId"
+                                                   asp-route-periodoId="@item.PeriodoId"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">Configurar</a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-md-none">
+            @foreach (var item in Model.Configuraciones)
+            {
+                <article class="card shadow-sm border border-secondary mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between gap-2 mb-2">
+                            <div>
+                                <h5 class="fw-bold mb-1">@item.Curso</h5>
+                                <div class="text-muted small">@item.GradoSeccion · @item.Periodo</div>
+                            </div>
+                            <span class="app-badge align-self-start @(item.EstadoCierre == EstadoCierreCalificaciones.Cerrado ? "app-badge-secondary" : "app-badge-success")">
+                                @item.EstadoCierre
+                            </span>
+                        </div>
+                        <dl class="row small mb-3">
+                            <dt class="col-4">Docente</dt><dd class="col-8">@item.Docente</dd>
+                            <dt class="col-4">Actividades</dt><dd class="col-8">@item.Actividades</dd>
+                        </dl>
+                        <div class="app-actions flex-wrap">
+                            <a asp-action="Libro" asp-route-id="@item.Id"
+                               class="app-btn app-btn-soft-primary app-btn-sm">Libro</a>
+                            <a asp-action="Abacus" asp-route-id="@item.Id"
+                               class="app-btn app-btn-soft-secondary app-btn-sm">Resumen</a>
+                            @if (Model.PuedeConfigurar && item.EstadoCierre != EstadoCierreCalificaciones.Cerrado)
+                            {
+                                <a asp-action="Configurar"
+                                   asp-route-asignacionId="@item.AsignacionId"
+                                   asp-route-periodoId="@item.PeriodoId"
+                                   class="app-btn app-btn-soft-secondary app-btn-sm">Configurar</a>
+                            }
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</div>

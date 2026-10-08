@@ -1,0 +1,70 @@
+@model Proyecto_Final.ViewModels.Asignaciones.FormularioAsignacion
+
+<div asp-validation-summary="ModelOnly"
+     class="text-danger mb-3">
+</div>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <label asp-for="SeccionId"
+               class="form-label">
+            Sección
+        </label>
+
+        <select asp-for="SeccionId"
+                class="form-select" data-select-busqueda>
+            <option value="">Seleccione...</option>
+
+            @foreach (var x in Model.Secciones)
+            {
+                <option value="@x.Id">@x.Texto</option>
+            }
+        </select>
+
+        <span asp-validation-for="SeccionId"
+              class="text-danger">
+        </span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="CursoId"
+               class="form-label">
+            Curso
+        </label>
+
+        <select asp-for="CursoId"
+                class="form-select" data-select-busqueda>
+            <option value="">Seleccione...</option>
+
+            @foreach (var x in Model.Cursos)
+            {
+                <option value="@x.Id">@x.Texto</option>
+            }
+        </select>
+
+        <span asp-validation-for="CursoId"
+              class="text-danger">
+        </span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="DocenteId"
+               class="form-label">
+            Docente
+        </label>
+
+        <select asp-for="DocenteId"
+                class="form-select" data-select-busqueda>
+            <option value="">Seleccione...</option>
+
+            @foreach (var x in Model.Docentes)
+            {
+                <option value="@x.Id">@x.Texto</option>
+            }
+        </select>
+
+        <span asp-validation-for="DocenteId"
+              class="text-danger">
+        </span>
+    </div>
+</div>

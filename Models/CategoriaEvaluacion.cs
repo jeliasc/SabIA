@@ -15,6 +15,9 @@ public class CategoriaEvaluacion
     [Required, StringLength(100)]
     public string Nombre { get; set; } = string.Empty;
 
+    public TipoCategoriaEvaluacion Tipo { get; set; } =
+        TipoCategoriaEvaluacion.Otra;
+
     [Precision(5, 2)]
     public decimal Porcentaje { get; set; }
 

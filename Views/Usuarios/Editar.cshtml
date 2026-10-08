@@ -54,6 +54,14 @@
 
                         <input asp-for="Id" type="hidden" />
 
+                        @if (!string.IsNullOrWhiteSpace(Model.AdvertenciaConfiguracionRol))
+                        {
+                            <div class="app-alert app-alert-warning mb-4" role="alert">
+                                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                                <div>@Model.AdvertenciaConfiguracionRol</div>
+                            </div>
+                        }
+
                         <h5 class="fw-semibold mb-3">
                             Información personal
                         </h5>
@@ -167,7 +175,8 @@
                                 <label asp-for="Rol" class="form-label">
                                 </label>
 
-                                <select asp-for="Rol" class="form-select">
+                                <select asp-for="Rol" class="form-select" data-select-busqueda
+                                        data-search-placeholder="Buscar rol...">
 
                                     <option value="">
                                         Seleccione un rol

@@ -1,0 +1,109 @@
+@model Proyecto_Final.ViewModels.Tareas.FormularioTarea
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3">
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="AsignacionId" class="form-label">
+            Asignación
+        </label>
+
+        <select asp-for="AsignacionId" class="form-select" data-select-busqueda>
+            <option value="">Seleccione...</option>
+
+            @foreach (var x in Model.Asignaciones)
+            {
+                <option value="@x.Id">
+                    @x.Texto
+                </option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="UnidadAsignacionId" class="form-label">
+            Unidad
+        </label>
+
+        <select asp-for="UnidadAsignacionId" class="form-select" data-select-busqueda>
+            <option value="">Sin unidad específica</option>
+
+            @foreach (var x in Model.Unidades)
+            {
+                <option value="@x.Id">
+                    @x.Texto
+                </option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="Tipo" class="form-label">
+            Tipo
+        </label>
+
+        <select asp-for="Tipo" asp-items="Html.GetEnumSelectList<Proyecto_Final.Models.TipoTarea>()"
+                class="form-select">
+        </select>
+    </div>
+
+    <div class="col-md-7">
+        <label asp-for="Titulo" class="form-label">
+            Título
+        </label>
+
+        <input asp-for="Titulo" class="form-control" />
+    </div>
+
+    <div class="col-md-2">
+        <label asp-for="PunteoMaximo" class="form-label">
+            Punteo
+        </label>
+
+        <input asp-for="PunteoMaximo" class="form-control" />
+    </div>
+
+    <div class="col-12">
+        <label asp-for="Instrucciones" class="form-label">
+            Instrucciones
+        </label>
+
+        <textarea asp-for="Instrucciones" class="form-control" rows="5">
+        </textarea>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="FechaDisponibilidad" class="form-label">
+            Disponible desde
+        </label>
+
+        <input asp-for="FechaDisponibilidad" type="datetime-local" class="form-control" />
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="FechaLimite" class="form-label">
+            Fecha límite
+        </label>
+
+        <input asp-for="FechaLimite" type="datetime-local" class="form-control" />
+    </div>
+
+    <div class="col-md-8">
+        <label asp-for="Archivo" class="form-label">
+            Archivo adjunto (opcional)
+        </label>
+
+        <input asp-for="Archivo" type="file" class="form-control" />
+    </div>
+
+    <div class="col-md-4 d-flex align-items-end">
+        <div class="form-check mb-2">
+            <input asp-for="PermitirEntregaTardia" class="form-check-input" />
+
+            <label asp-for="PermitirEntregaTardia" class="form-check-label">
+                Permitir entrega tardía
+            </label>
+        </div>
+    </div>
+</div>

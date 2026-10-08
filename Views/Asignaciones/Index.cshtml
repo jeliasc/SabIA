@@ -1,0 +1,124 @@
+@model IEnumerable<Proyecto_Final.ViewModels.Asignaciones.AsignacionLista>
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@inject IAuthorizationService A
+
+@{
+    ViewData["Title"] = "Asignaciones";
+
+    var c = (await A.AuthorizeAsync(
+        User,
+        Permisos.Asignaciones.Crear
+    )).Succeeded;
+
+    var e = (await A.AuthorizeAsync(
+        User,
+        Permisos.Asignaciones.Editar
+    )).Succeeded;
+
+    var ce = (await A.AuthorizeAsync(
+        User,
+        Permisos.Asignaciones.CambiarEstado
+    )).Succeeded;
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                Asignaciones
+            </h2>
+
+            <p class="text-muted mb-0">
+                Relación docente, curso y sección.
+            </p>
+        </div>
+
+        @if (c)
+        {
+            <a asp-action="Crear"
+               class="app-btn app-btn-soft-primary">
+                Nueva asignación
+            </a>
+        }
+    </div>
+
+    <div class="card shadow-sm border border-secondary">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table app-table w-100"
+                       data-tabla-index data-actions-column="true">
+                    <thead>
+                        <tr>
+                            <th>Ciclo</th>
+                            <th>Sección</th>
+                            <th>Curso</th>
+                            <th>Docente</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var x in Model)
+                        {
+                            <tr>
+                                <td>@x.Ciclo</td>
+
+                                <td>@x.Seccion</td>
+
+                                <td class="fw-semibold">
+                                    @x.Curso
+                                </td>
+
+                                <td>@x.Docente</td>
+
+                                <td>
+                                    <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
+                                        ? "app-badge-success"
+                                        : "app-badge-danger")">
+                                        @x.Estado
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <div class="app-actions app-actions-table">
+                                        @if (e)
+                                        {
+                                            <a asp-action="Editar"
+                                               asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Editar
+                                            </a>
+                                        }
+
+                                        @if (ce)
+                                        {
+                                            <form asp-action="@(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
+                                                ? "Desactivar"
+                                                : "Activar")"
+                                                  asp-route-id="@x.Id"
+                                                  method="post">
+                                                @Html.AntiForgeryToken()
+
+                                                <button class="app-btn @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
+                                                    ? "app-btn-soft-danger"
+                                                    : "app-btn-soft-success") app-btn-sm">
+                                                    @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
+                                                        ? "Desactivar"
+                                                        : "Activar")
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

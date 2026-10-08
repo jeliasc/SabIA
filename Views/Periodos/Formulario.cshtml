@@ -1,0 +1,58 @@
+@model Proyecto_Final.ViewModels.Periodos.FormularioPeriodo
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3">
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="CicloEscolarId" class="form-label">
+        </label>
+
+        <select asp-for="CicloEscolarId" asp-items="ViewBag.Ciclos" class="form-select" data-select-busqueda>
+            <option value="">Seleccione...</option>
+        </select>
+
+        <span asp-validation-for="CicloEscolarId" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="Numero" class="form-label">
+        </label>
+
+        <input asp-for="Numero" class="form-control" />
+
+        <span asp-validation-for="Numero" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Nombre" class="form-label">
+        </label>
+
+        <input asp-for="Nombre" class="form-control" />
+
+        <span asp-validation-for="Nombre" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="FechaInicio" class="form-label">
+        </label>
+
+        <input asp-for="FechaInicio" type="date" class="form-control" />
+
+        <span asp-validation-for="FechaInicio" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="FechaFin" class="form-label">
+        </label>
+
+        <input asp-for="FechaFin" type="date" class="form-control" />
+
+        <span asp-validation-for="FechaFin" class="text-danger small">
+        </span>
+    </div>
+</div>
