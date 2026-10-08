@@ -1,0 +1,230 @@
+@model Proyecto_Final.ViewModels.Calificaciones.ConfigurarEvaluacion
+
+@{
+    ViewData["Title"] = "Configurar calificaciones";
+}
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+            <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+                <div>
+                    <h2 class="fw-bold mb-1">Configurar evaluación</h2>
+                    <p class="text-muted mb-0">Defina categorías, ponderaciones y actividades del período.</p>
+                </div>
+                <a asp-action="Index" class="app-btn app-btn-soft-secondary">Regresar</a>
+            </div>
+
+            @if (Model.Id == 0 && Model.Plantillas.Count > 0)
+            {
+                <div class="card shadow-sm border border-secondary mb-4">
+                    <div class="card-body">
+                        <form asp-action="Configurar" method="get" class="row g-3 align-items-end">
+                            <input type="hidden" name="asignacionId" value="@Model.AsignacionId" />
+                            <input type="hidden" name="periodoId" value="@Model.PeriodoId" />
+                            <div class="col-md-9">
+                                <label for="plantillaId" class="form-label">Plantilla reutilizable</label>
+                                <select id="plantillaId" name="plantillaId" class="form-select" data-select-busqueda>
+                                    <option value="">Seleccione una plantilla</option>
+                                    @foreach (var opcion in Model.Plantillas)
+                                    {
+                                        <option value="@opcion.Id" selected="@(Model.PlantillaId == opcion.Id ? "selected" : null)">@opcion.Texto</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-grid">
+                                <button type="submit" class="app-btn app-btn-soft-secondary">Cargar plantilla</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            }
+
+            <form asp-action="Configurar" method="post" data-configuracion-calificaciones>
+                @Html.AntiForgeryToken()
+                <input asp-for="Id" type="hidden" />
+
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="app-alert app-alert-info mb-4" role="note">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
+                    <div>La plantilla inicial usa 80 puntos de desempeño y 20 actitudinales. Debe nombrar los cinco aspectos actitudinales con los criterios que confirme la institución.</div>
+                </div>
+
+                <div class="card shadow-sm border border-secondary mb-4">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-lg-6">
+                                <label asp-for="AsignacionId" class="form-label">Asignación</label>
+                                <select asp-for="AsignacionId" class="form-select" required
+                                        data-select-busqueda data-search-placeholder="Buscar asignación...">
+                                    <option value="">Seleccione una asignación</option>
+                                    @foreach (var opcion in Model.Asignaciones)
+                                    {
+                                        <option value="@opcion.Id">@opcion.Texto</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="AsignacionId" class="text-danger"></span>
+                            </div>
+                            <div class="col-lg-3">
+                                <label asp-for="PeriodoId" class="form-label">Período</label>
+                                <select asp-for="PeriodoId" class="form-select" required data-select-busqueda>
+                                    <option value="">Seleccione un período</option>
+                                    @foreach (var opcion in Model.Periodos)
+                                    {
+                                        <option value="@opcion.Id">@opcion.Texto</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="PeriodoId" class="text-danger"></span>
+                            </div>
+                            <div class="col-lg-3">
+                                <label asp-for="MetodoCalculo" class="form-label">Método</label>
+                                <select asp-for="MetodoCalculo" class="form-select"
+                                        asp-items="Html.GetEnumSelectList<MetodoCalculoEvaluacion>()"></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                    <div>
+                        <h4 class="fw-bold mb-1">Categorías y actividades</h4>
+                        <p class="text-muted small mb-0">Las ponderaciones deben sumar exactamente 100%. En suma de puntos, el máximo de cada categoría debe coincidir con su ponderación.</p>
+                    </div>
+                    <button type="button" class="app-btn app-btn-soft-primary" data-agregar-categoria>
+                        Agregar categoría
+                    </button>
+                </div>
+
+                <span asp-validation-for="Categorias" class="text-danger d-block mb-2"></span>
+                <div data-categorias>
+                    @for (var i = 0; i < Model.Categorias.Count; i++)
+                    {
+                        var categoria = Model.Categorias[i];
+                        <section class="card shadow-sm border border-secondary mb-3" data-categoria>
+                            <div class="card-body">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-md-5">
+                                        <label class="form-label">Nombre de la categoría</label>
+                                        <input name="Categorias[@i].Nombre" value="@categoria.Nombre"
+                                               class="form-control" maxlength="100" required data-campo="Nombre" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Tipo</label>
+                                        <select name="Categorias[@i].Tipo" class="form-select" data-campo="Tipo">
+                                            @foreach (var tipo in Enum.GetValues<TipoCategoriaEvaluacion>())
+                                            {
+                                                <option value="@((int)tipo)" selected="@(categoria.Tipo == tipo ? "selected" : null)">@tipo</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Ponderación %</label>
+                                        <input name="Categorias[@i].Porcentaje" value="@categoria.Porcentaje"
+                                               type="number" min="0.01" max="100" step="0.01"
+                                               class="form-control" required data-campo="Porcentaje" />
+                                    </div>
+                                    <div class="col-md-2 d-grid">
+                                        <button type="button" class="app-btn app-btn-soft-danger" data-eliminar-categoria>
+                                            Eliminar
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <hr class="my-3" />
+                                <div data-actividades>
+                                    @for (var j = 0; j < categoria.Actividades.Count; j++)
+                                    {
+                                        var actividad = categoria.Actividades[j];
+                                        <div class="row g-2 align-items-end mb-2" data-actividad>
+                                            <div class="col-lg-4">
+                                                <label class="form-label">Actividad</label>
+                                                <input name="Categorias[@i].Actividades[@j].Nombre" value="@actividad.Nombre"
+                                                       class="form-control" maxlength="200" required data-campo="Nombre" />
+                                            </div>
+                                            <div class="col-lg-4">
+                                                <label class="form-label">Tarea vinculada (opcional)</label>
+                                                <select name="Categorias[@i].Actividades[@j].TareaId"
+                                                        class="form-select" data-campo="TareaId" data-select-busqueda
+                                                        data-search-placeholder="Buscar tarea o cuestionario...">
+                                                    <option value="">Registro manual</option>
+                                                    @foreach (var tarea in Model.Tareas)
+                                                    {
+                                                        <option value="@tarea.Id" selected="@(actividad.TareaId == tarea.Id ? "selected" : null)">@tarea.Texto</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div class="col-lg-2">
+                                                <label class="form-label">Punteo máximo</label>
+                                                <input name="Categorias[@i].Actividades[@j].PunteoMaximo"
+                                                       value="@actividad.PunteoMaximo" type="number" min="0.01"
+                                                       step="0.01" class="form-control" required data-campo="PunteoMaximo" />
+                                            </div>
+                                            <div class="col-lg-2 d-grid">
+                                                <button type="button" class="app-btn app-btn-soft-danger"
+                                                        data-eliminar-actividad>Quitar</button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm mt-2"
+                                        data-agregar-actividad>Agregar actividad</button>
+                            </div>
+                        </section>
+                    }
+                </div>
+
+                <div class="card shadow-sm border border-secondary mb-4">
+                    <div class="card-body">
+                        <div class="form-check mb-3">
+                            <input asp-for="GuardarComoPlantilla" class="form-check-input" />
+                            <label asp-for="GuardarComoPlantilla" class="form-check-label">
+                                Guardar esta estructura como plantilla reutilizable
+                            </label>
+                        </div>
+                        <div>
+                            <label asp-for="NombrePlantilla" class="form-label">Nombre de la plantilla</label>
+                            <input asp-for="NombrePlantilla" class="form-control" maxlength="150" />
+                            <span asp-validation-for="NombrePlantilla" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-action="Index" class="app-btn app-btn-soft-secondary">Cancelar</a>
+                    <button type="submit" class="app-btn app-btn-soft-primary">Guardar configuración</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<template id="plantilla-categoria">
+    <section class="card shadow-sm border border-secondary mb-3" data-categoria>
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5"><label class="form-label">Nombre de la categoría</label><input class="form-control" maxlength="100" required data-campo="Nombre" /></div>
+                <div class="col-md-3"><label class="form-label">Tipo</label><select class="form-select" data-campo="Tipo"><option value="1">Desempeño</option><option value="2">Actitudinal</option><option value="3">Otra</option></select></div>
+                <div class="col-md-2"><label class="form-label">Ponderación %</label><input type="number" min="0.01" max="100" step="0.01" class="form-control" required data-campo="Porcentaje" /></div>
+                <div class="col-md-2 d-grid"><button type="button" class="app-btn app-btn-soft-danger" data-eliminar-categoria>Eliminar</button></div>
+            </div>
+            <hr class="my-3" />
+            <div data-actividades></div>
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm mt-2" data-agregar-actividad>Agregar actividad</button>
+        </div>
+    </section>
+</template>
+
+<template id="plantilla-actividad">
+    <div class="row g-2 align-items-end mb-2" data-actividad>
+        <div class="col-lg-4"><label class="form-label">Actividad</label><input class="form-control" maxlength="200" required data-campo="Nombre" /></div>
+        <div class="col-lg-4"><label class="form-label">Tarea vinculada (opcional)</label><select class="form-select" data-campo="TareaId" data-select-busqueda data-search-placeholder="Buscar tarea o cuestionario..."><option value="">Registro manual</option>@foreach (var tarea in Model.Tareas) { <option value="@tarea.Id">@tarea.Texto</option> }</select></div>
+        <div class="col-lg-2"><label class="form-label">Punteo máximo</label><input type="number" min="0.01" step="0.01" class="form-control" required data-campo="PunteoMaximo" /></div>
+        <div class="col-lg-2 d-grid"><button type="button" class="app-btn app-btn-soft-danger" data-eliminar-actividad>Quitar</button></div>
+    </div>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/calificaciones-configuracion.js" asp-append-version="true"></script>
+}

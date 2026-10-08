@@ -44,12 +44,6 @@
         )).Succeeded;
 }
 
-@section Styles {
-
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.bootstrap5.min.css" />
-
-}
-
 <div class="container-fluid">
     <partial name="_AlertasResultado" />
     <div class="d-flex flex-column flex-md-row
@@ -114,7 +108,7 @@
 
             <div class="table-responsive">
 
-                <table id="tablaUsuarios" class="table app-table w-100" data-tabla-index
+                <table id="tablaUsuarios" class="table app-table w-100" data-tabla-index data-actions-column="true"
                        data-search-placeholder="Usuario, nombre o correo..."
                        data-empty-message="No existen usuarios registrados" data-zero-message="No se encontraron usuarios">
 
@@ -218,7 +212,7 @@
 
                                 <td class="app-actions-cell">
 
-                                    <div class="app-actions app-actions-table">
+                                    <div class="app-actions">
 
                                         @if (permisoUsuariosVer)
                                         {

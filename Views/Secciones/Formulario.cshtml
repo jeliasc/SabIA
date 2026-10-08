@@ -1,0 +1,40 @@
+@model Proyecto_Final.ViewModels.Secciones.FormularioSeccion
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3">
+</div>
+
+<div class="row g-3">
+    <div class="col-md-5">
+        <label asp-for="CicloEscolarId" class="form-label">
+        </label>
+
+        <select asp-for="CicloEscolarId" asp-items="ViewBag.Ciclos" class="form-select" data-select-busqueda>
+            <option value="">Seleccione...</option>
+        </select>
+
+        <span asp-validation-for="CicloEscolarId" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-5">
+        <label asp-for="GradoId" class="form-label">
+        </label>
+
+        <select asp-for="GradoId" asp-items="ViewBag.Grados" class="form-select" data-select-busqueda>
+            <option value="">Seleccione...</option>
+        </select>
+
+        <span asp-validation-for="GradoId" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-2">
+        <label asp-for="Nombre" class="form-label">
+        </label>
+
+        <input asp-for="Nombre" class="form-control text-uppercase" />
+
+        <span asp-validation-for="Nombre" class="text-danger small">
+        </span>
+    </div>
+</div>

@@ -1,0 +1,72 @@
+@model Proyecto_Final.ViewModels.Encargados.FormularioEncargado
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3">
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="Nombres" class="form-label">
+        </label>
+
+        <input asp-for="Nombres" class="form-control" />
+
+        <span asp-validation-for="Nombres" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Apellidos" class="form-label">
+        </label>
+
+        <input asp-for="Apellidos" class="form-control" />
+
+        <span asp-validation-for="Apellidos" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Dpi" class="form-label">
+            DPI
+        </label>
+
+        <input asp-for="Dpi" class="form-control" inputmode="numeric" />
+
+        <span asp-validation-for="Dpi" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Telefono" class="form-label">
+        </label>
+
+        <input asp-for="Telefono" class="form-control" />
+
+        <span asp-validation-for="Telefono" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="TelefonoAlterno" class="form-label">
+        </label>
+
+        <input asp-for="TelefonoAlterno" class="form-control" />
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Correo" class="form-label">
+        </label>
+
+        <input asp-for="Correo" class="form-control" type="email" />
+
+        <span asp-validation-for="Correo" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-12">
+        <label asp-for="Direccion" class="form-label">
+        </label>
+
+        <textarea asp-for="Direccion" class="form-control" rows="2">
+        </textarea>
+    </div>
+</div>

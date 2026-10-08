@@ -1,0 +1,88 @@
+@model Proyecto_Final.ViewModels.Materiales.FormularioMaterial
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3">
+</div>
+
+<div class="row g-3">
+    <div class="col-md-7">
+        <label asp-for="UnidadId" class="form-label">
+            Unidad
+        </label>
+
+        <select asp-for="UnidadId" class="form-select" data-select-busqueda>
+            <option value="">Seleccione...</option>
+
+            @foreach (var x in Model.Unidades)
+            {
+                <option value="@x.Id">
+                    @x.Texto
+                </option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-5">
+        <label asp-for="Tipo" class="form-label">
+            Tipo
+        </label>
+
+        <select asp-for="Tipo" asp-items="Html.GetEnumSelectList<Proyecto_Final.Models.TipoMaterial>()"
+                class="form-select">
+        </select>
+    </div>
+
+    <div class="col-md-9">
+        <label asp-for="Titulo" class="form-label">
+            Título
+        </label>
+
+        <input asp-for="Titulo" class="form-control" />
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="Orden" class="form-label">
+            Orden
+        </label>
+
+        <input asp-for="Orden" class="form-control" />
+    </div>
+
+    <div class="col-12">
+        <label asp-for="Descripcion" class="form-label">
+            Descripción
+        </label>
+
+        <textarea asp-for="Descripcion" class="form-control" rows="3">
+        </textarea>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Archivo" class="form-label">
+            Archivo
+        </label>
+
+        <input asp-for="Archivo" type="file" class="form-control" />
+
+        <span class="form-text">
+            Máximo 25 MB. Para tipo Enlace puede dejarse vacío.
+        </span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="UrlExterna" class="form-label">
+            URL externa
+        </label>
+
+        <input asp-for="UrlExterna" class="form-control" placeholder="https://..." />
+    </div>
+
+    <div class="col-12">
+        <div class="form-check">
+            <input asp-for="Descargable" class="form-check-input" />
+
+            <label asp-for="Descargable" class="form-check-label">
+                Permitir descarga al alumno
+            </label>
+        </div>
+    </div>
+</div>

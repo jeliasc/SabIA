@@ -480,3 +480,12 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# SabIA - archivos locales y temporales
+.artifacts/
+App_Data/
+
+# Configuraciones y secretos locales
+.env.*
+!*.example
+appsettings.Local.json

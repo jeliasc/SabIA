@@ -718,23 +718,17 @@
 
 .app-actions-table {
     justify-content: flex-end;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     white-space: nowrap;
 }
 
 .app-actions-cell {
-    width: 280px;
-    min-width: 280px;
-
     text-align: right;
     vertical-align: middle;
     white-space: nowrap;
 }
 
 .app-actions-column {
-    width: 280px;
-    min-width: 280px;
-
     text-align: right;
     white-space: nowrap;
 }
@@ -826,3 +820,8 @@
     color: #b91c1c;
 }
 
+
+
+.white-space-pre-line {
+    white-space: pre-line;
+}

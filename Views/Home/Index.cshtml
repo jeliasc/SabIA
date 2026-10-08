@@ -1,261 +1,341 @@
 @model Proyecto_Final.ViewModels.Prototipo.DashboardPrototipo
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@inject IAuthorizationService Autorizacion
 
 @{
-    ViewData["Title"] = "Dashboard";
+    ViewData["Title"] = Model.Tipo == "inicio" ? "Inicio" : "Dashboard";
+    var puedeCalificar = (await Autorizacion.AuthorizeAsync(
+        User,
+        Permisos.Entregas.Calificar)).Succeeded;
 }
 
 <div class="container-fluid">
-    
     <partial name="_AlertasResultado" />
 
     <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
-
         <div>
-            <h2 class="fw-semibold mb-1">
-                Dashboard de coordinación
-            </h2>
-
-            <p class="text-body-secondary mb-0">
-                Vista inicial para seguimiento académico institucional.
-            </p>
+            <h2 class="fw-semibold mb-1">@ViewBag.TituloDashboard</h2>
+            <p class="text-body-secondary mb-0">@ViewBag.DescripcionDashboard</p>
         </div>
 
-        <span class="app-badge app-badge-primary align-self-start align-self-lg-center">
-            DATOS FICTICIOS
-        </span>
-
+        @if (Model.Contextos.Count > 1 && Model.Tipo != "inicio")
+        {
+            <a asp-action="Index" asp-route-contexto="inicio"
+               class="app-btn app-btn-soft-secondary">
+                <i class="bi bi-grid me-1"></i>Cambiar de espacio
+            </a>
+        }
     </div>
 
-    <div class="row g-3 mb-4">
-
-        @foreach (var indicador in Model.Indicadores)
-        {
-            <div class="col-12 col-sm-6 col-xl-3">
-
-                <div class="ui-stat-card @indicador.Clase h-100">
-
-                    <div class="ui-stat-value">
-                        @indicador.Valor
+    @if (Model.Tipo == "inicio" && Model.Contextos.Count > 0)
+    {
+        <section class="mb-4" aria-labelledby="titulo-contextos">
+            <h3 id="titulo-contextos" class="h5 mb-3">Sus espacios</h3>
+            <div class="row g-3">
+                @foreach (var contexto in Model.Contextos)
+                {
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <a asp-action="Index" asp-route-contexto="@contexto.Codigo"
+                           class="app-card h-100 d-block text-decoration-none text-body">
+                            <div class="app-card-body d-flex gap-3">
+                                <div class="app-icon-box app-icon-primary flex-shrink-0">
+                                    <i class="@contexto.Icono" aria-hidden="true"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">@contexto.Titulo</div>
+                                    <div class="small text-body-secondary">@contexto.Descripcion</div>
+                                </div>
+                            </div>
+                        </a>
                     </div>
+                }
+            </div>
+        </section>
+    }
 
-                    <p class="ui-stat-label">
-                        @indicador.Titulo
-                    </p>
-
-                    <i class="ui-stat-icon @indicador.Icono"></i>
-
+    @if (Model.Indicadores.Count > 0)
+    {
+        <section class="row g-3 mb-4" aria-label="Indicadores">
+            @foreach (var indicador in Model.Indicadores)
+            {
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="ui-stat-card @indicador.Clase h-100">
+                        <div class="ui-stat-value">@indicador.Valor</div>
+                        <p class="ui-stat-label">@indicador.Titulo</p>
+                        <i class="ui-stat-icon @indicador.Icono" aria-hidden="true"></i>
+                    </div>
                 </div>
+            }
+        </section>
+    }
 
+    @if (Model.Cursos.Count > 0)
+    {
+        <section class="app-card mb-4" aria-labelledby="titulo-cursos">
+            <div class="app-card-header">
+                <h3 id="titulo-cursos" class="app-card-title">Seguimiento por curso</h3>
+            </div>
+            <div class="app-card-body p-0 d-none d-md-block">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 app-table">
+                        <thead>
+                            <tr>
+                                <th>Curso</th>
+                                <th>Grado / Sección</th>
+                                <th>Docente</th>
+                                <th>Progreso</th>
+                                <th class="text-center">Pendientes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var curso in Model.Cursos)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@curso.Curso</td>
+                                    <td>@curso.GradoSeccion</td>
+                                    <td>@curso.Docente</td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="ui-progress flex-grow-1" role="progressbar"
+                                                 aria-label="Progreso de @curso.Curso"
+                                                 aria-valuenow="@curso.Progreso" aria-valuemin="0" aria-valuemax="100">
+                                                <div class="ui-progress-bar" style="width: @curso.Progreso%"></div>
+                                            </div>
+                                            <span class="small">@curso.Progreso%</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="app-badge app-badge-warning">@curso.EntregasPendientes</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="app-card-body d-md-none">
+                <div class="d-grid gap-3">
+                    @foreach (var curso in Model.Cursos)
+                    {
+                        <article class="border rounded p-3">
+                            <div class="d-flex justify-content-between gap-2 mb-1">
+                                <div class="fw-semibold">@curso.Curso</div>
+                                <span class="app-badge app-badge-warning">
+                                    @curso.EntregasPendientes pendientes
+                                </span>
+                            </div>
+                            <div class="small text-body-secondary">@curso.GradoSeccion</div>
+                            <div class="small mb-2">@curso.Docente</div>
+                            <div class="ui-progress" role="progressbar"
+                                 aria-label="Progreso de @curso.Curso"
+                                 aria-valuenow="@curso.Progreso" aria-valuemin="0" aria-valuemax="100">
+                                <div class="ui-progress-bar" style="width: @curso.Progreso%"></div>
+                            </div>
+                            <div class="small text-end mt-1">@curso.Progreso%</div>
+                        </article>
+                    }
+                </div>
+            </div>
+        </section>
+    }
+
+    <div class="row g-4 mb-4">
+        @if (Model.Planificaciones.Count > 0)
+        {
+            <div class="col-12 col-xl-6">
+                <section class="app-card h-100" aria-labelledby="titulo-planificaciones">
+                    <div class="app-card-header">
+                        <h3 id="titulo-planificaciones" class="app-card-title">Planificaciones recientes</h3>
+                    </div>
+                    <div class="app-card-body">
+                        <div class="d-grid gap-3">
+                            @foreach (var planificacion in Model.Planificaciones)
+                            {
+                                <div class="border rounded p-3">
+                                    <div class="d-flex justify-content-between gap-2">
+                                        <div class="fw-semibold">@planificacion.Titulo</div>
+                                        <span class="app-badge app-badge-info">@planificacion.Estado</span>
+                                    </div>
+                                    <div class="small text-body-secondary">@planificacion.Periodo</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </section>
             </div>
         }
 
+        @if (Model.Alertas.Count > 0)
+        {
+            <div class="col-12 @(Model.Planificaciones.Count > 0 ? "col-xl-6" : "")">
+                <section class="app-card h-100" aria-labelledby="titulo-alertas">
+                    <div class="app-card-header">
+                        <h3 id="titulo-alertas" class="app-card-title">Información de seguimiento</h3>
+                    </div>
+                    <div class="app-card-body">
+                        <div class="d-grid gap-3">
+                            @foreach (var alerta in Model.Alertas)
+                            {
+                                <div class="app-panel-soft-@alerta.Clase" role="status">
+                                    <div class="fw-semibold">@alerta.Tipo</div>
+                                    <div class="small">@alerta.Mensaje</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </section>
+            </div>
+        }
     </div>
 
-    <div class="row g-4">
-
-        <div class="col-12 col-xl-8">
-
-            <div class="app-card h-100">
-
-                <div class="app-card-header">
-
-                    <h3 class="app-card-title">
-                        Seguimiento por curso
-                    </h3>
-
-                </div>
-
-                <div class="app-card-body p-0">
-
-                    <div class="table-responsive">
-
-                        <table class="table table-hover align-middle mb-0 app-table">
-
-                            <thead>
-                                <tr>
-
-                                    <th>
-                                        Curso
-                                    </th>
-
-                                    <th>
-                                        Grado / Sección
-                                    </th>
-
-                                    <th>
-                                        Docente
-                                    </th>
-
-                                    <th style="min-width: 180px;">
-                                        Progreso
-                                    </th>
-
-                                    <th class="text-center">
-                                        Pendientes
-                                    </th>
-
-                                </tr>
-                            </thead>
-
-                            <tbody>
-
-                                @foreach (var curso in Model.Cursos)
+    @if (Model.Entregas.Count > 0)
+    {
+        <section class="app-card mb-4" aria-labelledby="titulo-entregas">
+            <div class="app-card-header">
+                <h3 id="titulo-entregas" class="app-card-title">Entregas pendientes de revisión</h3>
+            </div>
+            <div class="app-card-body p-0 d-none d-md-block">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 app-table">
+                        <thead>
+                            <tr>
+                                <th>Alumno</th>
+                                <th>Tarea</th>
+                                <th>Curso</th>
+                                <th>Fecha</th>
+                                @if (puedeCalificar)
                                 {
-                                    <tr>
-
-                                        <td class="fw-semibold">
-                                            @curso.Curso
-                                        </td>
-
-                                        <td>
-                                            @curso.GradoSeccion
-                                        </td>
-
-                                        <td>
-                                            @curso.Docente
-                                        </td>
-
-                                        <td>
-
-                                            <div class="d-flex align-items-center gap-2">
-
-                                                <div class="ui-progress flex-grow-1">
-
-                                                    <div class="ui-progress-bar"
-                                                         style="width: @curso.Progreso%">
-                                                    </div>
-
-                                                </div>
-
-                                                <span class="small">
-                                                    @curso.Progreso%
-                                                </span>
-
-                                            </div>
-
-                                        </td>
-
-                                        <td class="text-center">
-
-                                            <span class="app-badge app-badge-warning">
-                                                @curso.EntregasPendientes
-                                            </span>
-
-                                        </td>
-
-                                    </tr>
+                                    <th class="text-end">Acciones</th>
                                 }
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var entrega in Model.Entregas)
+                            {
+                                <tr>
+                                    <td>@entrega.Alumno</td>
+                                    <td class="fw-semibold">@entrega.Tarea</td>
+                                    <td>@entrega.Curso</td>
+                                    <td>@entrega.Fecha</td>
+                                    @if (puedeCalificar)
+                                    {
+                                        <td class="text-end">
+                                            <a asp-controller="Entregas" asp-action="Calificar"
+                                               asp-route-id="@entrega.Id"
+                                               class="app-btn app-btn-soft-primary app-btn-sm">
+                                                Calificar
+                                            </a>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
                 </div>
-
             </div>
-
-        </div>
-
-
-        <div class="col-12 col-xl-4">
-
-            <div class="app-card h-100">
-
-                <div class="app-card-header">
-
-                    <h3 class="app-card-title">
-                        Alertas de seguimiento
-                    </h3>
-
+            <div class="app-card-body d-md-none">
+                <div class="d-grid gap-3">
+                    @foreach (var entrega in Model.Entregas)
+                    {
+                        <article class="border rounded p-3">
+                            <div class="fw-semibold">@entrega.Tarea</div>
+                            <div>@entrega.Alumno</div>
+                            <div class="small text-body-secondary mb-3">@entrega.Curso · @entrega.Fecha</div>
+                            @if (puedeCalificar)
+                            {
+                                <a asp-controller="Entregas" asp-action="Calificar"
+                                   asp-route-id="@entrega.Id"
+                                   class="app-btn app-btn-soft-primary w-100">
+                                    Calificar
+                                </a>
+                            }
+                        </article>
+                    }
                 </div>
+            </div>
+        </section>
+    }
 
-                <div class="app-card-body">
-
-                    <div class="d-grid gap-3">
-
-                        @foreach (var alerta in Model.Alertas)
-                        {
-                            <div class="app-panel-soft-@alerta.Clase">
-
-                                <div class="fw-semibold">
-                                    @alerta.Tipo
+    @if (Model.Reaperturas.Count > 0)
+    {
+        <section class="app-card mb-4" aria-labelledby="titulo-reaperturas">
+            <div class="app-card-header">
+                <h3 id="titulo-reaperturas" class="app-card-title">Reaperturas individuales vigentes</h3>
+            </div>
+            <div class="app-card-body">
+                <div class="row g-3">
+                    @foreach (var reapertura in Model.Reaperturas)
+                    {
+                        <div class="col-12 col-lg-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="fw-semibold">@reapertura.Tarea</div>
+                                <div>@reapertura.Alumno</div>
+                                <div class="small text-body-secondary">
+                                    Disponible hasta @reapertura.FechaLimite.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                 </div>
-
-                                <div class="small">
-                                    @alerta.Mensaje
-                                </div>
-
                             </div>
-                        }
-
-                    </div>
-
+                        </div>
+                    }
                 </div>
-
             </div>
+        </section>
+    }
 
-        </div>
-
-
-        <div class="col-12">
-
-            <div class="app-card">
-
-                <div class="app-card-header">
-
-                    <h3 class="app-card-title">
-                        Actividad reciente
-                    </h3>
-
-                </div>
-
-                <div class="app-card-body">
-
-                    <div class="row g-3">
-
-                        @foreach (var actividad in Model.ActividadReciente)
-                        {
-                            <div class="col-12 col-lg-6">
-
-                                <div class="d-flex gap-3 p-3 rounded border h-100">
-
-                                    <div class="app-icon-box app-icon-primary">
-
-                                        <i class="@actividad.Icono"></i>
-
-                                    </div>
-
-                                    <div class="flex-grow-1">
-
-                                        <div class="fw-semibold">
-                                            @actividad.Titulo
-                                        </div>
-
-                                        <div class="text-body-secondary small">
-                                            @actividad.Detalle
-                                        </div>
-
-                                    </div>
-
-                                    <div class="text-body-secondary small text-nowrap">
-                                        @actividad.Hace
-                                    </div>
-
+    @if (Model.ActividadReciente.Count > 0)
+    {
+        <section class="app-card mb-4" aria-labelledby="titulo-actividad">
+            <div class="app-card-header">
+                <h3 id="titulo-actividad" class="app-card-title">Actividad reciente</h3>
+            </div>
+            <div class="app-card-body">
+                <div class="row g-3">
+                    @foreach (var actividad in Model.ActividadReciente)
+                    {
+                        <div class="col-12 col-lg-6">
+                            <div class="d-flex gap-3 p-3 rounded border h-100">
+                                <div class="app-icon-box app-icon-primary">
+                                    <i class="@actividad.Icono" aria-hidden="true"></i>
                                 </div>
-
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold">@actividad.Titulo</div>
+                                    <div class="text-body-secondary small">@actividad.Detalle</div>
+                                </div>
+                                <div class="text-body-secondary small text-nowrap">@actividad.Hace</div>
                             </div>
-                        }
-
-                    </div>
-
+                        </div>
+                    }
                 </div>
-
             </div>
+        </section>
+    }
 
+    @if (Model.Accesos.Count > 0)
+    {
+        <section aria-labelledby="titulo-accesos">
+            <h3 id="titulo-accesos" class="h5 mb-3">Accesos disponibles</h3>
+            <div class="row g-3">
+                @foreach (var acceso in Model.Accesos)
+                {
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <a asp-controller="@acceso.Controlador" asp-action="@acceso.Accion"
+                           class="app-card h-100 d-block text-decoration-none text-body">
+                            <div class="app-card-body">
+                                <i class="@acceso.Icono fs-3 text-primary" aria-hidden="true"></i>
+                                <div class="fw-semibold mt-2">@acceso.Titulo</div>
+                                <div class="small text-body-secondary">@acceso.Descripcion</div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+    else if (Model.Tipo == "inicio" && Model.Contextos.Count == 0)
+    {
+        <div class="alert alert-info" role="status">
+            Su cuenta no tiene módulos de consulta asignados. Contacte al administrador si necesita acceso.
         </div>
-
-    </div>
-
+    }
 </div>

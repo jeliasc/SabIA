@@ -1,0 +1,199 @@
+@model IEnumerable<Proyecto_Final.ViewModels.Unidades.UnidadLista>
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@inject IAuthorizationService A
+
+@{
+    ViewData["Title"] = "Unidades";
+
+    var c = (await A.AuthorizeAsync(
+        User,
+        Permisos.Unidades.Crear
+    )).Succeeded;
+
+    var e = (await A.AuthorizeAsync(
+        User,
+        Permisos.Unidades.Editar
+    )).Succeeded;
+
+    var p = (await A.AuthorizeAsync(
+        User,
+        Permisos.Unidades.Publicar
+    )).Succeeded;
+    var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
+    var hayAcciones = !soloLectura && (e || p);
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                Unidades
+            </h2>
+
+            <p class="text-muted mb-0">
+                Organización y liberación progresiva del contenido académico.
+            </p>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+        @if (!soloLectura && c)
+        {
+            <a asp-action="Crear" class="app-btn app-btn-soft-primary">
+                Nueva unidad
+            </a>
+        }
+            <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-secondary">
+                @(soloLectura ? "Ver vigentes" : "Ver historial")
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border border-secondary d-none d-md-block">
+        <div class="card-body">
+            <table class="table app-table w-100" data-tabla-index
+                   data-actions-column="@(hayAcciones ? "true" : "false")">
+                <thead>
+                    <tr>
+                        <th>Orden</th>
+                        <th>Unidad</th>
+                        <th>Curso</th>
+                        <th>Sección</th>
+                        <th>Materiales</th>
+                        <th>Estado</th>
+                        @if (hayAcciones)
+                        {
+                            <th>Acciones</th>
+                        }
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var x in Model)
+                    {
+                        <tr>
+                            <td>@x.Orden</td>
+
+                            <td class="fw-semibold">
+                                @x.Titulo
+                            </td>
+
+                            <td>@x.Curso</td>
+
+                            <td>@x.Seccion</td>
+
+                            <td>@x.Materiales</td>
+
+                            @if (hayAcciones)
+                            {
+                            <td>
+                                <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                                      ? "app-badge-success"
+                                      : "app-badge-secondary")">
+                                    @x.Estado
+                                </span>
+                            </td>
+                            }
+
+                            <td>
+                                <div class="app-actions app-actions-table">
+                                    @if (e)
+                                    {
+                                        <a asp-action="Editar" asp-route-id="@x.UnidadAsignacionId"
+                                           class="app-btn app-btn-soft-secondary app-btn-sm">
+                                            Editar
+                                        </a>
+                                    }
+
+                                    @if (p)
+                                    {
+                                        <form asp-action="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                                              ? "Ocultar"
+                                              : "Publicar")" asp-route-id="@x.UnidadAsignacionId" method="post"
+                                              data-confirmar-accion-academica
+                                              data-confirmar-titulo="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "Ocultar unidad" : "Publicar unidad")"
+                                              data-confirmar-mensaje="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "La unidad dejará de estar disponible para los alumnos." : "La unidad quedará disponible para los alumnos autorizados.")"
+                                              data-confirmar-texto="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "Ocultar" : "Publicar")"
+                                              data-confirmar-color="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "#dc3545" : "#198754")">
+                                            @Html.AntiForgeryToken()
+
+                                            <button class="app-btn @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                                                    ? "app-btn-soft-danger"
+                                                    : "app-btn-soft-success") app-btn-sm">
+                                                @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                                                    ? "Ocultar"
+                                                    : "Publicar")
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-md-none">
+        @foreach (var x in Model)
+        {
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between gap-2">
+                        <div class="fw-bold">
+                            @x.Orden. @x.Titulo
+                        </div>
+
+                        <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                              ? "app-badge-success"
+                              : "app-badge-secondary")">
+                            @x.Estado
+                        </span>
+                    </div>
+
+                    <div class="text-muted mb-3">
+                        @x.Curso · @x.Seccion
+                    </div>
+
+                    @if (!soloLectura && e)
+                    {
+                        <a asp-action="Editar" asp-route-id="@x.UnidadAsignacionId"
+                           class="app-btn app-btn-soft-secondary w-100 mb-2">
+                            Editar
+                        </a>
+                    }
+
+                    @if (!soloLectura && p)
+                    {
+                        <form asp-action="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                              ? "Ocultar"
+                              : "Publicar")" asp-route-id="@x.UnidadAsignacionId" method="post"
+                              data-confirmar-accion-academica
+                              data-confirmar-titulo="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "Ocultar unidad" : "Publicar unidad")"
+                              data-confirmar-mensaje="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "La unidad dejará de estar disponible para los alumnos." : "La unidad quedará disponible para los alumnos autorizados.")"
+                              data-confirmar-texto="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "Ocultar" : "Publicar")"
+                              data-confirmar-color="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "#dc3545" : "#198754")">
+                            @Html.AntiForgeryToken()
+
+                            <button class="app-btn @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                                    ? "app-btn-soft-danger"
+                                    : "app-btn-soft-success") w-100">
+                                @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                                    ? "Ocultar"
+                                    : "Publicar")
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+}

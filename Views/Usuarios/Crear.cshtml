@@ -168,64 +168,62 @@
                                 <label asp-for="Rol" class="form-label">
                                 </label>
 
-                                <select asp-for="Rol" class="form-select">
+                                <select asp-for="Rol" class="form-select" data-select-busqueda
+                                        data-search-placeholder="Buscar rol...">
+                                    Seleccione un rol
 
-                                    <option value="">
-                                        Seleccione un rol
+                                @foreach (var rol in rolesDisponibles)
+                                {
+                                    <option value="@rol">
+                                        @rol
                                     </option>
+                                }
 
-                                    @foreach (var rol in rolesDisponibles)
-                                    {
-                                        <option value="@rol">
-                                            @rol
-                                        </option>
-                                    }
+                            </select>
 
-                                </select>
-
-                                <span asp-validation-for="Rol" class="text-danger small">
-                                </span>
-
-                            </div>
+                            <span asp-validation-for="Rol" class="text-danger small">
+                            </span>
 
                         </div>
 
-                        <div class="app-alert app-alert-primary" role="alert">
+                    </div>
 
-                            El sistema generará automáticamente una
-                            contraseña temporal. El usuario deberá
-                            cambiarla en su primer inicio de sesión.
+                    <div class="app-alert app-alert-primary" role="alert">
 
-                        </div>
+                        El sistema generará automáticamente una
+                        contraseña temporal. El usuario deberá
+                        cambiarla en su primer inicio de sesión.
 
-                        <div class="d-flex flex-column
-                            flex-sm-row
-                            justify-content-end
-                            gap-2 mt-4">
+                    </div>
 
-                            <a asp-controller="Usuarios" asp-action="Index" class="app-btn app-btn-soft-secondary">
+                    <div class="d-flex flex-column
+                        flex-sm-row
+                        justify-content-end
+                        gap-2 mt-4">
 
-                                Cancelar
+                        <a asp-controller="Usuarios" asp-action="Index" class="app-btn app-btn-soft-secondary">
 
-                            </a>
+                            Cancelar
 
-                            <button type="submit" class="app-btn app-btn-soft-primary">
+                        </a>
 
-                                Crear usuario
+                        <button type="submit" class="app-btn app-btn-soft-primary">
 
-                            </button>
+                            Crear usuario
 
-                        </div>
+                        </button>
 
-                    </form>
+                    </div>
 
-                </div>
+                </form>
 
             </div>
 
         </div>
 
     </div>
+
+</div>
 
 </div>
 

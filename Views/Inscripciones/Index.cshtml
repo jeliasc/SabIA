@@ -1,0 +1,186 @@
+@model IEnumerable<Proyecto_Final.ViewModels.Inscripciones.InscripcionLista>
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@inject IAuthorizationService A
+
+@{
+    ViewData["Title"] = "Inscripciones";
+
+    var c = (await A.AuthorizeAsync(
+        User,
+        Permisos.Inscripciones.Crear
+    )).Succeeded;
+
+    var t = (await A.AuthorizeAsync(
+        User,
+        Permisos.Inscripciones.Trasladar
+    )).Succeeded;
+
+    var ce = (await A.AuthorizeAsync(
+        User,
+        Permisos.Inscripciones.CambiarEstado
+    )).Succeeded;
+
+    var hayAcciones = t || ce;
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                Inscripciones
+            </h2>
+
+            <p class="text-muted mb-0">
+                Inscripción académica de alumnos por ciclo y sección.
+            </p>
+        </div>
+
+        @if (c)
+        {
+            <a asp-action="Crear" class="app-btn app-btn-soft-primary">
+                Nueva inscripción
+            </a>
+        }
+    </div>
+
+    <div class="card shadow-sm border border-secondary d-none d-md-block">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table app-table w-100" data-tabla-index
+                       data-actions-column="@(hayAcciones ? "true" : "false")"
+                       data-search-placeholder="Alumno, ciclo o sección...">
+                    <thead>
+                        <tr>
+                            <th>Alumno</th>
+                            <th>Ciclo</th>
+                            <th>Sección</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            @if (hayAcciones)
+                            {
+                                <th>Acciones</th>
+                            }
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var x in Model)
+                        {
+                            <tr>
+                                <td class="fw-semibold">
+                                    @x.Alumno
+                                </td>
+
+                                <td>@x.Ciclo</td>
+
+                                <td>@x.Seccion</td>
+
+                                <td>
+                                    @x.Fecha.ToString("dd/MM/yyyy")
+                                </td>
+
+                                <td>
+                                    <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoInscripcion.Activa
+                                          ? "app-badge-success"
+                                          : "app-badge-secondary")">
+                                        @x.Estado
+                                    </span>
+                                </td>
+
+                                @if (hayAcciones)
+                                {
+                                    <td>
+                                        <div class="app-actions app-actions-table">
+                                        @if (t &&
+                                            x.Estado == Proyecto_Final.Models.EstadoInscripcion.Activa)
+                                        {
+                                            <a asp-action="Trasladar" asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Trasladar
+                                            </a>
+                                        }
+
+                                        @if (ce &&
+                                            x.Estado == Proyecto_Final.Models.EstadoInscripcion.Activa)
+                                        {
+                                            <form asp-action="Retirar" asp-route-id="@x.Id" method="post"
+                                                  data-retirar-inscripcion>
+                                                @Html.AntiForgeryToken()
+
+                                                <button class="app-btn app-btn-soft-danger app-btn-sm">
+                                                    Retirar
+                                                </button>
+                                            </form>
+                                        }
+                                        </div>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-md-none">
+        @if (!Model.Any())
+        {
+            <div class="alert alert-info" role="status">
+                No existen inscripciones para mostrar.
+            </div>
+        }
+
+        @foreach (var x in Model)
+        {
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div class="fw-bold">
+                            @x.Alumno
+                        </div>
+
+                        <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoInscripcion.Activa
+                              ? "app-badge-success"
+                              : "app-badge-secondary")">
+                            @x.Estado
+                        </span>
+                    </div>
+
+                    <div class="text-muted mb-3">
+                        @x.Ciclo · @x.Seccion
+                    </div>
+
+                    @if (t &&
+                        x.Estado == Proyecto_Final.Models.EstadoInscripcion.Activa)
+                    {
+                        <a asp-action="Trasladar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary w-100 mb-2">
+                            Trasladar
+                        </a>
+                    }
+
+                    @if (ce &&
+                        x.Estado == Proyecto_Final.Models.EstadoInscripcion.Activa)
+                    {
+                        <form asp-action="Retirar" asp-route-id="@x.Id" method="post"
+                              data-retirar-inscripcion>
+                            @Html.AntiForgeryToken()
+
+                            <button class="app-btn app-btn-soft-danger w-100">
+                                Retirar
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="~/js/inscripciones.js" asp-append-version="true"></script>
+}

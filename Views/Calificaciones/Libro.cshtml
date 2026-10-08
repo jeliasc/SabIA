@@ -1,0 +1,220 @@
+@using System.Globalization
+@model Proyecto_Final.ViewModels.Calificaciones.LibroCalificaciones
+
+@{
+    ViewData["Title"] = "Libro de calificaciones";
+    string Numero(decimal valor) => valor.ToString("0.####", CultureInfo.InvariantCulture);
+    string Nota(decimal? valor) => valor?.ToString("0.####", CultureInfo.InvariantCulture) ?? string.Empty;
+}
+
+<div class="container-fluid" data-libro-calificaciones data-metodo="@((int)Model.MetodoCalculo)">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Libro de calificaciones</h2>
+            <p class="text-muted mb-0">@Model.Curso · @Model.GradoSeccion · @Model.Periodo · @Model.Ciclo</p>
+        </div>
+        <div class="app-actions flex-wrap align-self-lg-start">
+            <span class="app-badge @(Model.EstadoCierre == EstadoCierreCalificaciones.Cerrado ? "app-badge-secondary" : "app-badge-success")">
+                @Model.EstadoCierre
+            </span>
+            <a asp-action="Abacus" asp-route-id="@Model.ConfiguracionId"
+               class="app-btn app-btn-soft-secondary">Resumen Abacus</a>
+            <a asp-action="Index" class="app-btn app-btn-soft-secondary">Regresar</a>
+        </div>
+    </div>
+
+    @if (Model.Actividades.Count == 0)
+    {
+        <div class="app-alert app-alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <div>La configuración no contiene actividades evaluables.</div>
+        </div>
+    }
+    else if (Model.Alumnos.Count == 0)
+    {
+        <div class="app-alert app-alert-info" role="status">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+            <div>No existen alumnos autorizados para este libro de calificaciones.</div>
+        </div>
+    }
+    else
+    {
+        <div class="d-none d-lg-block">
+            <form asp-action="Guardar" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ConfiguracionId" value="@Model.ConfiguracionId" />
+                <div class="card shadow-sm border border-secondary">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table app-table align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th class="text-nowrap">Código MINEDUC</th>
+                                        <th class="text-nowrap">Alumno</th>
+                                        @foreach (var actividad in Model.Actividades)
+                                        {
+                                            <th class="text-center">
+                                                <div class="small text-muted">@actividad.Categoria</div>
+                                                <div class="text-nowrap">@actividad.Nombre</div>
+                                                <div class="small fw-normal">/@Numero(actividad.PunteoMaximo)</div>
+                                            </th>
+                                        }
+                                        <th class="text-center">Desempeño</th>
+                                        <th class="text-center">Actitudinal</th>
+                                        <th class="text-center">Total</th>
+                                        <th class="text-center">Pendientes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (var filaIndice = 0; filaIndice < Model.Alumnos.Count; filaIndice++)
+                                    {
+                                        var fila = Model.Alumnos[filaIndice];
+                                        <tr data-fila-calificacion>
+                                            <td class="text-nowrap">@fila.CodigoPersonal</td>
+                                            <td class="fw-semibold text-nowrap">@fila.Alumno</td>
+                                            @for (var actividadIndice = 0; actividadIndice < Model.Actividades.Count; actividadIndice++)
+                                            {
+                                                var actividad = Model.Actividades[actividadIndice];
+                                                var celda = fila.Calificaciones.First(x => x.ActividadId == actividad.Id);
+                                                <td class="text-center"
+                                                    data-calificacion data-actividad-id="@actividad.Id"
+                                                    data-categoria-id="@actividad.CategoriaId"
+                                                    data-tipo="@((int)actividad.TipoCategoria)"
+                                                    data-porcentaje="@Numero(actividad.PorcentajeCategoria)"
+                                                    data-maximo-categoria="@Numero(actividad.MaximoCategoria)"
+                                                    data-maximo="@Numero(actividad.PunteoMaximo)"
+                                                    data-nota-valor="@Nota(celda.Nota)">
+                                                    @if (Model.PuedeEditar && !celda.EsAutomatica)
+                                                    {
+                                                        var notaIndice = Model.Actividades
+                                                            .Where(x => !x.EsAutomatica).ToList().IndexOf(actividad) +
+                                                            filaIndice * Model.Actividades.Count(x => !x.EsAutomatica);
+                                                        <input type="hidden" name="Notas[@notaIndice].ActividadId" value="@actividad.Id" />
+                                                        <input type="hidden" name="Notas[@notaIndice].InscripcionId" value="@fila.InscripcionId" />
+                                                        <input type="number" name="Notas[@notaIndice].Nota" value="@Nota(celda.Nota)"
+                                                               min="0" max="@Numero(actividad.PunteoMaximo)" step="0.01"
+                                                               class="form-control form-control-sm text-end" aria-label="@actividad.Nombre de @fila.Alumno"
+                                                               data-entrada-nota />
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="@(celda.Nota.HasValue ? "fw-semibold" : "text-muted")">
+                                                            @(celda.Nota.HasValue ? Numero(celda.Nota.Value) : "Pendiente")
+                                                        </span>
+                                                        @if (celda.EsAutomatica)
+                                                        {
+                                                            <span class="d-block text-muted small">Automática</span>
+                                                        }
+                                                    }
+                                                </td>
+                                            }
+                                            <td class="text-center fw-semibold" data-resumen="desempeno">@Numero(fila.Desempeno)</td>
+                                            <td class="text-center fw-semibold" data-resumen="actitudinal">@Numero(fila.Actitudinal)</td>
+                                            <td class="text-center fw-bold" data-resumen="total">@Numero(fila.NotaBimestral)</td>
+                                            <td class="text-center" data-resumen="pendientes">@fila.Pendientes</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                @if (Model.PuedeEditar)
+                {
+                    <div class="d-flex justify-content-end mt-3">
+                        <button type="submit" class="app-btn app-btn-soft-primary">Guardar calificaciones</button>
+                    </div>
+                }
+            </form>
+        </div>
+
+        <div class="d-lg-none">
+            <form asp-action="Guardar" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ConfiguracionId" value="@Model.ConfiguracionId" />
+                @{ var indiceMovil = 0; }
+                @foreach (var fila in Model.Alumnos)
+                {
+                    <article class="card shadow-sm border border-secondary mb-3" data-fila-calificacion>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between gap-2 mb-3">
+                                <div>
+                                    <h5 class="fw-bold mb-1">@fila.Alumno</h5>
+                                    <div class="text-muted small">Código MINEDUC: @fila.CodigoPersonal</div>
+                                </div>
+                                <span class="app-badge @(fila.Pendientes == 0 ? "app-badge-success" : "app-badge-warning")"
+                                      data-resumen="pendientes">@fila.Pendientes pendientes</span>
+                            </div>
+                            <div class="row g-3">
+                                @foreach (var actividad in Model.Actividades)
+                                {
+                                    var celda = fila.Calificaciones.First(x => x.ActividadId == actividad.Id);
+                                    <div class="col-12" data-calificacion data-actividad-id="@actividad.Id"
+                                         data-categoria-id="@actividad.CategoriaId"
+                                         data-tipo="@((int)actividad.TipoCategoria)"
+                                         data-porcentaje="@Numero(actividad.PorcentajeCategoria)"
+                                         data-maximo-categoria="@Numero(actividad.MaximoCategoria)"
+                                         data-maximo="@Numero(actividad.PunteoMaximo)"
+                                         data-nota-valor="@Nota(celda.Nota)">
+                                        <label class="form-label">@actividad.Categoria · @actividad.Nombre <span class="text-muted">/@Numero(actividad.PunteoMaximo)</span></label>
+                                        @if (Model.PuedeEditar && !celda.EsAutomatica)
+                                        {
+                                            <input type="hidden" name="Notas[@indiceMovil].ActividadId" value="@actividad.Id" />
+                                            <input type="hidden" name="Notas[@indiceMovil].InscripcionId" value="@fila.InscripcionId" />
+                                            <input type="number" name="Notas[@indiceMovil].Nota" value="@Nota(celda.Nota)"
+                                                   min="0" max="@Numero(actividad.PunteoMaximo)" step="0.01"
+                                                   class="form-control" aria-label="@actividad.Nombre de @fila.Alumno"
+                                                   data-entrada-nota />
+                                            indiceMovil++;
+                                        }
+                                        else
+                                        {
+                                            <div class="form-control bg-body-tertiary">
+                                                @(celda.Nota.HasValue ? Numero(celda.Nota.Value) : "Pendiente")
+                                                @if (celda.EsAutomatica) { <span class="text-muted small">· Automática</span> }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <hr />
+                            <div class="row g-2 small">
+                                <div class="col-6">Desempeño: <strong data-resumen="desempeno">@Numero(fila.Desempeno)</strong></div>
+                                <div class="col-6">Actitudinal: <strong data-resumen="actitudinal">@Numero(fila.Actitudinal)</strong></div>
+                                <div class="col-12">Nota bimestral: <strong data-resumen="total">@Numero(fila.NotaBimestral)</strong></div>
+                            </div>
+                        </div>
+                    </article>
+                }
+                @if (Model.PuedeEditar)
+                {
+                    <div class="d-grid">
+                        <button type="submit" class="app-btn app-btn-soft-primary">Guardar calificaciones</button>
+                    </div>
+                }
+            </form>
+        </div>
+
+        @if (Model.PuedeCerrar)
+        {
+            <form asp-action="Cerrar" asp-route-id="@Model.ConfiguracionId" method="post"
+                  class="d-flex justify-content-end mt-4"
+                  data-confirmar-accion-academica
+                  data-confirmar-titulo="Cerrar período"
+                  data-confirmar-mensaje="El cierre congelará los resultados bimestrales. Las correcciones posteriores requerirán autorización."
+                  data-confirmar-texto="Cerrar período"
+                  data-confirmar-color="#dc3545">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="app-btn app-btn-soft-danger">Cerrar período</button>
+            </form>
+        }
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+    <script src="~/js/calificaciones-libro.js" asp-append-version="true"></script>
+}

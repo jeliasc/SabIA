@@ -15,6 +15,10 @@ public class CalificacionManual
 
     public Alumno Alumno { get; set; } = null!;
 
+    public int? InscripcionId { get; set; }
+
+    public Inscripcion? Inscripcion { get; set; }
+
     public EstadoCalificacionManual Estado { get; set; } = EstadoCalificacionManual.Pendiente;
 
     [Precision(9, 2)]

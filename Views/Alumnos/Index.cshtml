@@ -1,0 +1,207 @@
+@model IEnumerable<Proyecto_Final.ViewModels.Alumnos.AlumnoLista>
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@inject IAuthorizationService Autorizacion
+
+@{
+    ViewData["Title"] = "Alumnos";
+    var puedeVer = (await Autorizacion.AuthorizeAsync(User, Permisos.Alumnos.Ver)).Succeeded;
+    var puedeCrear = (await Autorizacion.AuthorizeAsync(User, Permisos.Alumnos.Crear)).Succeeded;
+    var puedeEditar = (await Autorizacion.AuthorizeAsync(User, Permisos.Alumnos.Editar)).Succeeded;
+    var puedeCambiarEstado = (await Autorizacion.AuthorizeAsync(User, Permisos.Alumnos.CambiarEstado)).Succeeded;
+    var hayAlumnos = Model.Any();
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Alumnos</h2>
+            <p class="text-muted mb-0">Registro y seguimiento de estudiantes.</p>
+        </div>
+
+        @if (puedeCrear)
+        {
+            <div class="d-grid d-md-block">
+                <a asp-action="Crear" class="app-btn app-btn-soft-primary">Nuevo alumno</a>
+            </div>
+        }
+    </div>
+
+    @if (hayAlumnos)
+    {
+        <div class="d-md-none mb-3">
+            <div class="d-grid">
+                <button type="button" class="app-btn app-btn-secondary"
+                        aria-expanded="false" aria-controls="busqueda-alumnos-movil"
+                        data-mostrar-busqueda-alumnos>
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    Buscar alumno
+                </button>
+            </div>
+            <div id="busqueda-alumnos-movil" class="mt-2 d-none" data-contenedor-busqueda-alumnos>
+                <input type="search" class="form-control"
+                       placeholder="Código, nombre, correo, sección, ciclo o estado..."
+                       aria-label="Buscar alumnos" autocomplete="off" data-busqueda-alumnos />
+            </div>
+        </div>
+    }
+
+    <div class="card shadow-sm border border-secondary d-none d-md-block">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table app-table w-100" data-tabla-index data-actions-column="true"
+                       data-search-placeholder="Código, nombre, correo, sección, ciclo o estado..."
+                       data-empty-message="No existen alumnos registrados"
+                       data-zero-message="No se encontraron alumnos">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Alumno</th>
+                            <th>Grado / sección</th>
+                            <th class="dt-head-left">Ciclo</th>
+                            <th class="dt-head-left">Encargados</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var alumno in Model)
+                        {
+                            <tr>
+                                <td>@alumno.CodigoPersonal</td>
+                                <td>
+                                    <div class="fw-semibold">@alumno.NombreCompleto</div>
+                                    <div class="text-muted small text-break">@alumno.Correo</div>
+                                </td>
+                                <td>@alumno.GradoSeccion</td>
+                                <td>@(alumno.Ciclo?.ToString() ?? "—")</td>
+                                <td>@alumno.Encargados</td>
+                                <td>
+                                    <span class="app-badge @(alumno.Activo ? "app-badge-success" : "app-badge-danger")">
+                                        @(alumno.Activo ? "Activo" : "Inactivo")
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="app-actions app-actions-table">
+                                        @if (puedeVer)
+                                        {
+                                            <a asp-action="Ver" asp-route-id="@alumno.Id"
+                                               class="app-btn-icon" title="Ver alumno"
+                                               aria-label="Ver alumno @alumno.NombreCompleto">
+                                                <i class="bi bi-eye" aria-hidden="true"></i>
+                                            </a>
+                                        }
+
+                                        @if (puedeEditar)
+                                        {
+                                            <a asp-action="Editar" asp-route-id="@alumno.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">Editar</a>
+                                        }
+
+                                        @if (puedeCambiarEstado)
+                                        {
+                                            <form asp-action="@(alumno.Activo ? "Desactivar" : "Activar")"
+                                                  asp-route-id="@alumno.Id" method="post" class="m-0"
+                                                  data-cambiar-estado-alumno
+                                                  data-accion="@(alumno.Activo ? "desactivar" : "activar")">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit"
+                                                        class="app-btn @(alumno.Activo ? "app-btn-soft-danger" : "app-btn-soft-success") app-btn-sm">
+                                                    @(alumno.Activo ? "Desactivar" : "Activar")
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-md-none" data-contenedor-alumnos-movil>
+        @foreach (var alumno in Model)
+        {
+            var ciclo = alumno.Ciclo?.ToString() ?? "Sin ciclo vigente";
+            var estado = alumno.Activo ? "Activo" : "Inactivo";
+            var busqueda = $"{alumno.CodigoPersonal} {alumno.NombreCompleto} {alumno.Correo} " +
+                $"{alumno.GradoSeccion} {ciclo} {alumno.Encargados} {estado}";
+
+            <div class="card shadow-sm border-0 mb-3" data-alumno data-texto-busqueda="@busqueda">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                        <div>
+                            <div class="fw-bold fs-5">@alumno.NombreCompleto</div>
+                            <div class="text-muted small">@alumno.CodigoPersonal</div>
+                        </div>
+                        <span class="app-badge @(alumno.Activo ? "app-badge-success" : "app-badge-danger")">
+                            @estado
+                        </span>
+                    </div>
+
+                    <div class="small text-muted">Correo</div>
+                    <div class="text-break mb-3">@alumno.Correo</div>
+
+                    <div class="small text-muted">Grado / sección</div>
+                    <div class="mb-3">@alumno.GradoSeccion</div>
+
+                    <div class="row g-2 mb-4">
+                        <div class="col-6">
+                            <div class="small text-muted">Ciclo</div>
+                            <div>@ciclo</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Encargados</div>
+                            <div>@alumno.Encargados</div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        @if (puedeVer)
+                        {
+                            <a asp-action="Ver" asp-route-id="@alumno.Id"
+                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                <i class="bi bi-eye" aria-hidden="true"></i>
+                                Ver
+                            </a>
+                        }
+
+                        @if (puedeEditar)
+                        {
+                            <a asp-action="Editar" asp-route-id="@alumno.Id"
+                               class="app-btn app-btn-soft-secondary">Editar</a>
+                        }
+
+                        @if (puedeCambiarEstado)
+                        {
+                            <form asp-action="@(alumno.Activo ? "Desactivar" : "Activar")"
+                                  asp-route-id="@alumno.Id" method="post"
+                                  data-cambiar-estado-alumno
+                                  data-accion="@(alumno.Activo ? "desactivar" : "activar")">
+                                @Html.AntiForgeryToken()
+                                <button type="submit"
+                                        class="app-btn @(alumno.Activo ? "app-btn-soft-danger" : "app-btn-soft-success") w-100">
+                                    @(alumno.Activo ? "Desactivar" : "Activar")
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="app-card @(hayAlumnos ? "d-none" : null)" data-alumnos-sin-resultados role="status">
+            <div class="app-card-body text-center text-muted">
+                @(hayAlumnos ? "No se encontraron alumnos." : "No existen alumnos registrados.")
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/alumnos.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,116 @@
+@model IEnumerable<Proyecto_Final.ViewModels.Cuestionarios.CuestionarioLista>
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@inject IAuthorizationService A
+
+@{
+    ViewData["Title"] = "Cuestionarios";
+
+    var editar = (await A.AuthorizeAsync(
+        User,
+        Permisos.Cuestionarios.Editar
+    )).Succeeded;
+
+    var resolver = (await A.AuthorizeAsync(
+        User,
+        Permisos.Cuestionarios.Resolver
+    )).Succeeded;
+    var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
+    var hayAcciones = !soloLectura && (editar || resolver);
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+        <div>
+        <h2 class="fw-bold mb-1">
+            Cuestionarios
+        </h2>
+
+        <p class="text-muted mb-0">
+            Cuestionarios manuales o generados con apoyo de IA.
+        </p>
+        </div>
+        <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-secondary">
+            @(soloLectura ? "Ver vigentes" : "Ver historial")
+        </a>
+    </div>
+
+    <div class="card shadow-sm border border-secondary">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table app-table w-100"
+                       data-tabla-index
+                       data-actions-column="@(hayAcciones ? "true" : "false")">
+                    <thead>
+                        <tr>
+                            <th>Cuestionario</th>
+                            <th>Curso</th>
+                            <th>Preguntas</th>
+                            <th>Intentos</th>
+                            <th>Origen</th>
+                            <th>Estado</th>
+                            @if (hayAcciones)
+                            {
+                                <th>Acciones</th>
+                            }
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var x in Model)
+                        {
+                            <tr>
+                                <td class="fw-semibold">
+                                    @x.Tarea
+                                </td>
+
+                                <td>@x.Curso</td>
+
+                                <td>@x.Preguntas</td>
+
+                                @if (hayAcciones)
+                                {
+                                <td>
+                                    @(x.MaximoIntentos == 0
+                                        ? "Sin límite"
+                                        : x.MaximoIntentos)
+                                </td>
+                                }
+
+                                <td>@x.Origen</td>
+
+                                <td>@x.EstadoTarea</td>
+
+                                <td>
+                                    <div class="app-actions app-actions-table">
+                                        @if (editar &&
+                                            x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Borrador)
+                                        {
+                                            <a asp-action="AgregarPregunta"
+                                               asp-route-cuestionarioId="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Preguntas
+                                            </a>
+                                        }
+
+                                        @if (resolver &&
+                                            x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Publicada)
+                                        {
+                                            <a asp-action="Resolver"
+                                               asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-primary app-btn-sm">
+                                                Resolver
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -20,6 +20,8 @@ public class Material
 
     public TipoMaterial Tipo { get; set; }
 
+    public EstadoPublicacionMaterial Estado { get; set; } = EstadoPublicacionMaterial.Borrador;
+
     [Required]
     [StringLength(200)]
     public string Titulo { get; set; } = string.Empty;
