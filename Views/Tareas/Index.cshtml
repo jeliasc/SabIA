@@ -100,8 +100,6 @@
 
                                 <td>@x.Tipo</td>
 
-                                @if (hayAcciones)
-                                {
                                 <td>
                                     @(x.Limite?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Sin límite")
                                 </td>
@@ -119,63 +117,62 @@
                                         @x.Estado
                                     </span>
                                 </td>
+                                @if (hayAcciones)
+                                {
+                                    <td>
+                                        <div class="app-actions app-actions-table">
+                                            @if (e &&
+                                                x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador)
+                                            {
+                                                <a asp-action="Editar" asp-route-id="@x.Id"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                    Editar
+                                                </a>
+                                            }
 
-                                <td>
-                                    <div class="app-actions app-actions-table">
-                                        @if (e &&
-                                            x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador)
-                                        {
-                                            <a asp-action="Editar" asp-route-id="@x.Id"
-                                               class="app-btn app-btn-soft-secondary app-btn-sm">
-                                                Editar
-                                            </a>
-                                        }
+                                            @if (cuest &&
+                                                x.Tipo == Proyecto_Final.Models.TipoTarea.Cuestionario &&
+                                                x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador)
+                                            {
+                                                <a asp-controller="Cuestionarios" asp-action="Configurar" asp-route-tareaId="@x.Id"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                    Cuestionario
+                                                </a>
+                                            }
 
-                                        @if (cuest &&
-                                            x.Tipo == Proyecto_Final.Models.TipoTarea.Cuestionario &&
-                                            x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador)
-                                        {
-                                            <a asp-controller="Cuestionarios" asp-action="Configurar" asp-route-tareaId="@x.Id"
-                                               class="app-btn app-btn-soft-secondary app-btn-sm">
-                                                Cuestionario
-                                            </a>
-                                        }
+                                            @if (p &&
+                                                x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador)
+                                            {
+                                                <form asp-action="Publicar" asp-route-id="@x.Id" method="post"
+                                                      data-confirmar-accion-academica data-confirmar-titulo="Publicar tarea"
+                                                      data-confirmar-mensaje="La tarea se habilitará para los alumnos vigentes de la sección."
+                                                      data-confirmar-texto="Publicar" data-confirmar-color="#198754">
+                                                    @Html.AntiForgeryToken()
 
-                                        @if (p &&
-                                            x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador)
-                                        {
-                                            <form asp-action="Publicar" asp-route-id="@x.Id" method="post"
-                                                  data-confirmar-accion-academica
-                                                  data-confirmar-titulo="Publicar tarea"
-                                                  data-confirmar-mensaje="La tarea se habilitará para los alumnos vigentes de la sección."
-                                                  data-confirmar-texto="Publicar"
-                                                  data-confirmar-color="#198754">
-                                                @Html.AntiForgeryToken()
+                                                    <button class="app-btn app-btn-soft-success app-btn-sm">
+                                                        Publicar
+                                                    </button>
+                                                </form>
+                                            }
 
-                                                <button class="app-btn app-btn-soft-success app-btn-sm">
-                                                    Publicar
-                                                </button>
-                                            </form>
-                                        }
+                                            @if (cerrar &&
+                                                x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada)
+                                            {
+                                                <form asp-action="Cerrar" asp-route-id="@x.Id" method="post"
+                                                      data-confirmar-accion-academica data-confirmar-titulo="Cerrar tarea"
+                                                      data-confirmar-mensaje="Los alumnos ya no podrán realizar entregas ordinarias para esta tarea."
+                                                      data-confirmar-texto="Cerrar">
+                                                    @Html.AntiForgeryToken()
 
-                                        @if (cerrar &&
-                                            x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada)
-                                        {
-                                            <form asp-action="Cerrar" asp-route-id="@x.Id" method="post"
-                                                  data-confirmar-accion-academica
-                                                  data-confirmar-titulo="Cerrar tarea"
-                                                  data-confirmar-mensaje="Los alumnos ya no podrán realizar entregas ordinarias para esta tarea."
-                                                  data-confirmar-texto="Cerrar">
-                                                @Html.AntiForgeryToken()
-
-                                                <button class="app-btn app-btn-soft-danger app-btn-sm">
-                                                    Cerrar
-                                                </button>
-                                            </form>
-                                        }
-                                    </div>
-                                </td>
+                                                    <button class="app-btn app-btn-soft-danger app-btn-sm">
+                                                        Cerrar
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </td>
                                 }
+                                
                             </tr>
                         }
                     </tbody>
