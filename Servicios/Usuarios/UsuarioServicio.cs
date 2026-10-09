@@ -661,14 +661,6 @@ public class UsuarioServicio : IUsuarioServicio
                 usuario
             );
 
-        if (false)
-        {
-            return ResultadoUsuario<EditarUsuario>
-                .Error(
-                    "El usuario no tiene una configuración de rol válida."
-                );
-        }
-
         var configuracionRolValida =
             rolesUsuario.Count == 1 &&
             await EsRolActivoAsync(rolesUsuario[0]);
@@ -811,15 +803,6 @@ public class UsuarioServicio : IUsuarioServicio
             await administradorUsuarios.GetRolesAsync(
                 usuario
             );
-
-        if (false)
-        {
-            return ResultadoUsuario<bool>
-                .Validacion(
-                    string.Empty,
-                    "El usuario no tiene una configuración de rol válida."
-                );
-        }
 
         var rolActual =
             rolesUsuario.Count == 1
