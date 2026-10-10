@@ -14,6 +14,7 @@ public class Contexto
     }
     public DbSet<PermisoSistema> PermisosSistema =>
         Set<PermisoSistema>();
+    public DbSet<RegistroAuditoria> RegistrosAuditoria => Set<RegistroAuditoria>();
 
     public DbSet<Docente> Docentes =>
         Set<Docente>();
@@ -27,6 +28,9 @@ public class Contexto
 
     public DbSet<CicloEscolar> CiclosEscolares =>
         Set<CicloEscolar>();
+
+    public DbSet<MovimientoCicloEscolar> MovimientosCiclosEscolares =>
+        Set<MovimientoCicloEscolar>();
 
     public DbSet<Periodo> Periodos =>
         Set<Periodo>();
@@ -150,6 +154,31 @@ public class Contexto
     ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.Entity<RegistroAuditoria>().HasIndex(x => x.FechaUtc);
+        builder.Entity<RegistroAuditoria>().HasIndex(x => new { x.UsuarioId, x.FechaUtc });
+        builder.Entity<RegistroAuditoria>().HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<CicloEscolar>()
+            .HasIndex(x => x.Activo)
+            .IsUnique()
+            .HasFilter("\"Activo\" = TRUE");
+        builder.Entity<CicloEscolar>()
+            .ToTable(tabla => tabla.HasCheckConstraint(
+                "CK_CiclosEscolares_EstadoActivo",
+                "(\"Estado\" = 2 AND \"Activo\" = TRUE) OR (\"Estado\" <> 2 AND \"Activo\" = FALSE)"));
+
+        builder.Entity<MovimientoCicloEscolar>()
+            .HasIndex(x => new { x.CicloEscolarId, x.FechaUtc });
+        builder.Entity<MovimientoCicloEscolar>()
+            .HasOne(x => x.CicloEscolar)
+            .WithMany(x => x.Movimientos)
+            .HasForeignKey(x => x.CicloEscolarId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<MovimientoCicloEscolar>()
+            .HasOne(x => x.RealizadoPorUsuario)
+            .WithMany()
+            .HasForeignKey(x => x.RealizadoPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<PermisoSistema>()
             .HasIndex(permiso => permiso.Codigo)

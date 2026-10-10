@@ -37,7 +37,9 @@ public sealed class AsignacionServicio(
             {
                 Id = x.Id,
                 Ciclo = x.Seccion.CicloEscolar.Anio.ToString(),
-                Seccion = x.Seccion.Grado.Nombre + " " + x.Seccion.Nombre,
+                Grado = x.Seccion.Grado.Nombre,
+                Carrera = x.Seccion.Grado.Carrera,
+                Seccion = x.Seccion.Nombre,
                 Curso = x.Curso.Nombre,
                 Docente = x.Docente.Usuario.PrimerNombre + " " + x.Docente.Usuario.PrimerApellido,
                 Estado = x.Estado
@@ -185,6 +187,10 @@ public sealed class AsignacionServicio(
             );
         }
 
+        if (await c.Secciones.AnyAsync(s =>
+            s.Id == x.SeccionId && s.CicloEscolar.Estado == EstadoCicloEscolar.Cerrado))
+            return ResultadoOperacion.Error("No puede modificarse una asignación perteneciente a un ciclo cerrado.");
+
         await using var tx = await c.Database.BeginTransactionAsync();
 
         try
@@ -223,6 +229,10 @@ public sealed class AsignacionServicio(
                 "La asignación no existe."
             );
         }
+
+        if (await c.Secciones.AnyAsync(s =>
+            s.Id == x.SeccionId && s.CicloEscolar.Estado == EstadoCicloEscolar.Cerrado))
+            return ResultadoOperacion.Error("No puede cambiarse el estado de una asignación perteneciente a un ciclo cerrado.");
 
         await using var tx = await c.Database.BeginTransactionAsync();
 

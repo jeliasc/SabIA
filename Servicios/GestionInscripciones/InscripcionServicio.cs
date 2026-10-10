@@ -42,6 +42,7 @@ public sealed class InscripcionServicio(
                 Alumno = x.Alumno.Usuario.PrimerNombre + " " +
                     x.Alumno.Usuario.PrimerApellido,
                 Seccion = x.Seccion.Grado.Nombre + " " + x.Seccion.Nombre,
+                Carrera = x.Seccion.Grado.Carrera,
                 Ciclo = x.Seccion.CicloEscolar.Anio,
                 Fecha = x.Fecha,
                 Estado = x.Estado

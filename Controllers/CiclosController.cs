@@ -48,6 +48,57 @@ public class CiclosController(ICicloServicio servicio) : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpGet, Authorize(Policy = Permisos.Ciclos.Cerrar)]
+    public async Task<IActionResult> RevisarCierre(int id)
+    {
+        var modelo = await servicio.ObtenerRevisionCierreAsync(id);
+        return modelo == null ? NotFound() : View(modelo);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken, Authorize(Policy = Permisos.Ciclos.Cerrar)]
+    public async Task<IActionResult> Cerrar(int id)
+    {
+        var resultado = await servicio.CerrarAsync(id);
+        TempData[resultado.Exitoso ? "Exito" : "Error"] = resultado.Mensaje;
+        return resultado.Exitoso
+            ? RedirectToAction(nameof(Index))
+            : RedirectToAction(nameof(RevisarCierre), new { id });
+    }
+
+    [HttpGet, Authorize(Policy = Permisos.Ciclos.Reabrir)]
+    public async Task<IActionResult> Reabrir(int id)
+    {
+        var modelo = await servicio.ObtenerParaReabrirAsync(id);
+        return modelo == null ? NotFound() : View(modelo);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken, Authorize(Policy = Permisos.Ciclos.Reabrir)]
+    public async Task<IActionResult> Reabrir(ReabrirCiclo modelo)
+    {
+        if (!ModelState.IsValid) return View(modelo);
+        var resultado = await servicio.ReabrirAsync(modelo);
+        if (!resultado.Exitoso)
+        {
+            Agregar(resultado);
+            var ciclo = await servicio.ObtenerParaReabrirAsync(modelo.Id);
+            if (ciclo == null) return NotFound();
+            ciclo.Justificacion = modelo.Justificacion;
+            return View(ciclo);
+        }
+
+        TempData["Exito"] = resultado.Mensaje;
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Historial(int id)
+    {
+        var ciclo = (await servicio.ObtenerTodosAsync()).SingleOrDefault(x => x.Id == id);
+        if (ciclo == null) return NotFound();
+        ViewData["Anio"] = ciclo.Anio;
+        return View(await servicio.ObtenerHistorialAsync(id));
+    }
+
     private void Agregar(ResultadoOperacion r)
     {
         if (r.Errores.Count == 0) ModelState.AddModelError(string.Empty, r.Mensaje);

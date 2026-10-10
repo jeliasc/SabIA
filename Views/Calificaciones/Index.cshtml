@@ -11,7 +11,7 @@
 <div class="container-fluid">
     <partial name="_AlertasResultado" />
 
-    <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
             <h2 class="fw-bold mb-1">Calificaciones</h2>
             <p class="text-muted mb-0">Configuración, registro, cierre e historial bimestral.</p>
@@ -19,7 +19,7 @@
         @if (puedeSolicitar || puedeRevisar)
         {
             <div>
-                <a asp-action="Correcciones" class="app-btn app-btn-soft-secondary">
+                <a asp-action="Correcciones" class="app-btn app-btn-primary">
                     <i class="bi bi-clock-history" aria-hidden="true"></i>
                     Correcciones
                 </a>
@@ -35,8 +35,7 @@
                 <form asp-action="Configurar" method="get" class="row g-3 align-items-end">
                     <div class="col-lg-6">
                         <label for="asignacionId" class="form-label">Asignación</label>
-                        <select id="asignacionId" name="asignacionId" class="form-select"
-                                required data-select-busqueda
+                        <select id="asignacionId" name="asignacionId" class="form-select" required data-select-busqueda
                                 data-search-placeholder="Buscar curso, grado o sección...">
                             <option value="">Seleccione una asignación</option>
                             @foreach (var opcion in Model.Asignaciones)
@@ -75,9 +74,9 @@
         <div class="card shadow-sm border border-secondary d-none d-md-block">
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table app-table w-100" data-tabla-index
-                           data-actions-column="true"
-                           data-search-placeholder="Curso, docente, grado o período...">
+                    <table class="table app-table w-100" data-tabla-index data-actions-column="true"
+                           data-search-placeholder="Curso, docente, grado o período..."
+                           data-empty-message="No existen registros" data-zero-message="No se encontraron registros">
                         <thead>
                             <tr>
                                 <th>Curso</th>
@@ -99,7 +98,8 @@
                                     <td>@item.Docente</td>
                                     <td>@item.Actividades</td>
                                     <td>
-                                        <span class="app-badge @(item.EstadoCierre == EstadoCierreCalificaciones.Cerrado ? "app-badge-secondary" : "app-badge-success")">
+                                        <span
+                                            class="app-badge @(item.EstadoCierre == EstadoCierreCalificaciones.Cerrado ? "app-badge-secondary" : "app-badge-success")">
                                             @item.EstadoCierre
                                         </span>
                                     </td>
@@ -109,10 +109,10 @@
                                                class="app-btn app-btn-soft-primary app-btn-sm">Libro</a>
                                             <a asp-action="Abacus" asp-route-id="@item.Id"
                                                class="app-btn app-btn-soft-secondary app-btn-sm">Resumen</a>
-                                            @if (Model.PuedeConfigurar && item.EstadoCierre != EstadoCierreCalificaciones.Cerrado)
+                                            @if (Model.PuedeConfigurar && item.EstadoCierre !=
+                                    EstadoCierreCalificaciones.Cerrado)
                                             {
-                                                <a asp-action="Configurar"
-                                                   asp-route-asignacionId="@item.AsignacionId"
+                                                <a asp-action="Configurar" asp-route-asignacionId="@item.AsignacionId"
                                                    asp-route-periodoId="@item.PeriodoId"
                                                    class="app-btn app-btn-soft-secondary app-btn-sm">Configurar</a>
                                             }
@@ -136,13 +136,16 @@
                                 <h5 class="fw-bold mb-1">@item.Curso</h5>
                                 <div class="text-muted small">@item.GradoSeccion · @item.Periodo</div>
                             </div>
-                            <span class="app-badge align-self-start @(item.EstadoCierre == EstadoCierreCalificaciones.Cerrado ? "app-badge-secondary" : "app-badge-success")">
+                            <span
+                                class="app-badge align-self-start @(item.EstadoCierre == EstadoCierreCalificaciones.Cerrado ? "app-badge-secondary" : "app-badge-success")">
                                 @item.EstadoCierre
                             </span>
                         </div>
                         <dl class="row small mb-3">
-                            <dt class="col-4">Docente</dt><dd class="col-8">@item.Docente</dd>
-                            <dt class="col-4">Actividades</dt><dd class="col-8">@item.Actividades</dd>
+                            <dt class="col-4">Docente</dt>
+                            <dd class="col-8">@item.Docente</dd>
+                            <dt class="col-4">Actividades</dt>
+                            <dd class="col-8">@item.Actividades</dd>
                         </dl>
                         <div class="app-actions flex-wrap">
                             <a asp-action="Libro" asp-route-id="@item.Id"
@@ -151,8 +154,7 @@
                                class="app-btn app-btn-soft-secondary app-btn-sm">Resumen</a>
                             @if (Model.PuedeConfigurar && item.EstadoCierre != EstadoCierreCalificaciones.Cerrado)
                             {
-                                <a asp-action="Configurar"
-                                   asp-route-asignacionId="@item.AsignacionId"
+                                <a asp-action="Configurar" asp-route-asignacionId="@item.AsignacionId"
                                    asp-route-periodoId="@item.PeriodoId"
                                    class="app-btn app-btn-soft-secondary app-btn-sm">Configurar</a>
                             }

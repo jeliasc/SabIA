@@ -42,6 +42,11 @@
         Permisos.PermisosSistema.Ver
     )).Succeeded;
 
+    var auditoria = (await Autorizacion.AuthorizeAsync(
+        User,
+        Politicas.AuditoriaSuperusuario
+    )).Succeeded;
+
     var docentes = (await Autorizacion.AuthorizeAsync(
         User,
         Permisos.Docentes.Ver
@@ -167,14 +172,14 @@
                     </a>
                 </li>
 
-                @if (usuarios || roles || permisos)
+                @if (usuarios || roles || permisos || auditoria)
                 {
                     <li class="nav-header">
                         ADMINISTRACIÓN
                     </li>
 
-                    <li class="nav-item @Abierto("Usuarios", "Roles", "PermisosSistema")">
-                        <a href="#" class="nav-link @Activo("Usuarios", "Roles", "PermisosSistema")">
+                    <li class="nav-item @Abierto("Usuarios", "Roles", "PermisosSistema", "Auditoria")">
+                        <a href="#" class="nav-link @Activo("Usuarios", "Roles", "PermisosSistema", "Auditoria")">
                             <i class="nav-icon bi bi-shield-lock"></i>
 
                             <p>
@@ -211,6 +216,16 @@
                                        class="nav-link @Activo("PermisosSistema")">
                                         <i class="nav-icon bi bi-key"></i>
                                         <p>Permisos</p>
+                                    </a>
+                                </li>
+                            }
+
+                            @if (auditoria)
+                            {
+                                <li class="nav-item">
+                                    <a asp-controller="Auditoria" asp-action="Index" class="nav-link @Activo("Auditoria")">
+                                        <i class="nav-icon bi bi-journal-text"></i>
+                                        <p>Auditoría</p>
                                     </a>
                                 </li>
                             }

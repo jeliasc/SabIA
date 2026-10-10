@@ -19,23 +19,36 @@ public class AlumnosController : Controller
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        return View(await alumnoServicio.ObtenerTodosAsync(User));
+        var consulta = await alumnoServicio.ObtenerIndiceAsync();
+
+        return consulta.TipoAcceso switch
+        {
+            TipoAccesoAlumnos.Institucional when consulta.Institucional != null =>
+                View("Index", consulta.Institucional),
+            TipoAccesoAlumnos.Docente or TipoAccesoAlumnos.Alumno
+                when consulta.Contextual != null =>
+                View("Contextual", consulta.Contextual),
+            _ => Forbid()
+        };
     }
 
     [HttpGet]
     [Authorize(Policy = Permisos.Alumnos.Ver)]
     public async Task<IActionResult> Ver(int id)
     {
-        var resultado =
-            await alumnoServicio.ObtenerDetalleAsync(id, User);
+        var consulta =
+            await alumnoServicio.ObtenerDetalleAutorizadoAsync(id);
 
-        if (!resultado.Exitoso || resultado.Datos == null)
+        return consulta.TipoAcceso switch
         {
-            TempData["Error"] = resultado.Mensaje;
-            return RedirectToAction(nameof(Index));
-        }
-
-        return View(resultado.Datos);
+            TipoAccesoAlumnos.Denegado => Forbid(),
+            TipoAccesoAlumnos.Institucional when consulta.Institucional != null =>
+                View("Ver", consulta.Institucional),
+            TipoAccesoAlumnos.Docente or TipoAccesoAlumnos.Alumno
+                when consulta.Contextual != null =>
+                View("DetalleContextual", consulta.Contextual),
+            _ => NotFound()
+        };
     }
 
     [HttpGet]
@@ -91,6 +104,7 @@ public class AlumnosController : Controller
     {
         if (!ModelState.IsValid)
         {
+            await alumnoServicio.PrepararOpcionesEncargadosAsync(modelo);
             return View(modelo);
         }
 
@@ -99,6 +113,7 @@ public class AlumnosController : Controller
         if (!resultado.Exitoso)
         {
             AgregarErrores(resultado.Errores, resultado.Mensaje);
+            await alumnoServicio.PrepararOpcionesEncargadosAsync(modelo);
             return View(modelo);
         }
 

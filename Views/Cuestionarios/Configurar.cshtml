@@ -21,19 +21,16 @@
                 <input asp-for="TareaId" type="hidden" />
                 <input asp-for="Tarea" type="hidden" />
 
-                <div asp-validation-summary="ModelOnly"
-                     class="text-danger">
+                <div asp-validation-summary="ModelOnly" class="text-danger">
                 </div>
 
                 <div class="row g-3">
                     <div class="col-md-4">
-                        <label asp-for="MaximoIntentos"
-                               class="form-label">
+                        <label asp-for="MaximoIntentos" class="form-label">
                             Máximo de intentos
                         </label>
 
-                        <input asp-for="MaximoIntentos"
-                               class="form-control" />
+                        <input asp-for="MaximoIntentos" class="form-control" />
 
                         <div class="form-text">
                             Use 0 para intentos ilimitados.
@@ -41,8 +38,7 @@
                     </div>
 
                     <div class="col-md-4">
-                        <label asp-for="CriterioCalificacion"
-                               class="form-label">
+                        <label asp-for="CriterioCalificacion" class="form-label">
                             Criterio de calificación
                         </label>
 
@@ -53,8 +49,7 @@
                     </div>
 
                     <div class="col-md-4">
-                        <label asp-for="ModalidadTiempo"
-                               class="form-label">
+                        <label asp-for="ModalidadTiempo" class="form-label">
                             Tiempo
                         </label>
 
@@ -66,21 +61,17 @@
 
                     <div class="col-12">
                         <div class="form-check">
-                            <input asp-for="MostrarResultadosAlFinalizar"
-                                   class="form-check-input" />
+                            <input asp-for="MostrarResultadosAlFinalizar" class="form-check-input" />
 
-                            <label asp-for="MostrarResultadosAlFinalizar"
-                                   class="form-check-label">
+                            <label asp-for="MostrarResultadosAlFinalizar" class="form-check-label">
                                 Mostrar resultado al finalizar
                             </label>
                         </div>
 
                         <div class="form-check">
-                            <input asp-for="MostrarRespuestasCorrectas"
-                                   class="form-check-input" />
+                            <input asp-for="MostrarRespuestasCorrectas" class="form-check-input" />
 
-                            <label asp-for="MostrarRespuestasCorrectas"
-                                   class="form-check-label">
+                            <label asp-for="MostrarRespuestasCorrectas" class="form-check-label">
                                 Mostrar respuestas correctas
                             </label>
                         </div>
@@ -88,9 +79,7 @@
                 </div>
 
                 <div class="d-flex justify-content-end gap-2 mt-4">
-                    <a asp-controller="Tareas"
-                       asp-action="Index"
-                       class="app-btn app-btn-secondary">
+                    <a asp-controller="Tareas" asp-action="Index" class="app-btn app-btn-secondary">
                         Cancelar
                     </a>
 

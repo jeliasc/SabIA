@@ -1,0 +1,41 @@
+@model Proyecto_Final.ViewModels.Alumnos.AlumnoContextual
+
+@{
+    ViewData["Title"] = "Información académica básica";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-xl-7">
+            <div class="mb-4">
+                <h2 class="fw-bold mb-1">Información académica básica</h2>
+                <p class="text-muted mb-0">Datos de identificación dentro del ámbito académico autorizado.</p>
+            </div>
+
+            <div class="card shadow-sm border border-secondary">
+                <div class="card-body p-4">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 text-muted fw-normal">Nombre completo</dt>
+                        <dd class="col-sm-8 fw-semibold">@Model.NombreCompleto</dd>
+
+                        <dt class="col-sm-4 text-muted fw-normal">Ciclo escolar</dt>
+                        <dd class="col-sm-8">@Model.CicloEscolar</dd>
+
+                        <dt class="col-sm-4 text-muted fw-normal">Grado</dt>
+                        <dd class="col-sm-8">@Model.Grado</dd>
+
+                        <dt class="col-sm-4 text-muted fw-normal">Carrera</dt>
+                        <dd class="col-sm-8">@Model.Carrera</dd>
+
+                        <dt class="col-sm-4 text-muted fw-normal">Sección</dt>
+                        <dd class="col-sm-8">@Model.Seccion</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <a asp-action="Index" class="app-btn app-btn-secondary">Volver al listado</a>
+            </div>
+        </div>
+    </div>
+</div>

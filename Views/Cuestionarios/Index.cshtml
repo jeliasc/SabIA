@@ -22,17 +22,17 @@
 <div class="container-fluid">
     <partial name="_AlertasResultado" />
 
-    <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
-        <h2 class="fw-bold mb-1">
-            Cuestionarios
-        </h2>
+            <h2 class="fw-bold mb-1">
+                Cuestionarios
+            </h2>
 
-        <p class="text-muted mb-0">
-            Cuestionarios manuales o generados con apoyo de IA.
-        </p>
+            <p class="text-muted mb-0">
+                Cuestionarios manuales o generados con apoyo de IA.
+            </p>
         </div>
-        <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-secondary">
+        <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-primary">
             @(soloLectura ? "Ver vigentes" : "Ver historial")
         </a>
     </div>
@@ -40,8 +40,7 @@
     <div class="card shadow-sm border border-secondary">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table app-table w-100"
-                       data-tabla-index
+                <table class="table app-table w-100" data-tabla-index
                        data-actions-column="@(hayAcciones ? "true" : "false")">
                     <thead>
                         <tr>
@@ -72,11 +71,11 @@
 
                                 @if (hayAcciones)
                                 {
-                                <td>
-                                    @(x.MaximoIntentos == 0
-                                        ? "Sin límite"
-                                        : x.MaximoIntentos)
-                                </td>
+                                    <td>
+                                        @(x.MaximoIntentos == 0
+                                            ? "Sin límite"
+                                            : x.MaximoIntentos)
+                                    </td>
                                 }
 
                                 <td>@x.Origen</td>
@@ -88,8 +87,7 @@
                                         @if (editar &&
                                             x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Borrador)
                                         {
-                                            <a asp-action="AgregarPregunta"
-                                               asp-route-cuestionarioId="@x.Id"
+                                            <a asp-action="AgregarPregunta" asp-route-cuestionarioId="@x.Id"
                                                class="app-btn app-btn-soft-secondary app-btn-sm">
                                                 Preguntas
                                             </a>
@@ -98,8 +96,7 @@
                                         @if (resolver &&
                                             x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Publicada)
                                         {
-                                            <a asp-action="Resolver"
-                                               asp-route-id="@x.Id"
+                                            <a asp-action="Resolver" asp-route-id="@x.Id"
                                                class="app-btn app-btn-soft-primary app-btn-sm">
                                                 Resolver
                                             </a>

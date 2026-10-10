@@ -38,6 +38,9 @@ public sealed class CursoServicio(Contexto contexto) : ICursoServicio
         Normalizar(modelo); var error = await ValidarAsync(modelo, modelo.Id); if (error != null) return error;
         var entidad = await contexto.Cursos.FirstOrDefaultAsync(x => x.Id == modelo.Id);
         if (entidad == null) return ResultadoOperacion.Error("El curso no existe.");
+        if (await contexto.Asignaciones.AnyAsync(x =>
+            x.CursoId == modelo.Id && x.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Cerrado))
+            return ResultadoOperacion.Error("No puede modificarse un curso utilizado por ciclos cerrados.");
         if (entidad.GradoId != modelo.GradoId && await contexto.Asignaciones.AnyAsync(x => x.CursoId == modelo.Id))
             return ResultadoOperacion.Error("No puede cambiarse el grado de un curso que ya tiene asignaciones.");
 
@@ -55,6 +58,9 @@ public sealed class CursoServicio(Contexto contexto) : ICursoServicio
     {
         var entidad = await contexto.Cursos.FirstOrDefaultAsync(x => x.Id == id);
         if (entidad == null) return ResultadoOperacion.Error("El curso no existe.");
+        if (await contexto.Asignaciones.AnyAsync(x =>
+            x.CursoId == id && x.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Cerrado))
+            return ResultadoOperacion.Error("No puede cambiarse el estado de un curso utilizado por ciclos cerrados.");
         var nuevo = activo ? EstadoRegistro.Activo : EstadoRegistro.Inactivo;
         if (entidad.Estado == nuevo) return ResultadoOperacion.Error(activo ? "El curso ya está activo." : "El curso ya está inactivo.");
         if (!activo && await contexto.Asignaciones.AnyAsync(x => x.CursoId == id && x.Estado == EstadoRegistro.Activo))

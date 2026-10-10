@@ -44,6 +44,9 @@ public sealed class SeccionServicio(Contexto contexto) : ISeccionServicio
     {
         Normalizar(modelo); var error = await ValidarAsync(modelo, modelo.Id); if (error != null) return error;
         var entidad = await contexto.Secciones.FirstOrDefaultAsync(x => x.Id == modelo.Id);
+        if (entidad != null && await contexto.CiclosEscolares.AnyAsync(x =>
+            x.Id == entidad.CicloEscolarId && x.Estado == EstadoCicloEscolar.Cerrado))
+            return ResultadoOperacion.Error("No puede modificarse una sección perteneciente a un ciclo cerrado.");
         if (entidad == null) return ResultadoOperacion.Error("La sección no existe.");
         var tieneMovimientos = await contexto.Inscripciones.AnyAsync(x => x.SeccionId == modelo.Id) ||
                               await contexto.Asignaciones.AnyAsync(x => x.SeccionId == modelo.Id);
@@ -63,6 +66,9 @@ public sealed class SeccionServicio(Contexto contexto) : ISeccionServicio
     public async Task<ResultadoOperacion> CambiarEstadoAsync(int id, bool activa)
     {
         var entidad = await contexto.Secciones.FirstOrDefaultAsync(x => x.Id == id);
+        if (entidad != null && await contexto.CiclosEscolares.AnyAsync(x =>
+            x.Id == entidad.CicloEscolarId && x.Estado == EstadoCicloEscolar.Cerrado))
+            return ResultadoOperacion.Error("No puede cambiarse el estado de una sección perteneciente a un ciclo cerrado.");
         if (entidad == null) return ResultadoOperacion.Error("La sección no existe.");
         var nuevo = activa ? EstadoRegistro.Activo : EstadoRegistro.Inactivo;
         if (entidad.Estado == nuevo) return ResultadoOperacion.Error(activa ? "La sección ya está activa." : "La sección ya está inactiva.");
@@ -81,8 +87,12 @@ public sealed class SeccionServicio(Contexto contexto) : ISeccionServicio
 
     private async Task<ResultadoOperacion?> ValidarAsync(FormularioSeccion modelo, int? id)
     {
-        if (!await contexto.CiclosEscolares.AnyAsync(x => x.Id == modelo.CicloEscolarId))
+        var ciclo = await contexto.CiclosEscolares.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == modelo.CicloEscolarId);
+        if (ciclo == null)
             return ResultadoOperacion.Validacion(nameof(modelo.CicloEscolarId), "El ciclo escolar seleccionado no existe.");
+        if (ciclo.Estado == EstadoCicloEscolar.Cerrado)
+            return ResultadoOperacion.Validacion(nameof(modelo.CicloEscolarId), "No pueden modificarse secciones de un ciclo cerrado.");
         if (!await contexto.Grados.AnyAsync(x => x.Id == modelo.GradoId))
             return ResultadoOperacion.Validacion(nameof(modelo.GradoId), "El grado seleccionado no existe.");
         if (await contexto.Secciones.AnyAsync(x => x.CicloEscolarId == modelo.CicloEscolarId && x.GradoId == modelo.GradoId &&

@@ -42,11 +42,12 @@
     <div class="card shadow-sm border border-secondary">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table app-table w-100" data-tabla-index data-actions-column="true" data-search-placeholder="Ciclo o período...">
+                <table class="table app-table w-100" data-tabla-index data-actions-column="true"
+                       data-search-placeholder="Ciclo o período...">
                     <thead>
                         <tr>
-                            <th>Ciclo</th>
-                            <th>No.</th>
+                            <th class="text-start">Ciclo</th>
+                            <th class="text-start">No.</th>
                             <th>Nombre</th>
                             <th>Inicio</th>
                             <th>Fin</th>
@@ -58,9 +59,9 @@
                         @foreach (var x in Model)
                         {
                             <tr>
-                                <td>@x.Ciclo</td>
+                                <td class="text-start">@x.Ciclo</td>
 
-                                <td>@x.Numero</td>
+                                <td class="text-start">@x.Numero</td>
 
                                 <td class="fw-semibold">
                                     @x.Nombre

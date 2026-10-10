@@ -50,6 +50,9 @@ public sealed class PeriodoServicio(Contexto contexto) : IPeriodoServicio
         var error = await ValidarAsync(modelo, modelo.Id);
         if (error != null) return error;
         var entidad = await contexto.Periodos.FirstOrDefaultAsync(x => x.Id == modelo.Id);
+        if (entidad != null && await contexto.CiclosEscolares.AnyAsync(x =>
+            x.Id == entidad.CicloEscolarId && x.Estado == EstadoCicloEscolar.Cerrado))
+            return ResultadoOperacion.Error("No puede modificarse un período perteneciente a un ciclo cerrado.");
         if (entidad == null) return ResultadoOperacion.Error("El periodo no existe.");
 
         await using var tx = await contexto.Database.BeginTransactionAsync();
@@ -69,6 +72,8 @@ public sealed class PeriodoServicio(Contexto contexto) : IPeriodoServicio
             return ResultadoOperacion.Validacion(nameof(modelo.FechaFin), "La fecha de finalización debe ser posterior a la fecha de inicio.");
 
         var ciclo = await contexto.CiclosEscolares.AsNoTracking().FirstOrDefaultAsync(x => x.Id == modelo.CicloEscolarId);
+        if (ciclo?.Estado == EstadoCicloEscolar.Cerrado)
+            return ResultadoOperacion.Validacion(nameof(modelo.CicloEscolarId), "No pueden modificarse períodos de un ciclo cerrado.");
         if (ciclo == null)
             return ResultadoOperacion.Validacion(nameof(modelo.CicloEscolarId), "El ciclo escolar seleccionado no existe.");
         if (modelo.FechaInicio < ciclo.FechaInicio || modelo.FechaFin > ciclo.FechaFin)

@@ -19,138 +19,158 @@
             <span class="app-badge @(Model.EsResultadoCerrado ? "app-badge-success" : "app-badge-warning")">
                 @(Model.EsResultadoCerrado ? "Resultado cerrado" : "Vista preliminar")
             </span>
-            <a asp-action="Libro" asp-route-id="@Model.ConfiguracionId"
-               class="app-btn app-btn-soft-secondary">Volver al libro</a>
-        </div>
-    </div>
-
-    <div class="app-alert app-alert-info mb-4" role="note">
-        <i class="bi bi-info-circle" aria-hidden="true"></i>
-        <div>Esta vista prepara los valores institucionales. No constituye una exportación oficial de Abacus mientras no se confirme su plantilla y regla de redondeo.</div>
-    </div>
-
-    @if (Model.Alumnos.Count == 0)
-    {
-        <div class="app-alert app-alert-info" role="status">
-            <i class="bi bi-info-circle" aria-hidden="true"></i>
-            <div>No existen resultados autorizados para mostrar.</div>
-        </div>
-    }
-    else
-    {
-        <div class="card shadow-sm border border-secondary d-none d-md-block">
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table app-table w-100">
-                        <thead>
-                            <tr>
-                                <th>Código MINEDUC</th>
-                                <th>Alumno</th>
-                                <th class="text-end">Desempeño</th>
-                                <th class="text-end">Actitudinal</th>
-                                <th class="text-end">Nota bimestral</th>
-                                <th class="text-end">Abacus desempeño</th>
-                                <th class="text-end">Abacus actitudinal</th>
-                                @if (hayAcciones) { <th>Acciones</th> }
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var fila in Model.Alumnos)
-                            {
-                                <tr>
-                                    <td>@fila.CodigoPersonal</td>
-                                    <td class="fw-semibold">@fila.Alumno</td>
-                                    <td class="text-end">@Numero(fila.Desempeno)</td>
-                                    <td class="text-end">@Numero(fila.Actitudinal)</td>
-                                    <td class="text-end fw-bold">@Numero(fila.NotaBimestral)</td>
-                                    <td class="text-end">@Numero(fila.AbacusDesempeno)</td>
-                                    <td class="text-end">@Numero(fila.AbacusActitudinal)</td>
-                                    @if (hayAcciones)
-                                    {
-                                        <td>
-                                            @if (fila.ResultadoId > 0)
-                                            {
-                                                <details>
-                                                    <summary class="app-btn app-btn-soft-secondary app-btn-sm">Solicitar corrección</summary>
-                                                    <form asp-action="SolicitarCorreccion" method="post" class="mt-3"
-                                                          data-confirmar-accion-academica
-                                                          data-confirmar-titulo="Solicitar corrección extraordinaria"
-                                                          data-confirmar-mensaje="La solicitud será enviada a Coordinación y no modificará la nota hasta que sea aprobada y aplicada."
-                                                          data-confirmar-texto="Enviar solicitud"
-                                                          data-confirmar-color="#dc3545">
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="ConfiguracionId" value="@Model.ConfiguracionId" />
-                                                        <input type="hidden" name="ResultadoId" value="@fila.ResultadoId" />
-                                                        <label class="form-label small">Actividad</label>
-                                                        <select name="ActividadId" class="form-select form-select-sm mb-2" required>
-                                                            <option value="">Seleccione</option>
-                                                            @foreach (var actividad in Model.Actividades) { <option value="@actividad.Id">@actividad.Texto</option> }
-                                                        </select>
-                                                        <label class="form-label small">Nueva nota</label>
-                                                        <input name="NotaPropuesta" type="number" min="0" step="0.01" class="form-control form-control-sm mb-2" required />
-                                                        <label class="form-label small">Motivo</label>
-                                                        <textarea name="Motivo" class="form-control form-control-sm mb-2" minlength="10" maxlength="1000" required></textarea>
-                                                        <button type="submit" class="app-btn app-btn-soft-danger app-btn-sm">Enviar</button>
-                                                    </form>
-                                                </details>
-                                            }
-                                        </td>
-                                    }
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+            <a asp-action="Libro" asp-route-id="@Model.ConfiguracionId" class="app-btn app-btn-soft-secondary">Volver al
+                libro</a>
             </div>
         </div>
 
-        <div class="d-md-none">
-            @foreach (var fila in Model.Alumnos)
+        <div class="app-alert app-alert-info mb-4" role="note">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+            <div>Esta vista prepara los valores institucionales. No constituye una exportación oficial de Abacus mientras no
+                se confirme su plantilla y regla de redondeo.</div>
+            </div>
+
+            @if (Model.Alumnos.Count == 0)
             {
-                <article class="card shadow-sm border border-secondary mb-3">
+                <div class="app-alert app-alert-info" role="status">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
+                    <div>No existen resultados autorizados para mostrar.</div>
+                </div>
+            }
+            else
+            {
+                <div class="card shadow-sm border border-secondary d-none d-md-block">
                     <div class="card-body">
-                        <h5 class="fw-bold mb-1">@fila.Alumno</h5>
-                        <div class="text-muted small mb-3">Código MINEDUC: @fila.CodigoPersonal</div>
-                        <dl class="row small mb-0">
-                            <dt class="col-7">Desempeño</dt><dd class="col-5 text-end">@Numero(fila.Desempeno)</dd>
-                            <dt class="col-7">Actitudinal</dt><dd class="col-5 text-end">@Numero(fila.Actitudinal)</dd>
-                            <dt class="col-7">Nota bimestral</dt><dd class="col-5 text-end fw-bold">@Numero(fila.NotaBimestral)</dd>
-                            <dt class="col-7">Abacus desempeño</dt><dd class="col-5 text-end">@Numero(fila.AbacusDesempeno)</dd>
-                            <dt class="col-7">Abacus actitudinal</dt><dd class="col-5 text-end">@Numero(fila.AbacusActitudinal)</dd>
-                        </dl>
-                        @if (hayAcciones && fila.ResultadoId > 0)
-                        {
-                            <details class="mt-3">
-                                <summary class="app-btn app-btn-soft-secondary app-btn-sm">Solicitar corrección</summary>
-                                <form asp-action="SolicitarCorreccion" method="post" class="mt-3"
-                                      data-confirmar-accion-academica
-                                      data-confirmar-titulo="Solicitar corrección extraordinaria"
-                                      data-confirmar-mensaje="La solicitud será enviada a Coordinación y no modificará la nota hasta que sea aprobada y aplicada."
-                                      data-confirmar-texto="Enviar solicitud"
-                                      data-confirmar-color="#dc3545">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="ConfiguracionId" value="@Model.ConfiguracionId" />
-                                    <input type="hidden" name="ResultadoId" value="@fila.ResultadoId" />
-                                    <label class="form-label">Actividad</label>
-                                    <select name="ActividadId" class="form-select mb-2" required>
-                                        <option value="">Seleccione</option>
-                                        @foreach (var actividad in Model.Actividades) { <option value="@actividad.Id">@actividad.Texto</option> }
-                                    </select>
-                                    <label class="form-label">Nueva nota</label>
-                                    <input name="NotaPropuesta" type="number" min="0" step="0.01" class="form-control mb-2" required />
-                                    <label class="form-label">Motivo</label>
-                                    <textarea name="Motivo" class="form-control mb-2" minlength="10" maxlength="1000" required></textarea>
-                                    <button type="submit" class="app-btn app-btn-soft-danger app-btn-sm">Enviar solicitud</button>
-                                </form>
-                            </details>
+                        <div class="table-responsive">
+                            <table class="table app-table w-100">
+                                <thead>
+                                    <tr>
+                                        <th>Código MINEDUC</th>
+                                        <th>Alumno</th>
+                                        <th class="text-end">Desempeño</th>
+                                        <th class="text-end">Actitudinal</th>
+                                        <th class="text-end">Nota bimestral</th>
+                                        <th class="text-end">Abacus desempeño</th>
+                                        <th class="text-end">Abacus actitudinal</th>
+                                        @if (hayAcciones)
+                                        {
+                                            <th>Acciones</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var fila in Model.Alumnos)
+                                    {
+                                        <tr>
+                                            <td>@fila.CodigoPersonal</td>
+                                            <td class="fw-semibold">@fila.Alumno</td>
+                                            <td class="text-end">@Numero(fila.Desempeno)</td>
+                                            <td class="text-end">@Numero(fila.Actitudinal)</td>
+                                            <td class="text-end fw-bold">@Numero(fila.NotaBimestral)</td>
+                                            <td class="text-end">@Numero(fila.AbacusDesempeno)</td>
+                                            <td class="text-end">@Numero(fila.AbacusActitudinal)</td>
+                                            @if (hayAcciones)
+                                            {
+                                                <td>
+                                                    @if (fila.ResultadoId > 0)
+                                                    {
+                                                        <details>
+                                                            <summary class="app-btn app-btn-soft-secondary app-btn-sm">Solicitar corrección
+                                                            </summary>
+                                                            <form asp-action="SolicitarCorreccion" method="post" class="mt-3"
+                                                                  data-confirmar-accion-academica
+                                                                  data-confirmar-titulo="Solicitar corrección extraordinaria"
+                                                                  data-confirmar-mensaje="La solicitud será enviada a Coordinación y no modificará la nota hasta que sea aprobada y aplicada."
+                                                                  data-confirmar-texto="Enviar solicitud" data-confirmar-color="#dc3545">
+                                                                @Html.AntiForgeryToken()
+                                                                <input type="hidden" name="ConfiguracionId" value="@Model.ConfiguracionId" />
+                                                                <input type="hidden" name="ResultadoId" value="@fila.ResultadoId" />
+                                                                <label class="form-label small">Actividad</label>
+                                                                <select name="ActividadId" class="form-select form-select-sm mb-2" required>
+                                                                    <option value="">Seleccione</option>
+                                                                    @foreach (var actividad in Model.Actividades)
+                                                                    {
+                                                                        <option
+                                                                        value="@actividad.Id">@actividad.Texto</option>
+                                                                    }
+                                                                </select>
+                                                                <label class="form-label small">Nueva nota</label>
+                                                                <input name="NotaPropuesta" type="number" min="0" step="0.01"
+                                                                       class="form-control form-control-sm mb-2" required />
+                                                                <label class="form-label small">Motivo</label>
+                                                                <textarea name="Motivo" class="form-control form-control-sm mb-2" minlength="10"
+                                                                          maxlength="1000" required></textarea>
+                                                                <button type="submit"
+                                                                        class="app-btn app-btn-soft-danger app-btn-sm">Enviar</button>
+                                                            </form>
+                                                        </details>
+                                                    }
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-md-none">
+                    @foreach (var fila in Model.Alumnos)
+                    {
+                        <article class="card shadow-sm border border-secondary mb-3">
+                            <div class="card-body">
+                                <h5 class="fw-bold mb-1">@fila.Alumno</h5>
+                                <div class="text-muted small mb-3">Código MINEDUC: @fila.CodigoPersonal</div>
+                                <dl class="row small mb-0">
+                                    <dt class="col-7">Desempeño</dt>
+                                    <dd class="col-5 text-end">@Numero(fila.Desempeno)</dd>
+                                    <dt class="col-7">Actitudinal</dt>
+                                    <dd class="col-5 text-end">@Numero(fila.Actitudinal)</dd>
+                                    <dt class="col-7">Nota bimestral</dt>
+                                    <dd class="col-5 text-end fw-bold">@Numero(fila.NotaBimestral)</dd>
+                                    <dt class="col-7">Abacus desempeño</dt>
+                                    <dd class="col-5 text-end">@Numero(fila.AbacusDesempeno)</dd>
+                                    <dt class="col-7">Abacus actitudinal</dt>
+                                    <dd class="col-5 text-end">@Numero(fila.AbacusActitudinal)</dd>
+                                </dl>
+                                @if (hayAcciones && fila.ResultadoId > 0)
+                                {
+                                    <details class="mt-3">
+                                        <summary class="app-btn app-btn-soft-secondary app-btn-sm">Solicitar corrección</summary>
+                                        <form asp-action="SolicitarCorreccion" method="post" class="mt-3" data-confirmar-accion-academica
+                                              data-confirmar-titulo="Solicitar corrección extraordinaria"
+                                              data-confirmar-mensaje="La solicitud será enviada a Coordinación y no modificará la nota hasta que sea aprobada y aplicada."
+                                              data-confirmar-texto="Enviar solicitud" data-confirmar-color="#dc3545">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="ConfiguracionId" value="@Model.ConfiguracionId" />
+                                            <input type="hidden" name="ResultadoId" value="@fila.ResultadoId" />
+                                            <label class="form-label">Actividad</label>
+                                            <select name="ActividadId" class="form-select mb-2" required>
+                                                <option value="">Seleccione</option>
+                                                @foreach (var actividad in Model.Actividades)
+                                                {
+                                                    <option value="@actividad.Id">
+                                                        @actividad.Texto</option>
+                                                    }
+                                                </select>
+                                                <label class="form-label">Nueva nota</label>
+                                                <input name="NotaPropuesta" type="number" min="0" step="0.01" class="form-control mb-2"
+                                                       required />
+                                                <label class="form-label">Motivo</label>
+                                                <textarea name="Motivo" class="form-control mb-2" minlength="10" maxlength="1000"
+                                                          required></textarea>
+                                                <button type="submit" class="app-btn app-btn-soft-danger app-btn-sm">Enviar solicitud</button>
+                                            </form>
+                                        </details>
+                                    }
+                                </div>
+                            </article>
                         }
                     </div>
-                </article>
-            }
-        </div>
-    }
-</div>
+                }
+            </div>
 
-@section Scripts {
-    <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
-}
+            @section Scripts {
+                <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+            }

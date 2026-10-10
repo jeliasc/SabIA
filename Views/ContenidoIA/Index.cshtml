@@ -1,7 +1,14 @@
 @model Proyecto_Final.ViewModels.ContenidoIA.GenerarContenidoIa
-@{ ViewData["Title"] = "Contenido con IA"; }
+@{
+    ViewData["Title"] = "Contenido con IA";
+}
 <div class="container-fluid">
-    <div class="mb-4"><h2 class="fw-bold mb-1">Contenido con IA</h2><p class="text-muted mb-0">Generación de material a partir del PDF de una planificación.</p></div>
-    <div class="app-alert app-alert-info mb-4">El contenido generado debe ser revisado por el docente antes de publicarse a los alumnos.</div>
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1">Contenido con IA</h2>
+        <p class="text-muted mb-0">Generación de material a partir del PDF de una planificación.</p>
+    </div>
+    <div class="app-alert app-alert-info mb-4">El contenido generado debe ser revisado por el docente antes de
+        publicarse a los alumnos.
+    </div>
     <partial name="Generar" model="Model" />
 </div>

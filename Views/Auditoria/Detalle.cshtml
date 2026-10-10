@@ -1,0 +1,39 @@
+@model Proyecto_Final.ViewModels.Auditoria.AuditoriaDetalle
+
+@{
+    ViewData["Title"] = "Detalle de auditoría";
+}
+
+<div class="container-fluid">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Detalle de auditoría</h2>
+            <p class="text-muted mb-0">Evento #@Model.Id</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Fecha y hora (Guatemala)</dt><dd class="col-sm-9">@Model.FechaHoraGuatemala.ToString("dd/MM/yyyy HH:mm:ss")</dd>
+                <dt class="col-sm-3">Responsable</dt><dd class="col-sm-9">@Model.Responsable</dd>
+                <dt class="col-sm-3">Módulo</dt><dd class="col-sm-9">@Model.Modulo</dd>
+                <dt class="col-sm-3">Acción</dt><dd class="col-sm-9">@Model.Accion</dd>
+                <dt class="col-sm-3">Tipo</dt><dd class="col-sm-9">@(Model.Tipo == Proyecto_Final.Models.TipoEventoAuditoria.Operacion ? "Operación" : "Seguridad")</dd>
+                <dt class="col-sm-3">Resultado</dt><dd class="col-sm-9">@Model.Resultado</dd>
+                <dt class="col-sm-3">Entidad</dt><dd class="col-sm-9">@(Model.Entidad ?? "—") @Model.EntidadId</dd>
+                <dt class="col-sm-3">Descripción</dt><dd class="col-sm-9 text-break">@Model.Descripcion</dd>
+                <dt class="col-sm-3">Justificación</dt><dd class="col-sm-9 text-break">@(Model.Justificacion ?? "—")</dd>
+                <dt class="col-sm-3">Dirección IP</dt><dd class="col-sm-9"><code>@(Model.DireccionIp ?? "—")</code></dd>
+                <dt class="col-sm-3">Método y ruta</dt><dd class="col-sm-9"><code>@(Model.MetodoHttp ?? "—") @(Model.Ruta ?? "—")</code></dd>
+                <dt class="col-sm-3">Correlation ID</dt><dd class="col-sm-9"><code>@(Model.CorrelationId ?? "—")</code></dd>
+                <dt class="col-sm-3">User-Agent</dt><dd class="col-sm-9 text-break"><code>@(Model.UserAgent ?? "—")</code></dd>
+                <dt class="col-sm-3">Valores anteriores</dt>
+                <dd class="col-sm-9"><pre class="bg-body-tertiary border rounded p-3 text-wrap mb-3">@(Model.ValoresAnteriores ?? "—")</pre></dd>
+                <dt class="col-sm-3">Valores nuevos</dt>
+                <dd class="col-sm-9"><pre class="bg-body-tertiary border rounded p-3 text-wrap mb-0">@(Model.ValoresNuevos ?? "—")</pre></dd>
+            </dl>
+        </div>
+    </div>
+</div>

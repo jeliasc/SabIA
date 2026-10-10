@@ -9,6 +9,7 @@ using Proyecto_Final.Servicios.Correo;
 using Proyecto_Final.ViewModels.Autenticacion;
 using Proyecto_Final.Data;
 using Microsoft.EntityFrameworkCore;
+using Proyecto_Final.Servicios.Auditoria;
 
 namespace Proyecto_Final.Controllers;
 
@@ -18,12 +19,14 @@ public class LoginController : Controller
     private readonly UserManager<Usuario> administradorUsuarios;
     private readonly IServicioCorreo servicioCorreo;
     private readonly Contexto contexto;
+    private readonly IAuditoriaServicio auditoria;
 
     public LoginController(
         IAutenticacionServicio autenticacionServicio,
         UserManager<Usuario> administradorUsuarios,
         IServicioCorreo servicioCorreo,
-        Contexto contexto)
+        Contexto contexto,
+        IAuditoriaServicio auditoria)
     {
         this.autenticacionServicio =
             autenticacionServicio;
@@ -36,6 +39,8 @@ public class LoginController : Controller
 
         this.contexto =
             contexto;
+
+        this.auditoria = auditoria;
     }
 
     // LOGIN - MOSTRAR FORMULARIO
@@ -229,6 +234,12 @@ public class LoginController : Controller
         if (usuario == null ||
             !usuario.Activo)
         {
+            var rechazo = auditoria.CrearRegistro(
+                "Autenticación", "Restablecer contraseña", TipoEventoAuditoria.Seguridad,
+                ResultadoAuditoria.Rechazado,
+                "Se rechazó un enlace de recuperación no válido.");
+            await auditoria.RegistrarIndependienteAsync(rechazo);
+
             ModelState.AddModelError(
                 string.Empty,
                 "El enlace de recuperación no es válido."
@@ -250,6 +261,13 @@ public class LoginController : Controller
         }
         catch
         {
+            var rechazo = auditoria.CrearRegistro(
+                "Autenticación", "Restablecer contraseña", TipoEventoAuditoria.Seguridad,
+                ResultadoAuditoria.Rechazado,
+                "Se rechazó un enlace de recuperación no válido.",
+                entidad: nameof(Usuario), entidadId: usuario.Id, usuarioId: usuario.Id);
+            await auditoria.RegistrarIndependienteAsync(rechazo);
+
             ModelState.AddModelError(
                 string.Empty,
                 "El enlace de recuperación no es válido."
@@ -276,6 +294,13 @@ public class LoginController : Controller
             {
                 await transaccion.RollbackAsync();
 
+                var rechazo = auditoria.CrearRegistro(
+                    "Autenticación", "Restablecer contraseña", TipoEventoAuditoria.Seguridad,
+                    ResultadoAuditoria.Rechazado,
+                    "No se autorizó el restablecimiento de contraseña.",
+                    entidad: nameof(Usuario), entidadId: usuario.Id, usuarioId: usuario.Id);
+                await auditoria.RegistrarIndependienteAsync(rechazo);
+
                 foreach (var error in resultado.Errors)
                 {
                     ModelState.AddModelError(
@@ -299,6 +324,13 @@ public class LoginController : Controller
             {
                 await transaccion.RollbackAsync();
 
+                var fallido = auditoria.CrearRegistro(
+                    "Autenticación", "Restablecer contraseña", TipoEventoAuditoria.Seguridad,
+                    ResultadoAuditoria.Fallido,
+                    "No fue posible completar el restablecimiento de contraseña.",
+                    entidad: nameof(Usuario), entidadId: usuario.Id, usuarioId: usuario.Id);
+                await auditoria.RegistrarIndependienteAsync(fallido);
+
                 ModelState.AddModelError(
                     string.Empty,
                     "No fue posible completar el restablecimiento de la contraseña."
@@ -307,6 +339,13 @@ public class LoginController : Controller
                 return View(modelo);
             }
 
+            var restablecimiento = auditoria.CrearRegistro(
+                "Autenticación", "Restablecer contraseña", TipoEventoAuditoria.Seguridad,
+                ResultadoAuditoria.Exitoso,
+                "La contraseña fue restablecida correctamente.",
+                entidad: nameof(Usuario), entidadId: usuario.Id, usuarioId: usuario.Id);
+            auditoria.AgregarATransaccion(restablecimiento);
+            await contexto.SaveChangesAsync();
             await transaccion.CommitAsync();
 
             return RedirectToAction(
@@ -316,6 +355,13 @@ public class LoginController : Controller
         catch
         {
             await transaccion.RollbackAsync();
+
+            var fallido = auditoria.CrearRegistro(
+                "Autenticación", "Restablecer contraseña", TipoEventoAuditoria.Seguridad,
+                ResultadoAuditoria.Fallido,
+                "El restablecimiento de contraseña terminó con un error.",
+                entidad: nameof(Usuario), entidadId: usuario.Id, usuarioId: usuario.Id);
+            await auditoria.RegistrarIndependienteAsync(fallido);
             throw;
         }
     }
@@ -441,8 +487,13 @@ public class LoginController : Controller
     // ACCESO DENEGADO
     [AllowAnonymous]
     [HttpGet]
-    public IActionResult AccesoDenegado()
+    public async Task<IActionResult> AccesoDenegado()
     {
+        var registro = auditoria.CrearRegistro(
+            "Autorización", "Acceso denegado", TipoEventoAuditoria.Seguridad,
+            ResultadoAuditoria.Rechazado,
+            "Se rechazó el acceso a un recurso protegido.");
+        await auditoria.RegistrarIndependienteAsync(registro);
         return View();
     }
 

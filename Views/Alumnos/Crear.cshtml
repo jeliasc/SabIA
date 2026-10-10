@@ -24,6 +24,20 @@
                 <hr class="my-4" />
 
                 <h5 class="fw-semibold mb-3">Inscripción académica</h5>
+                @if (Model.CiclosInactivosConSecciones.Count > 0)
+                {
+                    <div class="alert alert-warning" role="alert">
+                        <h6 class="alert-heading">Ciclo escolar inactivo</h6>
+                        @if (Model.CiclosInactivosConSecciones.Count == 1)
+                        {
+                            <p class="mb-0">El ciclo escolar @Model.CiclosInactivosConSecciones[0] se encuentra inactivo. Para inscribir alumnos en sus secciones, primero debe activarlo desde Configuración → Ciclos.</p>
+                        }
+                        else
+                        {
+                            <p class="mb-0">Los ciclos escolares @string.Join(", ", Model.CiclosInactivosConSecciones) se encuentran inactivos. Para inscribir alumnos en sus secciones, primero debe activarlos desde Configuración → Ciclos.</p>
+                        }
+                    </div>
+                }
                 <div class="row g-3">
                     <div class="col-12 col-md-6">
                         <label asp-for="SeccionId" class="form-label"></label>
@@ -35,24 +49,23 @@
                         <span asp-validation-for="SeccionId" class="text-danger"></span>
                     </div>
 
-                    <div class="col-12 col-md-4">
-                        <label asp-for="EncargadoId" class="form-label"></label>
-                        <select asp-for="EncargadoId"
-                                asp-items="@(new SelectList(Model.Encargados, "Id", "Texto"))"
-                                class="form-select" data-encargado-alumno data-select-busqueda>
-                            <option value="">Sin asignar</option>
-                        </select>
-                        <span asp-validation-for="EncargadoId" class="text-danger"></span>
-                    </div>
+                </div>
 
-                    <div class="col-12 col-md-2">
-                        <label asp-for="Parentesco" class="form-label"></label>
-                        <select asp-for="Parentesco" asp-items="Html.GetEnumSelectList<TipoParentesco>()"
-                                class="form-select" data-parentesco-alumno>
-                            <option value="">Seleccione...</option>
-                        </select>
-                        <span asp-validation-for="Parentesco" class="text-danger"></span>
-                    </div>
+                <hr class="my-4" />
+                <h5 class="fw-semibold mb-3">Datos del encargado</h5>
+                <div class="form-check mb-3">
+                    <input asp-for="RegistrarEncargadoAhora" class="form-check-input" data-registrar-encargado />
+                    <label asp-for="RegistrarEncargadoAhora" class="form-check-label"></label>
+                </div>
+                <div class="row g-3 d-none" data-datos-encargado>
+                    <div class="col-md-6"><label asp-for="DatosEncargado.Nombres" class="form-label"></label><input asp-for="DatosEncargado.Nombres" class="form-control" /><span asp-validation-for="DatosEncargado.Nombres" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="DatosEncargado.Apellidos" class="form-label"></label><input asp-for="DatosEncargado.Apellidos" class="form-control" /><span asp-validation-for="DatosEncargado.Apellidos" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="DatosEncargado.Dpi" class="form-label"></label><input asp-for="DatosEncargado.Dpi" class="form-control" inputmode="numeric" /><span asp-validation-for="DatosEncargado.Dpi" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="DatosEncargado.Telefono" class="form-label"></label><input asp-for="DatosEncargado.Telefono" class="form-control" /><span asp-validation-for="DatosEncargado.Telefono" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="DatosEncargado.TelefonoAlterno" class="form-label"></label><input asp-for="DatosEncargado.TelefonoAlterno" class="form-control" /></div>
+                    <div class="col-md-6"><label asp-for="DatosEncargado.Correo" class="form-label"></label><input asp-for="DatosEncargado.Correo" class="form-control" type="email" /><span asp-validation-for="DatosEncargado.Correo" class="text-danger"></span></div>
+                    <div class="col-12"><label asp-for="DatosEncargado.Direccion" class="form-label"></label><textarea asp-for="DatosEncargado.Direccion" class="form-control" rows="2"></textarea></div>
+                    <div class="col-md-6"><label asp-for="ParentescoEncargado" class="form-label"></label><select asp-for="ParentescoEncargado" asp-items="Html.GetEnumSelectList<TipoParentesco>()" class="form-select"><option value="">Seleccione...</option></select><span asp-validation-for="ParentescoEncargado" class="text-danger"></span></div>
                 </div>
 
                 <div class="app-alert app-alert-info mt-4">

@@ -51,17 +51,20 @@
             <div class="table-responsive">
                 <table class="table app-table w-100" data-tabla-index
                        data-actions-column="@(hayAcciones ? "true" : "false")"
-                       data-search-placeholder="Alumno, ciclo o sección...">
+                       data-search-placeholder="Alumno, ciclo, grado, carrera o sección..."
+                       data-empty-message="No existen inscripciones registradas"
+                       data-zero-message="No se encontraron inscripciones">
                     <thead>
                         <tr>
                             <th>Alumno</th>
-                            <th>Ciclo</th>
+                            <th class="text-start">Ciclo</th>
                             <th>Sección</th>
+                            <th>Carrera</th>
                             <th>Fecha</th>
                             <th>Estado</th>
                             @if (hayAcciones)
                             {
-                                <th>Acciones</th>
+                                <th class="text-end">Acciones</th>
                             }
                         </tr>
                     </thead>
@@ -74,9 +77,11 @@
                                     @x.Alumno
                                 </td>
 
-                                <td>@x.Ciclo</td>
+                                <td class="text-start">@x.Ciclo</td>
 
                                 <td>@x.Seccion</td>
+
+                                <td>@x.Carrera</td>
 
                                 <td>
                                     @x.Fecha.ToString("dd/MM/yyyy")
@@ -94,27 +99,27 @@
                                 {
                                     <td>
                                         <div class="app-actions app-actions-table">
-                                        @if (t &&
-                                            x.Estado == Proyecto_Final.Models.EstadoInscripcion.Activa)
-                                        {
-                                            <a asp-action="Trasladar" asp-route-id="@x.Id"
-                                               class="app-btn app-btn-soft-secondary app-btn-sm">
-                                                Trasladar
-                                            </a>
-                                        }
+                                            @if (t &&
+                                                x.Estado == Proyecto_Final.Models.EstadoInscripcion.Activa)
+                                            {
+                                                <a asp-action="Trasladar" asp-route-id="@x.Id"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                    Trasladar
+                                                </a>
+                                            }
 
-                                        @if (ce &&
-                                            x.Estado == Proyecto_Final.Models.EstadoInscripcion.Activa)
-                                        {
-                                            <form asp-action="Retirar" asp-route-id="@x.Id" method="post"
-                                                  data-retirar-inscripcion>
-                                                @Html.AntiForgeryToken()
+                                            @if (ce &&
+                                                x.Estado == Proyecto_Final.Models.EstadoInscripcion.Activa)
+                                            {
+                                                <form asp-action="Retirar" asp-route-id="@x.Id" method="post"
+                                                      data-retirar-inscripcion>
+                                                    @Html.AntiForgeryToken()
 
-                                                <button class="app-btn app-btn-soft-danger app-btn-sm">
-                                                    Retirar
-                                                </button>
-                                            </form>
-                                        }
+                                                    <button class="app-btn app-btn-soft-danger app-btn-sm">
+                                                        Retirar
+                                                    </button>
+                                                </form>
+                                            }
                                         </div>
                                     </td>
                                 }
@@ -151,7 +156,7 @@
                     </div>
 
                     <div class="text-muted mb-3">
-                        @x.Ciclo · @x.Seccion
+                        @x.Ciclo · @x.Seccion · @x.Carrera
                     </div>
 
                     @if (t &&
@@ -165,8 +170,7 @@
                     @if (ce &&
                         x.Estado == Proyecto_Final.Models.EstadoInscripcion.Activa)
                     {
-                        <form asp-action="Retirar" asp-route-id="@x.Id" method="post"
-                              data-retirar-inscripcion>
+                        <form asp-action="Retirar" asp-route-id="@x.Id" method="post" data-retirar-inscripcion>
                             @Html.AntiForgeryToken()
 
                             <button class="app-btn app-btn-soft-danger w-100">

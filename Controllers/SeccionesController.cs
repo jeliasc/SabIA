@@ -52,7 +52,9 @@ public class SeccionesController(ISeccionServicio servicio, Contexto contexto) :
 
     private async Task Catalogos()
     {
-        var ciclos = await contexto.CiclosEscolares.AsNoTracking().OrderByDescending(x => x.Anio)
+        var ciclos = await contexto.CiclosEscolares.AsNoTracking()
+            .Where(x => x.Estado != Proyecto_Final.Models.EstadoCicloEscolar.Cerrado)
+            .OrderByDescending(x => x.Anio)
             .Select(x => new { x.Id, Texto = x.Anio.ToString() }).ToListAsync();
         var grados = await contexto.Grados.AsNoTracking().OrderBy(x => x.Nivel).ThenBy(x => x.Orden)
             .Select(x => new { x.Id, Texto = x.Nombre + " · " + x.Carrera }).ToListAsync();

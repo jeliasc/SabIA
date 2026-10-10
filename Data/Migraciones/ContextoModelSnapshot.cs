@@ -437,6 +437,9 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Property<int>("Anio")
                         .HasColumnType("integer");
 
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
                     b.Property<DateOnly>("FechaFin")
                         .HasColumnType("date");
 
@@ -445,11 +448,17 @@ namespace Proyecto_Final.Data.Migraciones
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Activo")
+                        .IsUnique()
+                        .HasFilter("\"Activo\" = TRUE");
+
                     b.HasIndex("Anio")
                         .IsUnique();
 
                     b.ToTable("CiclosEscolares", t =>
                         {
+                            t.HasCheckConstraint("CK_CiclosEscolares_EstadoActivo", "(\"Estado\" = 2 AND \"Activo\" = TRUE) OR (\"Estado\" <> 2 AND \"Activo\" = FALSE)");
+
                             t.HasCheckConstraint("CK_CiclosEscolares_Fechas", "\"FechaInicio\" <= \"FechaFin\"");
                         });
                 });
@@ -1124,6 +1133,47 @@ namespace Proyecto_Final.Data.Migraciones
                         });
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.MovimientoCicloEscolar", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("CicloEscolarId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EstadoAnterior")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EstadoNuevo")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Justificacion")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RealizadoPorUsuarioId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RealizadoPorUsuarioId");
+
+                    b.HasIndex("CicloEscolarId", "FechaUtc");
+
+                    b.ToTable("MovimientosCiclosEscolares");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.MovimientoCierreCalificaciones", b =>
                 {
                     b.Property<int>("Id")
@@ -1601,6 +1651,91 @@ namespace Proyecto_Final.Data.Migraciones
                         {
                             t.HasCheckConstraint("CK_ReaperturasEntregas_Fechas", "\"FechaLimite\" > \"FechaReapertura\"");
                         });
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.RegistroAuditoria", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("DireccionIp")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<string>("Entidad")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("EntidadId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("FechaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Justificacion")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("MetodoHttp")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Modulo")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<int>("Resultado")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Ruta")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("UsuarioId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("ValoresAnteriores")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)");
+
+                    b.Property<string>("ValoresNuevos")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FechaUtc");
+
+                    b.HasIndex("UsuarioId", "FechaUtc");
+
+                    b.ToTable("RegistrosAuditoria");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.RespuestaAceptada", b =>
@@ -2736,6 +2871,25 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Unidad");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.MovimientoCicloEscolar", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.CicloEscolar", "CicloEscolar")
+                        .WithMany("Movimientos")
+                        .HasForeignKey("CicloEscolarId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Usuario", "RealizadoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("RealizadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CicloEscolar");
+
+                    b.Navigation("RealizadoPorUsuario");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.MovimientoCierreCalificaciones", b =>
                 {
                     b.HasOne("Proyecto_Final.Models.CierreCalificaciones", "CierreCalificaciones")
@@ -2932,6 +3086,16 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Entrega");
 
                     b.Navigation("ReabiertaPorUsuario");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.RegistroAuditoria", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.RespuestaAceptada", b =>
@@ -3238,6 +3402,8 @@ namespace Proyecto_Final.Data.Migraciones
 
             modelBuilder.Entity("Proyecto_Final.Models.CicloEscolar", b =>
                 {
+                    b.Navigation("Movimientos");
+
                     b.Navigation("Periodos");
 
                     b.Navigation("Secciones");

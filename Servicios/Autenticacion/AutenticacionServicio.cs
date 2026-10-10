@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Proyecto_Final.Models;
+using Proyecto_Final.Servicios.Auditoria;
 using Proyecto_Final.ViewModels.Autenticacion;
 
 namespace Proyecto_Final.Servicios.Autenticacion;
@@ -9,13 +10,16 @@ public class AutenticacionServicio : IAutenticacionServicio
 {
     private readonly SignInManager<Usuario> administradorSesion;
     private readonly UserManager<Usuario> administradorUsuarios;
+    private readonly IAuditoriaServicio auditoria;
 
     public AutenticacionServicio(
         SignInManager<Usuario> administradorSesion,
-        UserManager<Usuario> administradorUsuarios)
+        UserManager<Usuario> administradorUsuarios,
+        IAuditoriaServicio auditoria)
     {
         this.administradorSesion = administradorSesion;
         this.administradorUsuarios = administradorUsuarios;
+        this.auditoria = auditoria;
     }
 
     // INICIAR SESIÓN
@@ -30,6 +34,7 @@ public class AutenticacionServicio : IAutenticacionServicio
         // No indicar si el usuario existe o está inactivo.
         if (usuario == null)
         {
+            await RegistrarRechazoInicioSesionAsync("Credenciales inválidas.");
             return ResultadoAutenticacion
                 .CredencialesInvalidas(
                     "Usuario o contraseña incorrectos."
@@ -38,6 +43,7 @@ public class AutenticacionServicio : IAutenticacionServicio
 
         if (!usuario.Activo)
         {
+            await RegistrarRechazoInicioSesionAsync("Cuenta inactiva.", usuario.Id);
             return ResultadoAutenticacion
                 .CuentaInactiva(
                     "Su cuenta se encuentra inactiva. Comuníquese con el administrador."
@@ -54,6 +60,7 @@ public class AutenticacionServicio : IAutenticacionServicio
 
         if (resultado.IsLockedOut)
         {
+            await RegistrarRechazoInicioSesionAsync("Cuenta bloqueada temporalmente.", usuario.Id);
             return ResultadoAutenticacion.Bloqueado(
                 "La cuenta está bloqueada temporalmente por varios intentos fallidos."
             );
@@ -61,11 +68,25 @@ public class AutenticacionServicio : IAutenticacionServicio
 
         if (!resultado.Succeeded)
         {
+            await RegistrarRechazoInicioSesionAsync("Credenciales inválidas.", usuario.Id);
             return ResultadoAutenticacion
                 .CredencialesInvalidas(
                     "Usuario o contraseña incorrectos."
                 );
         }
+
+        var inicioExitoso = auditoria.CrearRegistro(
+            "Autenticación",
+            "Iniciar sesión",
+            TipoEventoAuditoria.Seguridad,
+            ResultadoAuditoria.Exitoso,
+            usuario.CambiarContrasena
+                ? "Inicio de sesión correcto; requiere cambio de contraseña."
+                : "Inicio de sesión correcto.",
+            entidad: nameof(Usuario),
+            entidadId: usuario.Id,
+            usuarioId: usuario.Id);
+        await auditoria.RegistrarAsync(inicioExitoso);
 
         if (usuario.CambiarContrasena)
         {
@@ -104,6 +125,12 @@ public class AutenticacionServicio : IAutenticacionServicio
 
         if (!resultado.Succeeded)
         {
+            var rechazo = auditoria.CrearRegistro(
+                "Autenticación", "Cambiar contraseña", TipoEventoAuditoria.Seguridad,
+                ResultadoAuditoria.Rechazado,
+                "No se autorizó el cambio de contraseña.",
+                entidad: nameof(Usuario), entidadId: usuario.Id, usuarioId: usuario.Id);
+            await auditoria.RegistrarIndependienteAsync(rechazo);
             return ResultadoAutenticacion.Validacion(
                 CrearErroresIdentity(
                     resultado.Errors
@@ -134,6 +161,13 @@ public class AutenticacionServicio : IAutenticacionServicio
             usuario
         );
 
+        var cambioExitoso = auditoria.CrearRegistro(
+            "Autenticación", "Cambiar contraseña", TipoEventoAuditoria.Seguridad,
+            ResultadoAuditoria.Exitoso,
+            "La contraseña fue cambiada correctamente.",
+            entidad: nameof(Usuario), entidadId: usuario.Id, usuarioId: usuario.Id);
+        await auditoria.RegistrarAsync(cambioExitoso);
+
         return ResultadoAutenticacion.Correcto(
             "La contraseña fue actualizada correctamente."
         );
@@ -142,7 +176,20 @@ public class AutenticacionServicio : IAutenticacionServicio
     // CERRAR SESIÓN
     public async Task CerrarSesionAsync()
     {
+        var cierre = auditoria.CrearRegistro(
+            "Autenticación", "Cerrar sesión", TipoEventoAuditoria.Seguridad,
+            ResultadoAuditoria.Exitoso, "Cierre de sesión correcto.");
+        await auditoria.RegistrarAsync(cierre);
         await administradorSesion.SignOutAsync();
+    }
+
+    private async Task RegistrarRechazoInicioSesionAsync(string descripcion, string? usuarioId = null)
+    {
+        var registro = auditoria.CrearRegistro(
+            "Autenticación", "Iniciar sesión", TipoEventoAuditoria.Seguridad,
+            ResultadoAuditoria.Rechazado, descripcion,
+            entidad: nameof(Usuario), entidadId: usuarioId, usuarioId: usuarioId);
+        await auditoria.RegistrarIndependienteAsync(registro);
     }
 
     // CREAR ERRORES DE IDENTITY

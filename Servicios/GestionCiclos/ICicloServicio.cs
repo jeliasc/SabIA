@@ -10,4 +10,9 @@ public interface ICicloServicio
     Task<EditarCiclo?> ObtenerParaEditarAsync(int id);
     Task<ResultadoOperacion> EditarAsync(EditarCiclo modelo);
     Task<ResultadoOperacion> ActivarAsync(int id);
+    Task<RevisionCierreCiclo?> ObtenerRevisionCierreAsync(int id);
+    Task<ResultadoOperacion> CerrarAsync(int id);
+    Task<ReabrirCiclo?> ObtenerParaReabrirAsync(int id);
+    Task<ResultadoOperacion> ReabrirAsync(ReabrirCiclo modelo);
+    Task<IReadOnlyList<MovimientoCicloLista>> ObtenerHistorialAsync(int id);
 }

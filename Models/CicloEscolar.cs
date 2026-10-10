@@ -16,7 +16,11 @@ public class CicloEscolar
 
     public bool Activo { get; set; } = false;
 
+    public EstadoCicloEscolar Estado { get; set; } = EstadoCicloEscolar.Preparacion;
+
     public ICollection<Periodo> Periodos { get; set; } = new List<Periodo>();
 
     public ICollection<Seccion> Secciones { get; set; } = new List<Seccion>();
+
+    public ICollection<MovimientoCicloEscolar> Movimientos { get; set; } = new List<MovimientoCicloEscolar>();
 }

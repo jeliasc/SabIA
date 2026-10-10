@@ -20,6 +20,8 @@
         User,
         Permisos.Asignaciones.CambiarEstado
     )).Succeeded;
+
+    var mostrarAcciones = e || ce;
 }
 
 <div class="container-fluid">
@@ -38,8 +40,7 @@
 
         @if (c)
         {
-            <a asp-action="Crear"
-               class="app-btn app-btn-soft-primary">
+            <a asp-action="Crear" class="app-btn app-btn-soft-primary">
                 Nueva asignación
             </a>
         }
@@ -48,77 +49,90 @@
     <div class="card shadow-sm border border-secondary">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table app-table w-100"
-                       data-tabla-index data-actions-column="true">
-                    <thead>
-                        <tr>
-                            <th>Ciclo</th>
-                            <th>Sección</th>
-                            <th>Curso</th>
-                            <th>Docente</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        @foreach (var x in Model)
-                        {
+                <div class="table-responsive">
+                    <table class="table app-table w-100" data-tabla-index
+                           data-actions-column="@(mostrarAcciones ? "true" : "false")"
+                           data-search-placeholder="Grado, carrera, sección, curso o docente..."
+                           data-empty-message="No existen asignaciones registradas"
+                           data-zero-message="No se encontraron asignaciones">
+                        <thead>
                             <tr>
-                                <td>@x.Ciclo</td>
-
-                                <td>@x.Seccion</td>
-
-                                <td class="fw-semibold">
-                                    @x.Curso
-                                </td>
-
-                                <td>@x.Docente</td>
-
-                                <td>
-                                    <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
-                                        ? "app-badge-success"
-                                        : "app-badge-danger")">
-                                        @x.Estado
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <div class="app-actions app-actions-table">
-                                        @if (e)
-                                        {
-                                            <a asp-action="Editar"
-                                               asp-route-id="@x.Id"
-                                               class="app-btn app-btn-soft-secondary app-btn-sm">
-                                                Editar
-                                            </a>
-                                        }
-
-                                        @if (ce)
-                                        {
-                                            <form asp-action="@(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
-                                                ? "Desactivar"
-                                                : "Activar")"
-                                                  asp-route-id="@x.Id"
-                                                  method="post">
-                                                @Html.AntiForgeryToken()
-
-                                                <button class="app-btn @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
-                                                    ? "app-btn-soft-danger"
-                                                    : "app-btn-soft-success") app-btn-sm">
-                                                    @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
-                                                        ? "Desactivar"
-                                                        : "Activar")
-                                                </button>
-                                            </form>
-                                        }
-                                    </div>
-                                </td>
+                                <th class="text-start">Ciclo</th>
+                                <th>Grado</th>
+                                <th>Carrera</th>
+                                <th>Sección</th>
+                                <th>Curso</th>
+                                <th>Docente</th>
+                                <th>Estado</th>
+                                @if (mostrarAcciones)
+                                {
+                                    <th class="text-end">Acciones</th>
+                                }
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var x in Model)
+                            {
+                                <tr>
+                                    <td class="text-start">@x.Ciclo</td>
+
+                                    <td>@x.Grado</td>
+
+                                    <td>@x.Carrera</td>
+
+                                    <td>@x.Seccion</td>
+
+                                    <td class="fw-semibold">
+                                        @x.Curso
+                                    </td>
+
+                                    <td>@x.Docente</td>
+
+                                    <td>
+                                        <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
+                                              ? "app-badge-success"
+                                              : "app-badge-danger")">
+                                            @x.Estado
+                                        </span>
+                                    </td>
+
+                                    @if (mostrarAcciones)
+                                    {
+                                        <td class="app-actions-cell">
+                                            <div class="app-actions app-actions-table">
+                                                @if (e)
+                                                {
+                                                    <a asp-action="Editar" asp-route-id="@x.Id"
+                                                       class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                        Editar
+                                                    </a>
+                                                }
+
+                                                @if (ce)
+                                                {
+                                                    <form asp-action="@(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
+                                                          ? "Desactivar"
+                                                          : "Activar")" asp-route-id="@x.Id" method="post">
+                                                        @Html.AntiForgeryToken()
+
+                                                        <button class="app-btn @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
+                                                                ? "app-btn-soft-danger"
+                                                                : "app-btn-soft-success") app-btn-sm">
+                                                            @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
+                                                                ? "Desactivar"
+                                                                : "Activar")
+                                                        </button>
+                                                    </form>
+                                                }
+                                            </div>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-</div>

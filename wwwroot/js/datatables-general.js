@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 50
             ],
 
-            autoWidth: false,
+            autoWidth: true,
 
             order: [
                 [0, "asc"]

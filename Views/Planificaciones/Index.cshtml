@@ -37,7 +37,7 @@
 <div class="container-fluid">
     <partial name="_AlertasResultado" />
 
-    <div class="d-flex justify-content-between mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
         <div>
             <h2 class="fw-bold mb-1">
                 Planificaciones
@@ -48,13 +48,13 @@
             </p>
         </div>
 
-        <div class="d-flex gap-2 flex-wrap">
-        @if (!soloLectura && c)
-        {
-            <a asp-action="Crear" class="app-btn app-btn-soft-primary">
-                Nueva planificación
-            </a>
-        }
+        <div class="d-grid d-md-flex align-items-center gap-2">
+            @if (!soloLectura && c)
+            {
+                <a asp-action="Crear" class="app-btn app-btn-soft-primary">
+                    Nueva planificación
+                </a>
+            }
             <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-secondary">
                 @(soloLectura ? "Ver vigentes" : "Ver historial")
             </a>
@@ -99,15 +99,15 @@
 
                                 @if (hayAcciones)
                                 {
-                                <td>
-                                    <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Aprobada
-                                          ? "app-badge-success"
-                                          : x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta
-                                            ? "app-badge-danger"
-                                            : "app-badge-secondary")">
-                                        @x.Estado
-                                    </span>
-                                </td>
+                                    <td>
+                                        <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Aprobada
+                                              ? "app-badge-success"
+                                              : x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta
+                                                ? "app-badge-danger"
+                                                : "app-badge-secondary")">
+                                            @x.Estado
+                                        </span>
+                                    </td>
                                 }
 
                                 <td>
@@ -127,11 +127,9 @@
                                              x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta))
                                         {
                                             <form asp-action="EnviarRevision" asp-route-id="@x.Id" method="post"
-                                                  data-confirmar-accion-academica
-                                                  data-confirmar-titulo="Enviar a revisión"
+                                                  data-confirmar-accion-academica data-confirmar-titulo="Enviar a revisión"
                                                   data-confirmar-mensaje="La planificación quedará pendiente de revisión y no podrá editarse mientras esté en ese estado."
-                                                  data-confirmar-texto="Enviar"
-                                                  data-confirmar-color="#198754">
+                                                  data-confirmar-texto="Enviar" data-confirmar-color="#198754">
                                                 @Html.AntiForgeryToken()
 
                                                 <button class="app-btn app-btn-soft-primary app-btn-sm">

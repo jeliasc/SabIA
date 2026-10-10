@@ -140,6 +140,7 @@ public static class SeguridadSeeders
             administradorRoles,
             Roles.Alumno,
             [
+                Permisos.Alumnos.Ver,
                 Permisos.Unidades.Ver,
                 Permisos.Materiales.Ver,
                 Permisos.Materiales.Descargar,
@@ -326,7 +327,9 @@ public static class SeguridadSeeders
             foreach (var permiso in new[]
             {
                 Permisos.Dashboard.CoordinacionVer,
-                Permisos.Calificaciones.AprobarCorreccion
+                Permisos.Calificaciones.AprobarCorreccion,
+                Permisos.Ciclos.Cerrar,
+                Permisos.Ciclos.Reabrir
             })
             {
                 if (claims.Any(claim =>
@@ -368,6 +371,9 @@ public static class SeguridadSeeders
             Permisos.PermisosSistema.Crear => "Crear nuevos permisos.",
             Permisos.PermisosSistema.Editar => "Modificar información de permisos.",
             Permisos.PermisosSistema.CambiarEstado => "Activar o desactivar permisos.",
+
+            Permisos.Ciclos.Cerrar => "Cerrar formalmente ciclos escolares.",
+            Permisos.Ciclos.Reabrir => "Reabrir excepcionalmente ciclos escolares cerrados.",
 
             _ => CrearDescripcionGenerica(codigoPermiso)
         };

@@ -32,6 +32,8 @@ public sealed class InscripcionLista
 
     public string Seccion { get; set; } = string.Empty;
 
+    public string Carrera { get; set; } = string.Empty;
+
     public int Ciclo { get; set; }
 
     public DateOnly Fecha { get; set; }

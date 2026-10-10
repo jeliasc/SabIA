@@ -39,26 +39,23 @@ document.addEventListener("DOMContentLoaded", function () {
         sinResultados?.classList.toggle("d-none", visibles !== 0);
     });
 
-    const encargado = document.querySelector("[data-encargado-alumno]");
-    const parentesco = document.querySelector("[data-parentesco-alumno]");
-
-    const actualizarParentesco = function (limpiar) {
-        if (!encargado || !parentesco) {
-            return;
-        }
-
-        const tieneEncargado = encargado.value !== "";
-
-        if (!tieneEncargado && limpiar) {
-            parentesco.value = "";
-        }
-
-        parentesco.disabled = !tieneEncargado && parentesco.value === "";
+    const registrarEncargado = document.querySelector("[data-registrar-encargado]");
+    const datosEncargado = document.querySelector("[data-datos-encargado]");
+    const actualizarDatosEncargado = function () {
+        if (!registrarEncargado || !datosEncargado) return;
+        datosEncargado.classList.toggle("d-none", !registrarEncargado.checked);
+        datosEncargado.querySelectorAll("input, select, textarea").forEach(function (campo) {
+            campo.disabled = !registrarEncargado.checked;
+        });
     };
+    actualizarDatosEncargado();
+    registrarEncargado?.addEventListener("change", actualizarDatosEncargado);
 
-    actualizarParentesco(false);
-    encargado?.addEventListener("change", function () {
-        actualizarParentesco(true);
+    document.querySelectorAll("[data-quitar-encargado]").forEach(function (boton) {
+        boton.addEventListener("click", async function () {
+            const aceptar = await confirmarAccion("Desvincular encargado", "El encargado se desvinculará del alumno, pero permanecerá en el catálogo general.", "Desvincular", "Cancelar", "#dc3545");
+            if (aceptar) boton.closest("[data-relacion-encargado]")?.remove();
+        });
     });
 
     document.querySelectorAll("[data-cambiar-estado-alumno]").forEach(function (formulario) {

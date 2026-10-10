@@ -747,6 +747,21 @@
     vertical-align: middle;
 }
 
+/* DataTables detecta números y fechas y, por defecto, invierte esos
+   encabezados. SabIA mantiene el texto a la izquierda y el indicador
+   de ordenación en el extremo derecho para todas las columnas. */
+.app-table.dataTable thead > tr > th div.dt-column-header,
+.app-table.dataTable thead > tr > td div.dt-column-header {
+    width: 100%;
+    flex-direction: row !important;
+}
+
+.app-table.dataTable thead > tr > th span.dt-column-order,
+.app-table.dataTable thead > tr > td span.dt-column-order {
+    flex: 0 0 12px;
+    margin-left: auto;
+}
+
 /* =========================================================
    ALERTAS
 ========================================================= */

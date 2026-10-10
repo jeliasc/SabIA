@@ -1,5 +1,6 @@
 @model IEnumerable<Proyecto_Final.ViewModels.Ciclos.CicloLista>
 @using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Models
 @using Proyecto_Final.Seguridad
 @inject IAuthorizationService Autorizacion
 @{
@@ -7,24 +8,102 @@
     var puedeCrear = (await Autorizacion.AuthorizeAsync(User, Permisos.Ciclos.Crear)).Succeeded;
     var puedeEditar = (await Autorizacion.AuthorizeAsync(User, Permisos.Ciclos.Editar)).Succeeded;
     var puedeActivar = (await Autorizacion.AuthorizeAsync(User, Permisos.Ciclos.Activar)).Succeeded;
+    var puedeCerrar = (await Autorizacion.AuthorizeAsync(User, Permisos.Ciclos.Cerrar)).Succeeded;
+    var puedeReabrir = (await Autorizacion.AuthorizeAsync(User, Permisos.Ciclos.Reabrir)).Succeeded;
+    string ClaseEstado(EstadoCicloEscolar estado) => estado switch
+    {
+        EstadoCicloEscolar.Activo => "app-badge-success",
+        EstadoCicloEscolar.Cerrado => "app-badge-danger",
+        _ => "app-badge-secondary"
+    };
+    string TextoEstado(EstadoCicloEscolar estado) =>
+        estado == EstadoCicloEscolar.Preparacion ? "Preparación" : estado.ToString();
 }
+
 <div class="container-fluid">
     <partial name="_AlertasResultado" />
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-        <div><h2 class="fw-bold mb-1">Ciclos escolares</h2><p class="text-muted mb-0">Administración de períodos lectivos.</p></div>
-        @if (puedeCrear) { <a asp-action="Crear" class="app-btn app-btn-soft-primary">Nuevo ciclo</a> }
+        <div>
+            <h2 class="fw-bold mb-1">Ciclos escolares</h2>
+            <p class="text-muted mb-0">Activación, cierre formal e historial de períodos lectivos.</p>
+        </div>
+        @if (puedeCrear)
+        {
+            <a asp-action="Crear" class="app-btn app-btn-soft-primary">Nuevo ciclo</a>
+        }
     </div>
-    <div class="card shadow-sm border border-secondary"><div class="card-body"><div class="table-responsive">
-        <table class="table app-table w-100" data-tabla-index data-actions-column="true" data-search-placeholder="Año..." data-empty-message="No existen ciclos escolares">
-            <thead><tr><th>Año</th><th>Inicio</th><th>Fin</th><th>Períodos</th><th>Secciones</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
-            <tbody>@foreach (var x in Model) { <tr>
-                <td class="fw-semibold">@x.Anio</td><td>@x.Inicio.ToString("dd/MM/yyyy")</td><td>@x.Fin.ToString("dd/MM/yyyy")</td><td>@x.Periodos</td><td>@x.Secciones</td>
-                <td><span class="app-badge @(x.Activo ? "app-badge-success" : "app-badge-secondary")">@(x.Activo ? "Activo" : "Inactivo")</span></td>
-                <td class="app-actions-cell"><div class="app-actions app-actions-table">
-                    @if (puedeEditar) { <a asp-action="Editar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary app-btn-sm">Editar</a> }
-                    @if (puedeActivar && !x.Activo) { <form asp-action="Activar" asp-route-id="@x.Id" method="post" class="m-0">@Html.AntiForgeryToken()<button class="app-btn app-btn-soft-success app-btn-sm" type="submit">Activar</button></form> }
-                </div></td>
-            </tr> }</tbody>
-        </table>
-    </div></div></div>
+
+    <div class="card shadow-sm border border-secondary">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table app-table w-100" data-tabla-index data-actions-column="true"
+                       data-search-placeholder="Buscar por año..."
+                       data-empty-message="No existen ciclos escolares registrados"
+                       data-zero-message="No se encontraron ciclos escolares">
+                    <thead>
+                        <tr>
+                            <th class="text-start">Año</th>
+                            <th>Inicio</th>
+                            <th>Fin</th>
+                            <th class="text-start">Períodos</th>
+                            <th class="text-start">Secciones</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ciclo in Model)
+                        {
+                            <tr>
+                                <td class="fw-semibold text-start">@ciclo.Anio</td>
+                                <td>@ciclo.Inicio.ToString("dd/MM/yyyy")</td>
+                                <td>@ciclo.Fin.ToString("dd/MM/yyyy")</td>
+                                <td class="text-start">@ciclo.Periodos</td>
+                                <td class="text-start">@ciclo.Secciones</td>
+                                <td><span class="app-badge @ClaseEstado(ciclo.Estado)">@TextoEstado(ciclo.Estado)</span>
+                                </td>
+                                <td class="app-actions-cell">
+                                    <div class="app-actions app-actions-table flex-wrap">
+                                        @if (puedeEditar && ciclo.Estado != EstadoCicloEscolar.Cerrado)
+                                        {
+                                            <a asp-action="Editar" asp-route-id="@ciclo.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">Editar</a>
+                                        }
+                                        @if (puedeActivar && ciclo.Estado == EstadoCicloEscolar.Preparacion)
+                                        {
+                                            <form asp-action="Activar" asp-route-id="@ciclo.Id" method="post" class="m-0"
+                                                  data-confirmar-accion-academica data-confirmar-titulo="Activar ciclo"
+                                                  data-confirmar-mensaje="La activación será rechazada si ya existe otro ciclo activo."
+                                                  data-confirmar-texto="Activar" data-confirmar-color="#198754">
+                                                @Html.AntiForgeryToken()
+                                                <button class="app-btn app-btn-soft-success app-btn-sm"
+                                                        type="submit">Activar</button>
+                                            </form>
+                                        }
+                                        @if (puedeCerrar && ciclo.Estado == EstadoCicloEscolar.Activo)
+                                        {
+                                            <a asp-action="RevisarCierre" asp-route-id="@ciclo.Id"
+                                               class="app-btn app-btn-soft-warning app-btn-sm">Revisar cierre</a>
+                                        }
+                                        @if (puedeReabrir && ciclo.Estado == EstadoCicloEscolar.Cerrado)
+                                        {
+                                            <a asp-action="Reabrir" asp-route-id="@ciclo.Id"
+                                               class="app-btn app-btn-soft-warning app-btn-sm">Reabrir</a>
+                                        }
+                                        <a asp-action="Historial" asp-route-id="@ciclo.Id"
+                                           class="app-btn app-btn-soft-secondary app-btn-sm">Historial</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
+
+@section Scripts
+{
+    <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+}

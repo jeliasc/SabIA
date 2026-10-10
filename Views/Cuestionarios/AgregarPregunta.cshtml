@@ -21,64 +21,51 @@
                 <input asp-for="CuestionarioId" type="hidden" />
                 <input asp-for="Cuestionario" type="hidden" />
 
-                <div asp-validation-summary="ModelOnly"
-                     class="text-danger">
+                <div asp-validation-summary="ModelOnly" class="text-danger">
                 </div>
 
                 <div class="row g-3">
                     <div class="col-md-2">
-                        <label asp-for="Orden"
-                               class="form-label">
+                        <label asp-for="Orden" class="form-label">
                             Orden
                         </label>
 
-                        <input asp-for="Orden"
-                               class="form-control" />
+                        <input asp-for="Orden" class="form-control" />
                     </div>
 
                     <div class="col-md-4">
-                        <label asp-for="Tipo"
-                               class="form-label">
+                        <label asp-for="Tipo" class="form-label">
                             Tipo
                         </label>
 
-                        <select asp-for="Tipo"
-                                asp-items="Html.GetEnumSelectList<Proyecto_Final.Models.TipoPregunta>()"
+                        <select asp-for="Tipo" asp-items="Html.GetEnumSelectList<Proyecto_Final.Models.TipoPregunta>()"
                                 class="form-select">
                         </select>
                     </div>
 
                     <div class="col-md-2">
-                        <label asp-for="Punteo"
-                               class="form-label">
+                        <label asp-for="Punteo" class="form-label">
                             Punteo
                         </label>
 
-                        <input asp-for="Punteo"
-                               class="form-control" />
+                        <input asp-for="Punteo" class="form-control" />
                     </div>
 
                     <div class="col-12">
-                        <label asp-for="Enunciado"
-                               class="form-label">
+                        <label asp-for="Enunciado" class="form-label">
                             Pregunta
                         </label>
 
-                        <textarea asp-for="Enunciado"
-                                  class="form-control"
-                                  rows="3">
+                        <textarea asp-for="Enunciado" class="form-control" rows="3">
                         </textarea>
                     </div>
 
                     <div class="col-md-6">
-                        <label asp-for="OpcionesSeparadas"
-                               class="form-label">
+                        <label asp-for="OpcionesSeparadas" class="form-label">
                             Opciones
                         </label>
 
-                        <textarea asp-for="OpcionesSeparadas"
-                                  class="form-control"
-                                  rows="5"
+                        <textarea asp-for="OpcionesSeparadas" class="form-control" rows="5"
                                   placeholder="Una opción por línea">
                         </textarea>
 
@@ -88,14 +75,11 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label asp-for="RespuestaCorrecta"
-                               class="form-label">
+                        <label asp-for="RespuestaCorrecta" class="form-label">
                             Respuesta correcta
                         </label>
 
-                        <textarea asp-for="RespuestaCorrecta"
-                                  class="form-control"
-                                  rows="5">
+                        <textarea asp-for="RespuestaCorrecta" class="form-control" rows="5">
                         </textarea>
 
                         <div class="form-text">
@@ -105,8 +89,7 @@
                 </div>
 
                 <div class="d-flex flex-column flex-md-row justify-content-end gap-2 mt-4">
-                    <a asp-action="Index"
-                       class="app-btn app-btn-secondary">
+                    <a asp-action="Index" class="app-btn app-btn-secondary">
                         Finalizar
                     </a>
 

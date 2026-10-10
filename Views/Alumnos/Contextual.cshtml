@@ -1,0 +1,113 @@
+@model Proyecto_Final.ViewModels.Alumnos.AlumnosContextualesIndice
+@using Proyecto_Final.ViewModels.Alumnos
+
+@{
+    var esAlumno = Model.TipoAcceso == TipoAccesoAlumnos.Alumno;
+    var titulo = esAlumno ? "Mis compañeros" : "Alumnos de mis secciones";
+    ViewData["Title"] = titulo;
+    var hayAlumnos = Model.Alumnos.Any();
+}
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1">@titulo</h2>
+        <p class="text-muted mb-0">
+            @(esAlumno
+                ? "Compañeros con inscripción vigente en tu sección y ciclo escolar activo."
+                : "Alumnos con inscripción vigente en tus secciones académicamente activas.")
+        </p>
+    </div>
+
+    @if (hayAlumnos)
+    {
+        <div class="d-md-none mb-3">
+            <div class="d-grid">
+                <button type="button" class="app-btn app-btn-secondary"
+                        aria-expanded="false" aria-controls="busqueda-alumnos-contextual-movil"
+                        data-mostrar-busqueda-alumnos>
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    Buscar alumno
+                </button>
+            </div>
+            <div id="busqueda-alumnos-contextual-movil" class="mt-2 d-none"
+                 data-contenedor-busqueda-alumnos>
+                <input type="search" class="form-control"
+                       placeholder="Nombre, ciclo, grado, carrera o sección..."
+                       aria-label="Buscar alumnos" autocomplete="off"
+                       data-busqueda-alumnos />
+            </div>
+        </div>
+    }
+
+    <div class="card shadow-sm border border-secondary d-none d-md-block">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table app-table w-100" data-tabla-index
+                       data-actions-column="false"
+                       data-search-placeholder="Nombre, ciclo, grado, carrera o sección..."
+                       data-empty-message="No hay alumnos disponibles en tu ámbito académico"
+                       data-zero-message="No se encontraron alumnos">
+                    <thead>
+                        <tr>
+                            <th>Alumno</th>
+                            <th>Ciclo escolar</th>
+                            <th>Grado</th>
+                            <th>Carrera</th>
+                            <th>Sección</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var alumno in Model.Alumnos)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@alumno.NombreCompleto</td>
+                                <td>@alumno.CicloEscolar</td>
+                                <td>@alumno.Grado</td>
+                                <td>@alumno.Carrera</td>
+                                <td>@alumno.Seccion</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-md-none" data-contenedor-alumnos-movil>
+        @foreach (var alumno in Model.Alumnos)
+        {
+            var busqueda = $"{alumno.NombreCompleto} {alumno.CicloEscolar} " +
+                $"{alumno.Grado} {alumno.Carrera} {alumno.Seccion}";
+
+            <article class="card shadow-sm border-0 mb-3" data-alumno
+                     data-texto-busqueda="@busqueda">
+                <div class="card-body p-4">
+                    <h3 class="fw-bold fs-5 mb-3">@alumno.NombreCompleto</h3>
+                    <dl class="row mb-4">
+                        <dt class="col-5 text-muted fw-normal">Ciclo escolar</dt>
+                        <dd class="col-7">@alumno.CicloEscolar</dd>
+                        <dt class="col-5 text-muted fw-normal">Grado</dt>
+                        <dd class="col-7">@alumno.Grado</dd>
+                        <dt class="col-5 text-muted fw-normal">Carrera</dt>
+                        <dd class="col-7">@alumno.Carrera</dd>
+                        <dt class="col-5 text-muted fw-normal">Sección</dt>
+                        <dd class="col-7">@alumno.Seccion</dd>
+                    </dl>
+                </div>
+            </article>
+        }
+
+        <div class="app-card @(hayAlumnos ? "d-none" : null)"
+             data-alumnos-sin-resultados role="status">
+            <div class="app-card-body text-center text-muted">
+                @(hayAlumnos
+                    ? "No se encontraron alumnos."
+                    : "No hay alumnos disponibles en tu ámbito académico.")
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/alumnos.js" asp-append-version="true"></script>
+}

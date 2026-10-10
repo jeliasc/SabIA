@@ -37,6 +37,10 @@ public sealed class AsignacionLista
 
     public string Ciclo { get; set; } = string.Empty;
 
+    public string Grado { get; set; } = string.Empty;
+
+    public string Carrera { get; set; } = string.Empty;
+
     public string Seccion { get; set; } = string.Empty;
 
     public string Curso { get; set; } = string.Empty;

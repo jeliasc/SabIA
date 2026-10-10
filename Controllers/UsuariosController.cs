@@ -4,17 +4,22 @@ using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Usuarios;
 using Proyecto_Final.ViewModels.Usuarios;
 using Proyecto_Final.Data;
+using Proyecto_Final.Models;
+using Proyecto_Final.Servicios.Auditoria;
 
 namespace Proyecto_Final.Controllers;
 
 public class UsuariosController : Controller
 {
     private readonly IUsuarioServicio usuarioServicio;
+    private readonly IAuditoriaServicio auditoria;
 
     public UsuariosController(
-        IUsuarioServicio usuarioServicio)
+        IUsuarioServicio usuarioServicio,
+        IAuditoriaServicio auditoria)
     {
         this.usuarioServicio = usuarioServicio;
+        this.auditoria = auditoria;
     }
 
     // MOSTRAR LISTADO DE USUARIOS
@@ -257,6 +262,13 @@ public class UsuariosController : Controller
 
         TempData["Exito"] =
             resultado.Mensaje;
+
+        var registro = auditoria.CrearRegistro(
+            "Usuarios", "Enviar restablecimiento de contraseña", TipoEventoAuditoria.Seguridad,
+            ResultadoAuditoria.Exitoso,
+            "Se generó y envió un enlace de restablecimiento de contraseña.",
+            entidad: nameof(Usuario), entidadId: id);
+        await auditoria.RegistrarAsync(registro);
 
         return RedirectToAction(nameof(Index));
     }

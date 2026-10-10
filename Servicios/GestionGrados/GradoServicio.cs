@@ -43,6 +43,9 @@ public sealed class GradoServicio(Contexto contexto) : IGradoServicio
         if (error != null) return error;
         var entidad = await contexto.Grados.FirstOrDefaultAsync(x => x.Id == modelo.Id);
         if (entidad == null) return ResultadoOperacion.Error("El grado no existe.");
+        if (await contexto.Secciones.AnyAsync(x =>
+            x.GradoId == modelo.Id && x.CicloEscolar.Estado == EstadoCicloEscolar.Cerrado))
+            return ResultadoOperacion.Error("No puede modificarse un grado utilizado por ciclos cerrados.");
         await using var tx = await contexto.Database.BeginTransactionAsync();
         try
         {

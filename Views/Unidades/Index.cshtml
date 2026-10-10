@@ -37,14 +37,13 @@
                 Organización y liberación progresiva del contenido académico.
             </p>
         </div>
-
-        <div class="d-flex gap-2 flex-wrap">
-        @if (!soloLectura && c)
-        {
-            <a asp-action="Crear" class="app-btn app-btn-soft-primary">
-                Nueva unidad
-            </a>
-        }
+        <div class="d-grid d-md-flex align-items-center gap-2">
+            @if (!soloLectura && c)
+            {
+                <a asp-action="Crear" class="app-btn app-btn-soft-primary">
+                    Nueva unidad
+                </a>
+            }
             <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-secondary">
                 @(soloLectura ? "Ver vigentes" : "Ver historial")
             </a>
@@ -88,13 +87,13 @@
 
                             @if (hayAcciones)
                             {
-                            <td>
-                                <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
-                                      ? "app-badge-success"
-                                      : "app-badge-secondary")">
-                                    @x.Estado
-                                </span>
-                            </td>
+                                <td>
+                                    <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                                          ? "app-badge-success"
+                                          : "app-badge-secondary")">
+                                        @x.Estado
+                                    </span>
+                                </td>
                             }
 
                             <td>

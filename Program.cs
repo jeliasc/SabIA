@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 using Proyecto_Final.Data;
 using Proyecto_Final.Data.Seeders;
 using Proyecto_Final.Models;
@@ -35,13 +37,37 @@ using Proyecto_Final.Servicios.GestionNotificaciones;
 using Proyecto_Final.Servicios.GestionCalificaciones;
 using Proyecto_Final.Servicios.InteligenciaArtificial;
 using Proyecto_Final.Servicios.Dashboard;
+using Proyecto_Final.Servicios.Auditoria;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<Contexto>(options =>
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("ConexionPrincipal")
-    )
+var proxiesConfiables = builder.Configuration
+    .GetSection("ProxySeguro:ProxiesConfiables")
+    .GetChildren()
+    .Select(x => x.Value)
+    .Where(x => !string.IsNullOrWhiteSpace(x))
+    .Select(x => IPAddress.TryParse(x, out var direccion)
+        ? direccion
+        : throw new InvalidOperationException($"La dirección de proxy configurada '{x}' no es válida."))
+    .ToArray();
+
+if (proxiesConfiables.Length > 0)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.ForwardLimit = 1;
+        options.KnownProxies.Clear();
+        foreach (var proxy in proxiesConfiables)
+            options.KnownProxies.Add(proxy);
+    });
+}
+
+builder.Services.AddScoped<AuditoriaSaveChangesInterceptor>();
+builder.Services.AddDbContext<Contexto>((serviceProvider, options) =>
+    options
+        .UseNpgsql(builder.Configuration.GetConnectionString("ConexionPrincipal"))
+        .AddInterceptors(serviceProvider.GetRequiredService<AuditoriaSaveChangesInterceptor>())
 );
 
 
@@ -69,6 +95,7 @@ builder.Services.AddIdentity<Usuario, Rol>(options =>
     .AddDefaultTokenProviders();
 
 builder.Services.AddScoped<ForzarCambioContrasenaFiltro>();
+builder.Services.AddScoped<AuditoriaRechazosFiltro>();
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -86,6 +113,21 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy(Permisos.Ciclos.Cerrar, politica =>
+        politica.RequireAssertion(contexto =>
+            contexto.User.IsInRole(Roles.Superusuario) ||
+            (contexto.User.HasClaim(TiposClaims.Permiso, Permisos.Ciclos.Cerrar) &&
+             contexto.User.HasClaim(TiposClaims.Permiso, Permisos.Planificaciones.Revisar))));
+    options.AddPolicy(Permisos.Ciclos.Reabrir, politica =>
+        politica.RequireAssertion(contexto =>
+            contexto.User.IsInRole(Roles.Superusuario) ||
+            (contexto.User.HasClaim(TiposClaims.Permiso, Permisos.Ciclos.Reabrir) &&
+             contexto.User.HasClaim(TiposClaims.Permiso, Permisos.Planificaciones.Revisar))));
+
+    options.AddPolicy(
+        Politicas.AuditoriaSuperusuario,
+        politica => politica.RequireRole(Roles.Superusuario));
+
     // EXIGIR AUTENTICACIÓN EN TODO EL SISTEMA
     // excepto en las acciones marcadas con AllowAnonymous.
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -103,6 +145,7 @@ builder.Services.AddControllersWithViews(options =>
     // APLICAR VALIDACIÓN DE CONTRASEÑA OBLIGATORIA
     // A TODOS LOS CONTROLADORES DEL SISTEMA.
     options.Filters.AddService<ForzarCambioContrasenaFiltro>();
+    options.Filters.AddService<AuditoriaRechazosFiltro>();
 });
 
 // CONFIGURAR SERVICIO DE CORREO
@@ -143,6 +186,8 @@ builder.Services.AddScoped<IDocumentoServicio, DocumentoServicio>();
 builder.Services.AddScoped<INotificacionServicio, NotificacionServicio>();
 builder.Services.AddScoped<ICalificacionServicio, CalificacionServicio>();
 builder.Services.AddScoped<IDashboardServicio, DashboardServicio>();
+builder.Services.AddScoped<IAuditoriaServicio, AuditoriaServicio>();
+builder.Services.AddScoped<IAuditoriaConsultaServicio, AuditoriaConsultaServicio>();
 builder.Services.Configure<ConfiguracionIa>(builder.Configuration.GetSection("InteligenciaArtificial"));
 builder.Services.AddHttpClient<IIaServicio, IaServicio>((serviceProvider, client) =>
 {
@@ -173,6 +218,9 @@ using (var ambito = app.Services.CreateScope())
 }
 
 // CONFIGURAR CANAL DE SOLICITUDES HTTP
+if (proxiesConfiables.Length > 0)
+    app.UseForwardedHeaders();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");

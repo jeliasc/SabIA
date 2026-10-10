@@ -51,11 +51,11 @@
                 <table class="table app-table w-100" data-tabla-index data-actions-column="true">
                     <thead>
                         <tr>
-                            <th>Ciclo</th>
+                            <th class="text-start">Ciclo</th>
                             <th>Grado</th>
                             <th>Sección</th>
-                            <th>Alumnos</th>
-                            <th>Asignaciones</th>
+                            <th class="text-start">Alumnos</th>
+                            <th class="text-start">Asignaciones</th>
                             <th>Estado</th>
                             <th class="text-end">Acciones</th>
                         </tr>
@@ -75,9 +75,9 @@
                                     @x.Nombre
                                 </td>
 
-                                <td>@x.Alumnos</td>
+                                <td class="text-start">@x.Alumnos</td>
 
-                                <td>@x.Asignaciones</td>
+                                <td class="text-start">@x.Asignaciones</td>
 
                                 <td>
                                     <span class="app-badge @(activa

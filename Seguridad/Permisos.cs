@@ -62,6 +62,8 @@ public static class Permisos
         public const string Crear = "Ciclos.Crear";
         public const string Editar = "Ciclos.Editar";
         public const string Activar = "Ciclos.Activar";
+        public const string Cerrar = "Ciclos.Cerrar";
+        public const string Reabrir = "Ciclos.Reabrir";
     }
 
     public static class Periodos
@@ -230,6 +232,8 @@ public static class Permisos
             Ciclos.Crear,
             Ciclos.Editar,
             Ciclos.Activar,
+            Ciclos.Cerrar,
+            Ciclos.Reabrir,
 
             Periodos.Ver,
             Periodos.Crear,
