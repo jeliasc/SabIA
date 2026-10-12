@@ -12,12 +12,14 @@
         </label>
 
         <select asp-for="SeccionId"
-                class="form-select" data-select-busqueda>
+                class="form-select"
+                data-asignacion-seccion
+                data-select-busqueda>
             <option value="">Seleccione...</option>
 
             @foreach (var x in Model.Secciones)
             {
-                <option value="@x.Id">@x.Texto</option>
+                <option value="@x.Id" data-grado-id="@x.GradoId">@x.Texto</option>
             }
         </select>
 
@@ -33,12 +35,14 @@
         </label>
 
         <select asp-for="CursoId"
-                class="form-select" data-select-busqueda>
+                class="form-select"
+                data-asignacion-curso
+                data-select-busqueda>
             <option value="">Seleccione...</option>
 
             @foreach (var x in Model.Cursos)
             {
-                <option value="@x.Id">@x.Texto</option>
+                <option value="@x.Id" data-grado-id="@x.GradoId">@x.Texto</option>
             }
         </select>
 

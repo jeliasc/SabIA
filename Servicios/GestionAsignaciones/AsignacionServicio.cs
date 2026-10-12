@@ -61,9 +61,10 @@ public sealed class AsignacionServicio(
             .Where(x => x.Estado == EstadoRegistro.Activo && x.CicloEscolar.Activo)
             .OrderByDescending(x => x.CicloEscolar.Anio)
             .ThenBy(x => x.Grado.Orden)
-            .Select(x => new OpcionSeleccion
+            .Select(x => new OpcionAsignacion
             {
                 Id = x.Id,
+                GradoId = x.GradoId,
                 Texto = x.CicloEscolar.Anio
                     + " · "
                     + x.Grado.Nombre
@@ -79,9 +80,10 @@ public sealed class AsignacionServicio(
             .Where(x => x.Estado == EstadoRegistro.Activo)
             .OrderBy(x => x.Grado.Orden)
             .ThenBy(x => x.Nombre)
-            .Select(x => new OpcionSeleccion
+            .Select(x => new OpcionAsignacion
             {
                 Id = x.Id,
+                GradoId = x.GradoId,
                 Texto = x.Grado.Nombre + " · " + x.Nombre
             })
             .ToListAsync();
