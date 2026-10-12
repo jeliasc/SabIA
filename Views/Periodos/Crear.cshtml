@@ -1,20 +1,36 @@
 @model Proyecto_Final.ViewModels.Periodos.CrearPeriodo
+
 @{
-    ViewData["Title"] = "Nuevo período";
+    ViewData["Title"] = "Nuevo período académico";
 }
+
 <div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-xl-9">
             <div class="mb-4">
-                <h2 class="fw-bold mb-1">Nuevo período</h2>
+                <h2 class="fw-bold mb-1">Nuevo período académico</h2>
+                <p class="text-muted mb-0">
+                    Configure una división del ciclo escolar, como un
+                    bimestre, trimestre o semestre. Las unidades
+                    didácticas se administran por separado en
+                    el módulo Unidades.
+                </p>
             </div>
+
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <form method="post">@Html.AntiForgeryToken()
+                    <form method="post">
+                        @Html.AntiForgeryToken()
+
                         <partial name="Formulario" model="Model" />
+
                         <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
-                            <a asp-action="Index" class="app-btn app-btn-soft-secondary">Cancelar</a>
-                            <button type="submit" class="app-btn app-btn-soft-primary">Guardar</button>
+                            <a asp-action="Index" class="app-btn app-btn-soft-secondary">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="app-btn app-btn-soft-primary">
+                                Guardar
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -22,6 +38,7 @@
         </div>
     </div>
 </div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }

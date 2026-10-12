@@ -1,3 +1,4 @@
+
 using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Final.ViewModels.Periodos;
@@ -20,8 +21,22 @@ public class FormularioPeriodo
     [Required, Display(Name = "Fecha de finalización")]
     public DateOnly FechaFin { get; set; }
 }
-public sealed class CrearPeriodo : FormularioPeriodo { }
-public sealed class EditarPeriodo : FormularioPeriodo { public int Id { get; set; } }
+
+public sealed class CrearPeriodo : FormularioPeriodo
+{
+    public CrearPeriodo()
+    {
+        Numero = 0;
+        FechaInicio = DateOnly.MinValue;
+        FechaFin = DateOnly.MinValue;
+    }
+}
+
+public sealed class EditarPeriodo : FormularioPeriodo
+{
+    public int Id { get; set; }
+}
+
 public sealed class PeriodoLista
 {
     public int Id { get; init; }
