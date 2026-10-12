@@ -15,11 +15,20 @@ public class FormularioAsignacion
     [Range(1, int.MaxValue)]
     public int DocenteId { get; set; }
 
-    public List<OpcionSeleccion> Secciones { get; set; } = [];
+    public List<OpcionAsignacion> Secciones { get; set; } = [];
 
-    public List<OpcionSeleccion> Cursos { get; set; } = [];
+    public List<OpcionAsignacion> Cursos { get; set; } = [];
 
     public List<OpcionSeleccion> Docentes { get; set; } = [];
+}
+
+public sealed class OpcionAsignacion
+{
+    public int Id { get; set; }
+
+    public int GradoId { get; set; }
+
+    public string Texto { get; set; } = string.Empty;
 }
 
 public sealed class CrearAsignacion : FormularioAsignacion
