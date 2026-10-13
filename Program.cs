@@ -41,27 +41,13 @@ using Proyecto_Final.Servicios.Auditoria;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var proxiesConfiables = builder.Configuration
-    .GetSection("ProxySeguro:ProxiesConfiables")
-    .GetChildren()
-    .Select(x => x.Value)
-    .Where(x => !string.IsNullOrWhiteSpace(x))
-    .Select(x => IPAddress.TryParse(x, out var direccion)
-        ? direccion
-        : throw new InvalidOperationException($"La dirección de proxy configurada '{x}' no es válida."))
-    .ToArray();
-
-if (proxiesConfiables.Length > 0)
+// CONFIGURAR CABECERAS REENVIADAS (PROXY / CLOUDFLARE / NGINX)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    builder.Services.Configure<ForwardedHeadersOptions>(options =>
-    {
-        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-        options.ForwardLimit = 1;
-        options.KnownProxies.Clear();
-        foreach (var proxy in proxiesConfiables)
-            options.KnownProxies.Add(proxy);
-    });
-}
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddScoped<AuditoriaSaveChangesInterceptor>();
 builder.Services.AddDbContext<Contexto>((serviceProvider, options) =>
@@ -107,7 +93,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 
     options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.Cookie.SameSite = SameSiteMode.Lax;
 });
 
@@ -198,6 +184,12 @@ builder.Services.AddHttpClient<IIaServicio, IaServicio>((serviceProvider, client
 
 var app = builder.Build();
 
+// ACTIVAR CABECERAS REENVIADAS AL INICIO DEL PIPELINE
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 var loggerArchivos = app.Services
     .GetRequiredService<ILoggerFactory>()
     .CreateLogger("InicializacionArchivos");
@@ -210,16 +202,17 @@ InicializadorArchivos.Inicializar(
 using (var ambito = app.Services.CreateScope())
 {
     var servicios = ambito.ServiceProvider;
+    
+    // 1. Aplicar migraciones automáticamente al arrancar
+    var context = servicios.GetRequiredService<Contexto>();
+    await context.Database.MigrateAsync();
 
+    // 2. Ejecutar seeders después de que las tablas ya existen
     await SeguridadSeeders.InicializarAsync(
         servicios,
         app.Configuration
     );
 }
-
-// CONFIGURAR CANAL DE SOLICITUDES HTTP
-if (proxiesConfiables.Length > 0)
-    app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {
