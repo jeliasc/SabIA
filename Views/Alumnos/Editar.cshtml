@@ -1,0 +1,50 @@
+@model Proyecto_Final.ViewModels.Alumnos.EditarAlumno
+
+@{
+    ViewData["Title"] = "Editar alumno";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Editar alumno</h2>
+            <p class="text-muted mb-0">Actualice los datos personales del alumno.</p>
+        </div>
+        <a asp-action="Index" class="app-btn app-btn-secondary"><i class="bi bi-arrow-left"></i> Volver</a>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-body">
+            <div class="app-alert app-alert-info mb-4">
+                <i class="bi bi-info-circle"></i>
+                <div>Los cambios de sección se realizan desde Inscripciones para conservar el historial de traslados.</div>
+            </div>
+
+            <form asp-action="Editar" method="post" novalidate data-editar-alumno>
+                @Html.AntiForgeryToken()
+                <input asp-for="Id" type="hidden" />
+                <partial name="Formulario" model="Model" />
+
+                <hr class="my-4" />
+                <h5 class="fw-semibold mb-3">Encargados del alumno</h5>
+                <div class="row g-3" data-relaciones-encargados>
+                    @for (var i = 0; i < Model.Encargados.Count; i++)
+                    {
+                        <div class="col-12" data-relacion-encargado><input asp-for="Encargados[i].EncargadoId" type="hidden" /><div class="row g-2 align-items-end"><div class="col-md-6"><label class="form-label">Encargado</label><input class="form-control" value="@Model.Encargados[i].NombreCompleto" readonly /></div><div class="col-md-4"><label asp-for="Encargados[i].Parentesco" class="form-label">Parentesco</label><select asp-for="Encargados[i].Parentesco" asp-items="Html.GetEnumSelectList<Proyecto_Final.Models.TipoParentesco>()" class="form-select"></select></div><div class="col-md-2"><button type="button" class="app-btn app-btn-soft-danger w-100" data-quitar-encargado>Desvincular</button></div></div></div>
+                    }
+                </div>
+                <div class="row g-3 mt-1"><div class="col-md-7"><label asp-for="NuevoEncargadoId" class="form-label">Agregar encargado existente</label><select asp-for="NuevoEncargadoId" asp-items="@(new Microsoft.AspNetCore.Mvc.Rendering.SelectList(Model.OpcionesEncargados, "Id", "Texto"))" class="form-select" data-select-busqueda><option value="">Seleccione...</option></select></div><div class="col-md-5"><label asp-for="NuevoParentesco" class="form-label">Parentesco</label><select asp-for="NuevoParentesco" asp-items="Html.GetEnumSelectList<Proyecto_Final.Models.TipoParentesco>()" class="form-select"><option value="">Seleccione...</option></select></div></div>
+
+                <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
+                    <a asp-action="Index" class="app-btn app-btn-secondary">Cancelar</a>
+                    <button type="submit" class="app-btn app-btn-primary"><i class="bi bi-check-lg"></i> Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/alumnos.js" asp-append-version="true"></script>
+}

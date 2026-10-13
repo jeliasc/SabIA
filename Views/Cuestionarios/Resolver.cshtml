@@ -1,0 +1,94 @@
+@model Proyecto_Final.ViewModels.Cuestionarios.InicioCuestionario
+@using Proyecto_Final.Models
+@{
+    ViewData["Title"] = "Resolver cuestionario";
+
+    string Duracion(int segundos) =>
+        segundos >= 60
+            ? $"{segundos / 60} min{(segundos % 60 > 0 ? $" {segundos % 60} s" : "")}"
+            : $"{segundos} s";
+}
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4 p-md-5">
+                    <h2 class="fw-bold mb-2">@Model.Titulo</h2>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Instrucciones))
+                    {
+                        <p class="text-muted" style="white-space: pre-line">@Model.Instrucciones</p>
+                    }
+
+                    <ul class="list-unstyled my-4">
+                        <li class="mb-2">
+                            <i class="bi bi-list-ol me-2"></i>
+                            @Model.CantidadPreguntas pregunta(s)
+                        </li>
+
+                        <li class="mb-2">
+                            <i class="bi bi-stopwatch me-2"></i>
+                            @switch (Model.ModalidadTiempo)
+                            {
+                                case ModalidadTiempoCuestionario.TiempoGeneral:
+                                    <text>Tiempo total: @Duracion(Model.TiempoGeneralSegundos ?? 0). Al terminar el tiempo el cuestionario se envía solo.</text>
+                                    break;
+                                case ModalidadTiempoCuestionario.TiempoPorPregunta:
+                                    <text>Cada pregunta tiene su propio tiempo@(Model.TiempoPorPreguntaSegundos.HasValue ? $" (normalmente {Duracion(Model.TiempoPorPreguntaSegundos.Value)})" : ""). Al terminar, pasa a la siguiente.</text>
+                                    break;
+                                default:
+                                    <text>Sin límite de tiempo.</text>
+                                    break;
+                            }
+                        </li>
+
+                        <li class="mb-2">
+                            <i class="bi bi-signpost-split me-2"></i>
+                            @(Model.PermitirNavegacion
+                                ? "Puede avanzar y regresar entre preguntas antes de finalizar."
+                                : "Las preguntas se responden una a la vez y no es posible regresar.")
+                        </li>
+
+                        <li>
+                            <i class="bi bi-arrow-repeat me-2"></i>
+                            Intentos utilizados: @Model.IntentosUsados
+                            de @(Model.MaximoIntentos == 0 ? "ilimitados" : Model.MaximoIntentos.ToString())
+                        </li>
+                    </ul>
+
+                    @if (Model.PlazoVencido && !Model.IntentoEnCursoId.HasValue)
+                    {
+                        <div class="alert alert-secondary">El plazo para resolver este cuestionario ya terminó.</div>
+                    }
+                    else if (!Model.PuedeIniciar)
+                    {
+                        <div class="alert alert-secondary">Ya utilizó todos los intentos disponibles.</div>
+                    }
+
+                    <div class="d-flex flex-column flex-md-row justify-content-end gap-2">
+                        <a asp-action="Index" class="app-btn app-btn-secondary">Volver</a>
+
+                        @if (Model.UltimoIntentoId.HasValue)
+                        {
+                            <a asp-action="Resultado" asp-route-id="@Model.UltimoIntentoId"
+                               class="app-btn app-btn-soft-secondary">
+                                Ver último resultado
+                            </a>
+                        }
+
+                        @if (Model.PuedeIniciar)
+                        {
+                            <form asp-action="Iniciar" asp-route-id="@Model.CuestionarioId" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="app-btn app-btn-soft-primary w-100">
+                                    @(Model.IntentoEnCursoId.HasValue ? "Continuar intento" : "Comenzar")
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

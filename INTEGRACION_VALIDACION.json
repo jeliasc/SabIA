@@ -1,0 +1,88 @@
+{
+  "protected_files_checked": 55,
+  "protected_files_changed": [],
+  "modules": {
+    "Docentes": {
+      "controller": true,
+      "index_view": true
+    },
+    "Alumnos": {
+      "controller": true,
+      "index_view": true
+    },
+    "Encargados": {
+      "controller": true,
+      "index_view": true
+    },
+    "Ciclos": {
+      "controller": true,
+      "index_view": true
+    },
+    "Periodos": {
+      "controller": true,
+      "index_view": true
+    },
+    "Grados": {
+      "controller": true,
+      "index_view": true
+    },
+    "Secciones": {
+      "controller": true,
+      "index_view": true
+    },
+    "Cursos": {
+      "controller": true,
+      "index_view": true
+    },
+    "Asignaciones": {
+      "controller": true,
+      "index_view": true
+    },
+    "Inscripciones": {
+      "controller": true,
+      "index_view": true
+    },
+    "Unidades": {
+      "controller": true,
+      "index_view": true
+    },
+    "Materiales": {
+      "controller": true,
+      "index_view": true
+    },
+    "Planificaciones": {
+      "controller": true,
+      "index_view": true
+    },
+    "Documentos": {
+      "controller": true,
+      "index_view": true
+    },
+    "Tareas": {
+      "controller": true,
+      "index_view": true
+    },
+    "Entregas": {
+      "controller": true,
+      "index_view": true
+    },
+    "Cuestionarios": {
+      "controller": true,
+      "index_view": true
+    },
+    "ContenidoIA": {
+      "controller": true,
+      "index_view": true
+    },
+    "Notificaciones": {
+      "controller": true,
+      "index_view": true
+    }
+  },
+  "new_migrations": [
+    "20261007113000_PermitirEntregasPendientes",
+    "20261007124500_EstadoPublicacionMaterial"
+  ],
+  "dotnet_build_executed": false,
+  "reason": "SDK .NET no disponible en este contenedor"
+}

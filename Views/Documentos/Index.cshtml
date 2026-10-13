@@ -1,0 +1,91 @@
+@model IEnumerable<Proyecto_Final.ViewModels.Documentos.DocumentoLista>
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@inject IAuthorizationService A
+
+@{
+    ViewData["Title"] = "Documentos";
+
+    var c = (await A.AuthorizeAsync(
+        User,
+        Permisos.Documentos.Crear
+    )).Succeeded;
+
+    var d = (await A.AuthorizeAsync(
+        User,
+        Permisos.Documentos.Descargar
+    )).Succeeded;
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                Documentos internos
+            </h2>
+
+            <p class="text-muted mb-0">
+                Espacio restringido para Coordinación y docentes. No es visible para alumnos.
+            </p>
+        </div>
+
+        @if (c)
+        {
+            <a asp-action="Crear" class="app-btn app-btn-soft-primary">
+                Cargar documento
+            </a>
+        }
+    </div>
+
+    <div class="card shadow-sm border border-secondary">
+        <div class="card-body">
+            <table class="table app-table w-100" data-tabla-index
+                   data-actions-column="true">
+                <thead>
+                    <tr>
+                        <th>Documento</th>
+                        <th>Subido por</th>
+                        <th>Fecha</th>
+                        <th>Tamaño</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var x in Model)
+                    {
+                        <tr>
+                            <td class="fw-semibold">
+                                @x.Nombre
+                            </td>
+
+                            <td>
+                                @x.SubidoPor
+                            </td>
+
+                            <td>
+                                @x.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </td>
+
+                            <td>
+                                @Math.Round(x.Tamano / 1024d, 1) KB
+                            </td>
+
+                            <td>
+                                @if (d)
+                                {
+                                    <a asp-action="Descargar" asp-route-id="@x.Id"
+                                       class="app-btn app-btn-soft-secondary app-btn-sm">
+                                        Descargar
+                                    </a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

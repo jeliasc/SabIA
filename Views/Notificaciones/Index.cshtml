@@ -1,0 +1,50 @@
+@model IEnumerable<Proyecto_Final.ViewModels.Notificaciones.NotificacionLista>
+
+@{
+    ViewData["Title"] = "Notificaciones";
+}
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1">
+            Alertas y notificaciones
+        </h2>
+
+        <p class="text-muted mb-0">
+            Pendientes calculados a partir de su actividad académica.
+        </p>
+    </div>
+
+    <div class="row g-3">
+        @foreach (var x in Model)
+        {
+            <div class="col-12 col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4 d-flex gap-3">
+                        <div class="fs-3">
+                            <i class="@x.Icono"></i>
+                        </div>
+
+                        <div class="flex-grow-1">
+                            <div class="fw-bold mb-1">
+                                @x.Titulo
+                            </div>
+
+                            <div class="text-muted mb-3">
+                                @x.Mensaje
+                            </div>
+
+                            @if (x.Controlador != null)
+                            {
+                                <a asp-controller="@x.Controlador" asp-action="@x.Accion" asp-route-id="@x.Id"
+                                   class="app-btn app-btn-soft-secondary app-btn-sm">
+                                    Ver detalle
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

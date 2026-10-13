@@ -1,10 +1,10 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
-using Proyecto_Final.ViewModels.PermisosSistema;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Identity;
 using Proyecto_Final.Models;
 using Proyecto_Final.Seguridad;
+using Proyecto_Final.ViewModels.PermisosSistema;
+using System.Security.Claims;
 
 namespace Proyecto_Final.Servicios.GestionPermisos;
 
@@ -21,6 +21,7 @@ public class PermisoServicio : IPermisoServicio
         this.administradorRoles = administradorRoles;
     }
 
+    // OBTENER TODOS LOS PERMISOS
     public async Task<PermisosSistemaIndex> ObtenerTodosAsync()
     {
         var permisos =
@@ -44,8 +45,9 @@ public class PermisoServicio : IPermisoServicio
         };
     }
 
+    // CREAR PERMISO
     public async Task<ResultadoPermiso> CrearAsync(
-    CrearPermiso modelo)
+        CrearPermiso modelo)
     {
         var codigo = modelo.Codigo.Trim();
         var modulo = modelo.Modulo.Trim();
@@ -61,79 +63,59 @@ public class PermisoServicio : IPermisoServicio
             return new ResultadoPermiso
             {
                 Exitoso = false,
-                Mensaje = "Ya existe un permiso con ese código."
+                Mensaje =
+                    "Ya existe un permiso con ese código."
             };
         }
 
-        var nuevoPermiso = new PermisoSistema
+        await using var transaccion =
+            await contexto.Database.BeginTransactionAsync();
+
+        try
         {
-            Codigo = codigo,
-            Modulo = modulo,
-            Descripcion = descripcion,
-            Activo = true
-        };
-
-        contexto.PermisosSistema.Add(nuevoPermiso);
-
-        await contexto.SaveChangesAsync();
-
-        var rolSuperusuario =
-            await administradorRoles.FindByNameAsync(
-                Roles.Superusuario
-            );
-
-        if (rolSuperusuario == null)
-        {
-            throw new InvalidOperationException(
-                "No se encontró el rol Superusuario."
-            );
-        }
-
-        var claims =
-            await administradorRoles.GetClaimsAsync(
-                rolSuperusuario
-            );
-
-        var permisoAsignado = claims.Any(claim =>
-            claim.Type == TiposClaims.Permiso &&
-            claim.Value == codigo
-        );
-
-        if (!permisoAsignado)
-        {
-            var resultado =
-                await administradorRoles.AddClaimAsync(
-                    rolSuperusuario,
-                    new Claim(
-                        TiposClaims.Permiso,
-                        codigo
-                    )
-                );
-
-            if (!resultado.Succeeded)
+            var nuevoPermiso = new PermisoSistema
             {
-                var errores = string.Join(
-                    "; ",
-                    resultado.Errors.Select(
-                        error => error.Description
-                    )
+                Codigo = codigo,
+                Modulo = modulo,
+                Descripcion = descripcion,
+                Activo = true
+            };
+
+            contexto.PermisosSistema.Add(nuevoPermiso);
+
+            await contexto.SaveChangesAsync();
+
+            var resultadoAsignacion =
+                await AsignarPermisoSuperusuarioAsync(
+                    codigo
                 );
 
-                throw new InvalidOperationException(
-                    $"No se pudo asignar el permiso al Superusuario: {errores}"
-                );
+            if (!resultadoAsignacion.Exitoso)
+            {
+                await transaccion.RollbackAsync();
+
+                return resultadoAsignacion;
             }
-        }
 
-        return new ResultadoPermiso
+            await transaccion.CommitAsync();
+
+            return new ResultadoPermiso
+            {
+                Exitoso = true,
+                Mensaje =
+                    "El permiso fue creado correctamente."
+            };
+        }
+        catch
         {
-            Exitoso = true,
-            Mensaje = "El permiso fue creado correctamente."
-        };
+            await transaccion.RollbackAsync();
+            throw;
+        }
     }
 
+    // OBTENER PERMISO PARA EDITAR
     public async Task<EditarPermiso?>
-    ObtenerParaEditarAsync(int id)
+        ObtenerParaEditarAsync(int id)
     {
         var permiso =
             await contexto.PermisosSistema
@@ -156,73 +138,277 @@ public class PermisoServicio : IPermisoServicio
         };
     }
 
+    // EDITAR PERMISO
     public async Task<ResultadoPermiso> EditarAsync(
-    EditarPermiso modelo)
+        EditarPermiso modelo)
     {
-        var permiso =
-            await contexto.PermisosSistema
-                .FirstOrDefaultAsync(
-                    permiso => permiso.Id == modelo.Id
+        await using var transaccion =
+            await contexto.Database.BeginTransactionAsync();
+
+        try
+        {
+            var permiso =
+                await contexto.PermisosSistema
+                    .FirstOrDefaultAsync(
+                        permiso => permiso.Id == modelo.Id
+                    );
+
+            if (permiso == null)
+            {
+                await transaccion.RollbackAsync();
+
+                return new ResultadoPermiso
+                {
+                    Exitoso = false,
+                    Mensaje =
+                        "El permiso no fue encontrado."
+                };
+            }
+
+            // El código NO se modifica.
+            permiso.Modulo =
+                modelo.Modulo.Trim();
+
+            permiso.Descripcion =
+                modelo.Descripcion.Trim();
+
+            await contexto.SaveChangesAsync();
+
+            await transaccion.CommitAsync();
+
+            return new ResultadoPermiso
+            {
+                Exitoso = true,
+                Mensaje =
+                    "El permiso fue actualizado correctamente."
+            };
+        }
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
+    }
+
+    // DESACTIVAR PERMISO
+    public async Task<ResultadoPermiso> DesactivarAsync(
+        int id)
+    {
+        await using var transaccion =
+            await contexto.Database.BeginTransactionAsync();
+
+        try
+        {
+            var permiso =
+                await contexto.PermisosSistema
+                    .FirstOrDefaultAsync(
+                        permiso => permiso.Id == id
+                    );
+
+            if (permiso == null)
+            {
+                await transaccion.RollbackAsync();
+
+                return new ResultadoPermiso
+                {
+                    Exitoso = false,
+                    Mensaje =
+                        "El permiso no fue encontrado."
+                };
+            }
+
+            if (!permiso.Activo)
+            {
+                await transaccion.RollbackAsync();
+
+                return new ResultadoPermiso
+                {
+                    Exitoso = false,
+                    Mensaje =
+                        "El permiso ya se encuentra desactivado."
+                };
+            }
+
+            permiso.Activo = false;
+
+            await contexto.SaveChangesAsync();
+
+            var resultadoRetiro =
+                await RetirarPermisoTodosLosRolesAsync(
+                    permiso.Codigo
                 );
 
-        if (permiso == null)
+            if (!resultadoRetiro.Exitoso)
+            {
+                await transaccion.RollbackAsync();
+
+                return resultadoRetiro;
+            }
+
+            await transaccion.CommitAsync();
+
+            return new ResultadoPermiso
+            {
+                Exitoso = true,
+                Mensaje =
+                    "El permiso fue desactivado correctamente."
+            };
+        }
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
+    }
+
+    // ACTIVAR PERMISO
+    public async Task<ResultadoPermiso> ActivarAsync(
+        int id)
+    {
+        await using var transaccion =
+            await contexto.Database.BeginTransactionAsync();
+
+        try
+        {
+            var permiso =
+                await contexto.PermisosSistema
+                    .FirstOrDefaultAsync(
+                        permiso => permiso.Id == id
+                    );
+
+            if (permiso == null)
+            {
+                await transaccion.RollbackAsync();
+
+                return new ResultadoPermiso
+                {
+                    Exitoso = false,
+                    Mensaje =
+                        "El permiso no fue encontrado."
+                };
+            }
+
+            if (permiso.Activo)
+            {
+                await transaccion.RollbackAsync();
+
+                return new ResultadoPermiso
+                {
+                    Exitoso = false,
+                    Mensaje =
+                        "El permiso ya se encuentra activo."
+                };
+            }
+
+            permiso.Activo = true;
+
+            await contexto.SaveChangesAsync();
+
+            var resultadoAsignacion =
+                await AsignarPermisoSuperusuarioAsync(
+                    permiso.Codigo
+                );
+
+            if (!resultadoAsignacion.Exitoso)
+            {
+                await transaccion.RollbackAsync();
+
+                return resultadoAsignacion;
+            }
+
+            await transaccion.CommitAsync();
+
+            return new ResultadoPermiso
+            {
+                Exitoso = true,
+                Mensaje =
+                    "El permiso fue activado correctamente."
+            };
+        }
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
+    }
+
+    // ASIGNAR PERMISO AL SUPERUSUARIO
+    private async Task<ResultadoPermiso>
+        AsignarPermisoSuperusuarioAsync(
+            string codigoPermiso)
+    {
+        var rolSuperusuario =
+            await administradorRoles.FindByNameAsync(
+                Roles.Superusuario
+            );
+
+        if (rolSuperusuario == null)
         {
             return new ResultadoPermiso
             {
                 Exitoso = false,
-                Mensaje = "El permiso no fue encontrado."
+                Mensaje =
+                    "No se encontró el rol Superusuario."
             };
         }
 
-        // El código NO se modifica.
-        permiso.Modulo =
-            modelo.Modulo.Trim();
+        var claims =
+            await administradorRoles
+                .GetClaimsAsync(rolSuperusuario);
 
-        permiso.Descripcion =
-            modelo.Descripcion.Trim();
+        var yaAsignado =
+            claims.Any(claim =>
+                claim.Type == TiposClaims.Permiso &&
+                claim.Value == codigoPermiso
+            );
 
-        await contexto.SaveChangesAsync();
+        if (yaAsignado)
+        {
+            return new ResultadoPermiso
+            {
+                Exitoso = true,
+                Mensaje = string.Empty
+            };
+        }
+
+        var resultado =
+            await administradorRoles.AddClaimAsync(
+                rolSuperusuario,
+                new Claim(
+                    TiposClaims.Permiso,
+                    codigoPermiso
+                )
+            );
+
+        if (!resultado.Succeeded)
+        {
+            var errores = string.Join(
+                "; ",
+                resultado.Errors.Select(
+                    error => error.Description
+                )
+            );
+
+            return new ResultadoPermiso
+            {
+                Exitoso = false,
+                Mensaje =
+                    $"No fue posible asignar el permiso al Superusuario: {errores}"
+            };
+        }
 
         return new ResultadoPermiso
         {
             Exitoso = true,
-            Mensaje =
-                "El permiso fue actualizado correctamente."
+            Mensaje = string.Empty
         };
     }
 
-    public async Task<ResultadoPermiso> DesactivarAsync(
-    int id)
+    // RETIRAR PERMISO DE TODOS LOS ROLES
+    private async Task<ResultadoPermiso>
+        RetirarPermisoTodosLosRolesAsync(
+            string codigoPermiso)
     {
-        var permiso =
-            await contexto.PermisosSistema
-                .FirstOrDefaultAsync(
-                    permiso => permiso.Id == id
-                );
-
-        if (permiso == null)
-        {
-            return new ResultadoPermiso
-            {
-                Exitoso = false,
-                Mensaje = "El permiso no fue encontrado."
-            };
-        }
-
-        if (!permiso.Activo)
-        {
-            return new ResultadoPermiso
-            {
-                Exitoso = false,
-                Mensaje = "El permiso ya se encuentra desactivado."
-            };
-        }
-
-        permiso.Activo = false;
-
-        await contexto.SaveChangesAsync();
-
-        // Retirar el permiso de todos los roles.
         var roles =
             await administradorRoles.Roles
                 .ToListAsync();
@@ -234,10 +420,9 @@ public class PermisoServicio : IPermisoServicio
                     .GetClaimsAsync(rol);
 
             var claimPermiso =
-                claims.FirstOrDefault(
-                    claim =>
-                        claim.Type == TiposClaims.Permiso &&
-                        claim.Value == permiso.Codigo
+                claims.FirstOrDefault(claim =>
+                    claim.Type == TiposClaims.Permiso &&
+                    claim.Value == codigoPermiso
                 );
 
             if (claimPermiso == null)
@@ -246,107 +431,25 @@ public class PermisoServicio : IPermisoServicio
             }
 
             var resultado =
-                await administradorRoles
-                    .RemoveClaimAsync(
-                        rol,
-                        claimPermiso
-                    );
-
-            if (!resultado.Succeeded)
-            {
-                return new ResultadoPermiso
-                {
-                    Exitoso = false,
-                    Mensaje =
-                        "El permiso fue desactivado, pero ocurrió un error al retirarlo de uno de los roles."
-                };
-            }
-        }
-
-        return new ResultadoPermiso
-        {
-            Exitoso = true,
-            Mensaje =
-                "El permiso fue desactivado correctamente."
-        };
-    }
-
-    public async Task<ResultadoPermiso> ActivarAsync(
-    int id)
-    {
-        var permiso =
-            await contexto.PermisosSistema
-                .FirstOrDefaultAsync(
-                    permiso => permiso.Id == id
+                await administradorRoles.RemoveClaimAsync(
+                    rol,
+                    claimPermiso
                 );
 
-        if (permiso == null)
-        {
-            return new ResultadoPermiso
-            {
-                Exitoso = false,
-                Mensaje = "El permiso no fue encontrado."
-            };
-        }
-
-        if (permiso.Activo)
-        {
-            return new ResultadoPermiso
-            {
-                Exitoso = false,
-                Mensaje = "El permiso ya se encuentra activo."
-            };
-        }
-
-        permiso.Activo = true;
-
-        await contexto.SaveChangesAsync();
-
-        // Todo permiso activo pertenece al Superusuario.
-        var rolSuperusuario =
-            await administradorRoles
-                .FindByNameAsync(Roles.Superusuario);
-
-        if (rolSuperusuario == null)
-        {
-            return new ResultadoPermiso
-            {
-                Exitoso = false,
-                Mensaje =
-                    "El permiso fue activado, pero no se encontró el rol Superusuario."
-            };
-        }
-
-        var claims =
-            await administradorRoles
-                .GetClaimsAsync(rolSuperusuario);
-
-        var yaAsignado =
-            claims.Any(
-                claim =>
-                    claim.Type == TiposClaims.Permiso &&
-                    claim.Value == permiso.Codigo
-            );
-
-        if (!yaAsignado)
-        {
-            var resultado =
-                await administradorRoles
-                    .AddClaimAsync(
-                        rolSuperusuario,
-                        new Claim(
-                            TiposClaims.Permiso,
-                            permiso.Codigo
-                        )
-                    );
-
             if (!resultado.Succeeded)
             {
+                var errores = string.Join(
+                    "; ",
+                    resultado.Errors.Select(
+                        error => error.Description
+                    )
+                );
+
                 return new ResultadoPermiso
                 {
                     Exitoso = false,
                     Mensaje =
-                        "El permiso fue activado, pero no pudo asignarse al rol Superusuario."
+                        $"No fue posible retirar el permiso del rol {rol.Name}: {errores}"
                 };
             }
         }
@@ -354,8 +457,7 @@ public class PermisoServicio : IPermisoServicio
         return new ResultadoPermiso
         {
             Exitoso = true,
-            Mensaje =
-                "El permiso fue activado correctamente."
+            Mensaje = string.Empty
         };
     }
 }

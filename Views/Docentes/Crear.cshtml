@@ -1,0 +1,47 @@
+@model Proyecto_Final.ViewModels.Docentes.CrearDocente
+
+@{
+    ViewData["Title"] = "Nuevo docente";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Nuevo docente</h2>
+            <p class="text-muted mb-0">Registre al docente y genere su cuenta de acceso.</p>
+        </div>
+        <a asp-action="Index" class="app-btn app-btn-secondary">
+            <i class="bi bi-arrow-left"></i>
+            Volver
+        </a>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-body">
+            <div class="app-alert app-alert-info mb-4">
+                <i class="bi bi-info-circle"></i>
+                <div>
+                    Se creará una cuenta con rol Docente y una contraseña temporal que deberá cambiar en el primer inicio de sesión.
+                </div>
+            </div>
+
+            <form asp-action="Crear" method="post" novalidate data-crear-docente>
+                @Html.AntiForgeryToken()
+                <partial name="Formulario" model="Model" />
+
+                <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
+                    <a asp-action="Index" class="app-btn app-btn-secondary">Cancelar</a>
+                    <button type="submit" class="app-btn app-btn-primary">
+                        <i class="bi bi-check-lg"></i>
+                        Guardar docente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/docentes.js" asp-append-version="true"></script>
+}

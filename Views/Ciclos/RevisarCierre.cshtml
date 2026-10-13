@@ -1,0 +1,100 @@
+@model Proyecto_Final.ViewModels.Ciclos.RevisionCierreCiclo
+@{
+    ViewData["Title"] = "Revisar cierre de ciclo";
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Revisión de cierre @Model.Anio</h2>
+            <p class="text-muted mb-0">Validación previa de obligaciones académicas y resultados consolidados.</p>
+        </div>
+        <a asp-action="Index" class="app-btn app-btn-soft-secondary">Volver</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted">Asignaciones evaluables</div>
+                    <div class="fs-3 fw-bold">@Model.AsignacionesEvaluables</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted">Sin obligaciones evaluables</div>
+                    <div class="fs-3 fw-bold">@Model.AsignacionesSinObligaciones</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted">Pendientes bloqueantes</div>
+                    <div class="fs-3 fw-bold">@Model.Pendientes.Count</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Pendientes.Count == 0)
+    {
+        <div class="alert alert-success" role="status">
+            <h3 class="h5 alert-heading">Ciclo listo para cierre</h3>
+            <p class="mb-0">No se detectaron obligaciones académicas pendientes.</p>
+        </div>
+        <form asp-action="Cerrar" asp-route-id="@Model.CicloId" method="post" data-confirmar-accion-academica
+              data-confirmar-titulo="Cerrar ciclo escolar"
+              data-confirmar-mensaje="El ciclo quedará histórico. Las calificaciones cerradas y sus resultados se conservarán."
+              data-confirmar-texto="Cerrar ciclo" data-confirmar-color="#dc3545">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="app-btn app-btn-soft-danger">Cerrar ciclo</button>
+        </form>
+    }
+    else
+    {
+        <div class="alert alert-warning" role="alert">
+            <h3 class="h5 alert-heading">El ciclo todavía no puede cerrarse</h3>
+            <p class="mb-0">Resuelva todos los pendientes. Las condiciones serán verificadas nuevamente al confirmar.</p>
+        </div>
+        <div class="card shadow-sm border border-secondary">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table app-table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Docente</th>
+                                <th>Curso</th>
+                                <th>Grado / carrera</th>
+                                <th>Sección</th>
+                                <th>Período</th>
+                                <th>Pendiente</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var pendiente in Model.Pendientes)
+                            {
+                                <tr>
+                                    <td>@pendiente.Docente</td>
+                                    <td>@pendiente.Curso</td>
+                                    <td>@pendiente.Grado · @pendiente.Carrera</td>
+                                    <td>@pendiente.Seccion</td>
+                                    <td>@pendiente.Periodo</td>
+                                    <td>@pendiente.Motivo</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts
+{
+    <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,60 @@
+@model Proyecto_Final.ViewModels.Usuarios.ResultadoContrasenaTemporal
+
+@{
+    ViewData["Title"] = "Docente creado";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div class="app-card">
+                <div class="app-card-body p-4">
+                    <div class="text-center mb-4">
+                        <div class="app-icon-box app-icon-success mx-auto mb-3">
+                            <i class="bi bi-check-lg"></i>
+                        </div>
+                        <h2 class="fw-bold mb-2">Docente creado correctamente</h2>
+                        <p class="text-muted mb-0">La cuenta y la contraseña temporal fueron generadas.</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Usuario</label>
+                        <input type="text" class="form-control" value="@Model.Usuario" readonly />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nombre</label>
+                        <input type="text" class="form-control" value="@Model.NombreCompleto" readonly />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Contraseña temporal</label>
+                        <div class="input-group">
+                            <input type="text" id="contrasenaTemporal" class="form-control fw-bold" value="@Model.ContrasenaTemporal" readonly />
+                            <button type="button" class="app-btn app-btn-soft-secondary" id="botonCopiarContrasena">
+                                <i class="bi bi-copy"></i>
+                                Copiar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="app-alert app-alert-warning mb-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <div>Conserve esta contraseña únicamente como respaldo y entréguela por un medio seguro si el correo no pudo enviarse.</div>
+                    </div>
+
+                    <div class="d-grid mt-4">
+                        <a asp-action="Index" class="app-btn app-btn-soft-primary">
+                            <i class="bi bi-arrow-left"></i>
+                            Volver a docentes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/usuarios.js" asp-append-version="true"></script>
+}

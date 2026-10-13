@@ -1,0 +1,76 @@
+@model Proyecto_Final.ViewModels.Docentes.FormularioDocente
+@using Proyecto_Final.Models
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+<div class="row g-3">
+    <div class="col-12 col-md-4">
+        <label asp-for="PrimerNombre" class="form-label"></label>
+        <input asp-for="PrimerNombre" class="form-control" autocomplete="off" />
+        <span asp-validation-for="PrimerNombre" class="text-danger"></span>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <label asp-for="SegundoNombre" class="form-label"></label>
+        <input asp-for="SegundoNombre" class="form-control" autocomplete="off" />
+        <span asp-validation-for="SegundoNombre" class="text-danger"></span>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <label asp-for="TercerNombre" class="form-label"></label>
+        <input asp-for="TercerNombre" class="form-control" autocomplete="off" />
+        <span asp-validation-for="TercerNombre" class="text-danger"></span>
+    </div>
+
+    <div class="col-12 col-md-6">
+        <label asp-for="PrimerApellido" class="form-label"></label>
+        <input asp-for="PrimerApellido" class="form-control" autocomplete="off" />
+        <span asp-validation-for="PrimerApellido" class="text-danger"></span>
+    </div>
+
+    <div class="col-12 col-md-6">
+        <label asp-for="SegundoApellido" class="form-label"></label>
+        <input asp-for="SegundoApellido" class="form-control" autocomplete="off" />
+        <span asp-validation-for="SegundoApellido" class="text-danger"></span>
+    </div>
+
+    <div class="col-12 col-md-6">
+        <label asp-for="Correo" class="form-label"></label>
+        <input asp-for="Correo" class="form-control" autocomplete="off" />
+        <span asp-validation-for="Correo" class="text-danger"></span>
+    </div>
+
+    <div class="col-12 col-md-6">
+        <label asp-for="Carnet" class="form-label"></label>
+        <input asp-for="Carnet" class="form-control" autocomplete="off" />
+        <span asp-validation-for="Carnet" class="text-danger"></span>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <label asp-for="Nit" class="form-label"></label>
+        <input asp-for="Nit" class="form-control" inputmode="numeric" autocomplete="off" />
+        <span asp-validation-for="Nit" class="text-danger"></span>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <label asp-for="NivelAcademico" class="form-label"></label>
+        <select asp-for="NivelAcademico"
+                asp-items="Html.GetEnumSelectList<NivelAcademico>()"
+                class="form-select">
+            <option value="">Seleccione...</option>
+        </select>
+        <span asp-validation-for="NivelAcademico" class="text-danger"></span>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <label asp-for="Titulo" class="form-label"></label>
+        <input asp-for="Titulo" class="form-control" autocomplete="off" />
+        <span asp-validation-for="Titulo" class="text-danger"></span>
+    </div>
+
+    <div class="col-12">
+        <label asp-for="InstitucionOtorgante" class="form-label"></label>
+        <input asp-for="InstitucionOtorgante" class="form-control" autocomplete="off" />
+        <span asp-validation-for="InstitucionOtorgante" class="text-danger"></span>
+    </div>
+</div>

@@ -1,0 +1,157 @@
+@model Proyecto_Final.ViewModels.Cuestionarios.ResultadosCuestionario
+@using Proyecto_Final.Models
+@{
+    ViewData["Title"] = "Resultados del cuestionario";
+
+    string Clase(decimal porcentaje) =>
+        porcentaje >= 70 ? "bg-success" : porcentaje >= 40 ? "bg-warning" : "bg-danger";
+
+    string Tipo(TipoPregunta tipo) => tipo switch
+    {
+        TipoPregunta.SeleccionUnica => "Selección única",
+        TipoPregunta.SeleccionMultiple => "Selección múltiple",
+        TipoPregunta.VerdaderoFalso => "Verdadero/Falso",
+        _ => "Respuesta directa"
+    };
+
+    string EstadoIntento(EstadoIntentoCuestionario estado) => estado switch
+    {
+        EstadoIntentoCuestionario.EnCurso => "En curso",
+        EstadoIntentoCuestionario.Expirado => "Por tiempo",
+        EstadoIntentoCuestionario.Anulado => "Anulado",
+        _ => "Finalizado"
+    };
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">@Model.Titulo</h2>
+            <p class="text-muted mb-0">@Model.Curso · @Model.GradoSeccion</p>
+        </div>
+        <a asp-action="Index" class="app-btn app-btn-soft-secondary">Volver a cuestionarios</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Alumnos</div>
+                    <div class="fs-3 fw-bold">@Model.TotalAlumnos</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Con intento terminado</div>
+                    <div class="fs-3 fw-bold">@Model.AlumnosConIntento</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Promedio</div>
+                    <div class="fs-3 fw-bold">@(Model.PromedioPorcentaje?.ToString("0.##") ?? "-")@(Model.PromedioPorcentaje.HasValue ? "%" : "")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Intentos permitidos</div>
+                    <div class="fs-3 fw-bold">@(Model.MaximoIntentos == 0 ? "Ilimitados" : Model.MaximoIntentos.ToString())</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+            <h5 class="fw-semibold mb-1">Aciertos por pregunta</h5>
+            <p class="text-muted small mb-3">Según el intento que define la nota de cada alumno@(Model.CriterioCalificacion == CriterioCalificacionIntentos.MejorNota ? " (su mejor intento)" : "").</p>
+
+            @if (Model.AlumnosConIntento == 0)
+            {
+                <p class="text-muted mb-0">Todavía ningún alumno ha terminado el cuestionario.</p>
+            }
+            else
+            {
+                @foreach (var p in Model.Preguntas)
+                {
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between gap-3 small">
+                            <span><strong>@p.Numero.</strong> @p.Enunciado <span class="text-muted">· @Tipo(p.Tipo)</span></span>
+                            <span class="text-nowrap">@p.Correctas de @p.Evaluados · <strong>@p.Porcentaje.ToString("0.#")%</strong></span>
+                        </div>
+                        <div class="progress mt-1" style="height: 8px" role="progressbar"
+                             aria-valuenow="@p.Porcentaje" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-bar @Clase(p.Porcentaje)" style="width: @p.Porcentaje.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                        </div>
+                        @if (p.SinResponder > 0)
+                        {
+                            <div class="small text-muted mt-1">@p.SinResponder sin responder</div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="card shadow-sm border border-secondary">
+        <div class="card-body p-4">
+            <h5 class="fw-semibold mb-3">Alumnos</h5>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Alumno</th>
+                            <th>Estado</th>
+                            <th>Intentos</th>
+                            <th class="text-end">Nota de la tarea</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var a in Model.Alumnos)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@a.Alumno</div>
+                                    @if (!string.IsNullOrWhiteSpace(a.CodigoPersonal))
+                                    {
+                                        <div class="small text-muted">@a.CodigoPersonal</div>
+                                    }
+                                </td>
+                                <td>@a.Estado</td>
+                                <td>
+                                    @if (a.Intentos.Count == 0)
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @foreach (var i in a.Intentos)
+                                        {
+                                            <a asp-action="RevisarIntento" asp-route-id="@i.IntentoId"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm"
+                                               title="@EstadoIntento(i.Estado) · @(i.Fecha?.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))">
+                                                #@i.Numero ·
+                                                @(i.Estado == EstadoIntentoCuestionario.EnCurso ? "en curso" : $"{i.Calificacion?.ToString("0.##")}%")
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    @(a.NotaEntrega.HasValue ? $"{a.NotaEntrega:0.##} / {Model.PunteoMaximo:0.##}" : "-")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

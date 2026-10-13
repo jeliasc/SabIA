@@ -1,0 +1,77 @@
+@model Proyecto_Final.ViewModels.Cuestionarios.ResultadoIntento
+@{
+    ViewData["Title"] = "Resultado del cuestionario";
+}
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-5 text-center">
+                    <i class="bi @(Model.Expirado ? "bi-hourglass-bottom" : "bi-check2-circle") fs-1"></i>
+                    <h2 class="fw-bold mt-3">@Model.Titulo</h2>
+
+                    <p class="text-muted">
+                        @(Model.Expirado
+                            ? "El tiempo terminó. Se calificaron las respuestas registradas hasta ese momento."
+                            : "Cuestionario finalizado.")
+                    </p>
+
+                    @if (Model.MostrarResultados)
+                    {
+                        <div class="display-5 fw-bold my-3">@Model.Calificacion.ToString("0.##")%</div>
+                        <p class="text-muted">Punteo obtenido: @Model.PunteoObtenido.ToString("0.##") de @Model.PunteoTotal.ToString("0.##").</p>
+                        @if (Model.CalificacionAplicada != Model.Calificacion)
+                        {
+                            <p class="small text-muted">Calificación aplicada según el criterio de intentos: @Model.CalificacionAplicada.ToString("0.##")%.</p>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted my-4">El intento fue registrado. El docente configuró este cuestionario para no mostrar la nota al finalizar.</p>
+                    }
+
+                    <div class="d-flex flex-column flex-md-row justify-content-center gap-2 mt-4">
+                        <a asp-action="Resolver" asp-route-id="@Model.CuestionarioId" class="app-btn app-btn-soft-secondary">Volver al cuestionario</a>
+                        <a asp-action="Index" class="app-btn app-btn-soft-primary">Volver a cuestionarios</a>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.MostrarRespuestasCorrectas && Model.Detalle.Count > 0)
+            {
+                <h4 class="fw-bold mb-3">Revisión de respuestas</h4>
+
+                @foreach (var d in Model.Detalle)
+                {
+                    <div class="card shadow-sm border-0 mb-3 border-start border-4 @(d.Correcta ? "border-success" : "border-danger")">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between gap-3 mb-2">
+                                <div class="fw-semibold" style="white-space: pre-line">@d.Numero. @d.Enunciado</div>
+                                <span class="badge @(d.Correcta ? "text-bg-success" : "text-bg-danger") align-self-start">
+                                    @(d.Correcta ? "Correcta" : "Incorrecta")
+                                </span>
+                            </div>
+
+                            <div class="small">
+                                <div><span class="text-muted">Su respuesta:</span> @d.RespuestaAlumno</div>
+                                @if (!d.Correcta)
+                                {
+                                    <div><span class="text-muted">Respuesta correcta:</span> @d.RespuestaCorrecta</div>
+                                }
+                                <div class="text-muted">@d.PunteoObtenido.ToString("0.##") de @d.Punteo.ToString("0.##") pts.</div>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(d.Retroalimentacion))
+                            {
+                                <div class="alert alert-light border mt-3 mb-0 small" style="white-space: pre-line">
+                                    <i class="bi bi-lightbulb me-1"></i>@d.Retroalimentacion
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>

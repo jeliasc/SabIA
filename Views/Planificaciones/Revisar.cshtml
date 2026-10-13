@@ -1,0 +1,62 @@
+@model Proyecto_Final.ViewModels.Planificaciones.RevisarPlanificacion
+
+@{
+    ViewData["Title"] = "Revisar planificación";
+}
+
+<div class="container-fluid">
+    <h2 class="fw-bold mb-1">
+        Revisar planificación
+    </h2>
+
+    <p class="text-muted mb-4">
+        @Model.Docente · @Model.Titulo
+    </p>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <h5>
+                Contenido
+            </h5>
+
+            <div class="white-space-pre-line">
+                @Model.Contenido
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <form method="post">
+                @Html.AntiForgeryToken()
+
+                <input asp-for="Id" type="hidden" />
+
+                <input asp-for="Titulo" type="hidden" />
+
+                <input asp-for="Docente" type="hidden" />
+
+                <input asp-for="Contenido" type="hidden" />
+
+                <div class="mb-3">
+                    <label asp-for="Observaciones" class="form-label">
+                        Observaciones
+                    </label>
+
+                    <textarea asp-for="Observaciones" class="form-control" rows="4">
+                    </textarea>
+                </div>
+
+                <div class="d-flex flex-column flex-md-row justify-content-end gap-2">
+                    <button name="Aprobar" value="false" class="app-btn app-btn-soft-danger">
+                        Devolver con observaciones
+                    </button>
+
+                    <button name="Aprobar" value="true" class="app-btn app-btn-soft-success">
+                        Aprobar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

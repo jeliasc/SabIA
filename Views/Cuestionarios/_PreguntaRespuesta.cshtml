@@ -1,0 +1,47 @@
+@model (Proyecto_Final.ViewModels.Cuestionarios.PreguntaIntento Pregunta, string Prefijo)
+@using Proyecto_Final.Models
+@{
+    var p = Model.Pregunta;
+    var prefijo = Model.Prefijo;
+    var idBase = $"p{p.PreguntaId}";
+}
+
+<input type="hidden" name="@(prefijo).PreguntaId" value="@p.PreguntaId" />
+
+@if (p.Tipo == TipoPregunta.TextoCorto)
+{
+    <input type="text"
+           name="@(prefijo).Texto"
+           value="@p.Texto"
+           class="form-control"
+           maxlength="1000"
+           autocomplete="off"
+           aria-label="Respuesta" />
+}
+else
+{
+    foreach (var opcion in p.Opciones)
+    {
+        var marcada = p.OpcionIds.Contains(opcion.Id);
+        <div class="form-check mb-2">
+            @if (p.Tipo == TipoPregunta.SeleccionMultiple)
+            {
+                <input class="form-check-input" type="checkbox"
+                       name="@(prefijo).OpcionIds" value="@opcion.Id"
+                       id="@(idBase)_o@(opcion.Id)" checked="@marcada" />
+            }
+            else
+            {
+                <input class="form-check-input" type="radio"
+                       name="@(prefijo).OpcionId" value="@opcion.Id"
+                       id="@(idBase)_o@(opcion.Id)" checked="@marcada" />
+            }
+            <label class="form-check-label" for="@(idBase)_o@(opcion.Id)">@opcion.Texto</label>
+        </div>
+    }
+
+    @if (p.Tipo == TipoPregunta.SeleccionMultiple)
+    {
+        <div class="form-text">Puede marcar más de una opción.</div>
+    }
+}

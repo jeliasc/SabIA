@@ -3,17 +3,23 @@ using Microsoft.AspNetCore.Mvc;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Usuarios;
 using Proyecto_Final.ViewModels.Usuarios;
+using Proyecto_Final.Data;
+using Proyecto_Final.Models;
+using Proyecto_Final.Servicios.Auditoria;
 
 namespace Proyecto_Final.Controllers;
 
 public class UsuariosController : Controller
 {
     private readonly IUsuarioServicio usuarioServicio;
+    private readonly IAuditoriaServicio auditoria;
 
     public UsuariosController(
-        IUsuarioServicio usuarioServicio)
+        IUsuarioServicio usuarioServicio,
+        IAuditoriaServicio auditoria)
     {
         this.usuarioServicio = usuarioServicio;
+        this.auditoria = auditoria;
     }
 
     // MOSTRAR LISTADO DE USUARIOS
@@ -92,7 +98,9 @@ public class UsuariosController : Controller
         if (resultado.Tipo ==
             TipoResultadoUsuario.Validacion)
         {
-            AgregarErrores(resultado.Errores);
+            AgregarErrores(
+                resultado.Errores
+            );
 
             await CargarRolesDisponiblesAsync();
 
@@ -101,6 +109,9 @@ public class UsuariosController : Controller
 
         TempData["Exito"] =
             resultado.Mensaje;
+
+        ViewData["TipoOperacion"] =
+            "Creacion";
 
         return View(
             "ResultadoContrasenaTemporal",
@@ -203,13 +214,73 @@ public class UsuariosController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    // RESTABLECER CONTRASEÑA DE USUARIO
+    // ENVIAR RESTABLECIMIENTO DE CONTRASEÑA POR CORREO
     [Authorize(
         Policy = Permisos.Usuarios.RestablecerContrasena
     )]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RestablecerContrasena(
+    public async Task<IActionResult> EnviarRestablecimientoContrasena(
+        string id)
+    {
+        var resultado =
+            await usuarioServicio
+                .EnviarRestablecimientoContrasenaAsync(
+                    id,
+                    User
+                );
+
+        if (resultado.Tipo ==
+            TipoResultadoUsuario.NoAutenticado)
+        {
+            return Challenge();
+        }
+
+        if (resultado.Tipo ==
+            TipoResultadoUsuario.Prohibido)
+        {
+            return Forbid();
+        }
+
+        if (resultado.Tipo ==
+            TipoResultadoUsuario.Advertencia)
+        {
+            TempData["Advertencia"] =
+                resultado.Mensaje;
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (resultado.Tipo ==
+            TipoResultadoUsuario.Error)
+        {
+            TempData["Error"] =
+                resultado.Mensaje;
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        TempData["Exito"] =
+            resultado.Mensaje;
+
+        var registro = auditoria.CrearRegistro(
+            "Usuarios", "Enviar restablecimiento de contraseña", TipoEventoAuditoria.Seguridad,
+            ResultadoAuditoria.Exitoso,
+            "Se generó y envió un enlace de restablecimiento de contraseña.",
+            entidad: nameof(Usuario), entidadId: id);
+        await auditoria.RegistrarAsync(registro);
+
+        return RedirectToAction(nameof(Index));
+    }
+
+
+    // RESTABLECER CONTRASEÑA MANUALMENTE
+    [Authorize(
+        Policy = Permisos.Usuarios.RestablecerContrasena
+    )]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RestablecerContrasenaManual(
         string id)
     {
         var resultado =
@@ -248,6 +319,9 @@ public class UsuariosController : Controller
 
             return RedirectToAction(nameof(Index));
         }
+
+        ViewData["TipoOperacion"] =
+            "Restablecimiento";
 
         return View(
             "ResultadoContrasenaTemporal",
@@ -401,6 +475,35 @@ public class UsuariosController : Controller
 
             errores =
                 resultado.Errores
+        });
+    }
+
+    [Authorize(Policy = Permisos.Usuarios.Crear)]
+    [HttpGet]
+    public async Task<IActionResult> GenerarNombreUsuario(
+    string primerNombre,
+    string primerApellido,
+    string? segundoApellido)
+    {
+        if (string.IsNullOrWhiteSpace(primerNombre) ||
+            string.IsNullOrWhiteSpace(primerApellido))
+        {
+            return Json(new
+            {
+                usuario = string.Empty
+            });
+        }
+
+        var usuario =
+            await usuarioServicio.GenerarNombreUsuarioAsync(
+                primerNombre,
+                primerApellido,
+                segundoApellido
+            );
+
+        return Json(new
+        {
+            usuario
         });
     }
 }

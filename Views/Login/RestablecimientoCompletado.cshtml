@@ -1,0 +1,81 @@
+@{
+    ViewData["Title"] = "Contraseña restablecida";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="utf-8" />
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0" />
+
+    <title>Contraseña restablecida - SabIA</title>
+
+    <link rel="stylesheet"
+          href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+
+    <link rel="stylesheet"
+          href="~/css/site.css"
+          asp-append-version="true" />
+
+</head>
+
+<body class="bg-light">
+
+    <div class="container">
+
+        <div class="row justify-content-center align-items-center min-vh-100">
+
+            <div class="col-12 col-sm-10 col-md-7 col-lg-5">
+
+                <div class="card shadow border-0">
+
+                    <div class="card-body p-4 p-md-5 text-center">
+
+                        <h2 class="fw-bold mb-3">
+                            Contraseña restablecida
+                        </h2>
+
+                        <p class="text-muted mb-4">
+                            Su contraseña fue actualizada correctamente.
+                            Ya puede iniciar sesión con su nueva contraseña.
+                        </p>
+
+                        <div class="alert alert-success text-start"
+                             role="alert">
+
+                            El enlace de recuperación utilizado ya no debe
+                            volver a utilizarse.
+
+                        </div>
+
+                        <div class="d-grid mt-4">
+
+                            <a asp-controller="Login"
+                               asp-action="Login"
+                               class="btn btn-primary">
+                                Ir al inicio de sesión
+                            </a>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,50 @@
+@model Proyecto_Final.ViewModels.Documentos.CrearDocumento
+
+@{
+    ViewData["Title"] = "Cargar documento";
+}
+
+<div class="container-fluid">
+    <h2 class="fw-bold mb-4">
+        Cargar documento interno
+    </h2>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <form method="post"
+                  enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+
+                <div asp-validation-summary="ModelOnly"
+                     class="text-danger">
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Archivo"
+                           class="form-label">
+                        Archivo
+                    </label>
+
+                    <input asp-for="Archivo"
+                           type="file"
+                           class="form-control" />
+
+                    <div class="form-text">
+                        Máximo 25 MB.
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-action="Index"
+                       class="app-btn app-btn-secondary">
+                        Cancelar
+                    </a>
+
+                    <button class="app-btn app-btn-soft-primary">
+                        Cargar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

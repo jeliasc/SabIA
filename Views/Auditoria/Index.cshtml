@@ -1,0 +1,144 @@
+@model Proyecto_Final.ViewModels.Auditoria.AuditoriaIndice
+@using Proyecto_Final.Models
+
+@{
+    ViewData["Title"] = "Auditoría";
+    string ClaseResultado(ResultadoAuditoria resultado) => resultado switch
+    {
+        ResultadoAuditoria.Exitoso => "text-bg-success",
+        ResultadoAuditoria.Rechazado => "text-bg-warning",
+        _ => "text-bg-danger"
+    };
+}
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1">Auditoría</h2>
+        <p class="text-muted mb-0">Trazabilidad de operaciones y eventos de seguridad.</p>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3" aria-label="Filtros de auditoría">
+                <div class="col-12 col-md-2">
+                    <label asp-for="Filtro.FechaDesde" class="form-label"></label>
+                    <input asp-for="Filtro.FechaDesde" name="FechaDesde" class="form-control" />
+                </div>
+                <div class="col-12 col-md-2">
+                    <label asp-for="Filtro.FechaHasta" class="form-label"></label>
+                    <input asp-for="Filtro.FechaHasta" name="FechaHasta" class="form-control" />
+                </div>
+                <div class="col-12 col-md-4">
+                    <label asp-for="Filtro.Responsable" class="form-label"></label>
+                    <input asp-for="Filtro.Responsable" name="Responsable" class="form-control" maxlength="100" />
+                </div>
+                <div class="col-12 col-md-2">
+                    <label asp-for="Filtro.Modulo" class="form-label"></label>
+                    <input asp-for="Filtro.Modulo" name="Modulo" class="form-control" maxlength="80" />
+                </div>
+                <div class="col-12 col-md-2">
+                    <label asp-for="Filtro.Accion" class="form-label"></label>
+                    <input asp-for="Filtro.Accion" name="Accion" class="form-control" maxlength="120" />
+                </div>
+                <div class="col-12 col-md-3">
+                    <label asp-for="Filtro.Resultado" class="form-label"></label>
+                    <select asp-for="Filtro.Resultado" name="Resultado" asp-items="Html.GetEnumSelectList<ResultadoAuditoria>()" class="form-select">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label asp-for="Filtro.DireccionIp" class="form-label"></label>
+                    <input asp-for="Filtro.DireccionIp" name="DireccionIp" class="form-control" maxlength="45" />
+                </div>
+                <div class="col-12 col-md-6 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search" aria-hidden="true"></i> Filtrar
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
+                </div>
+                <div class="col-12">
+                    <div class="form-text">Las fechas se interpretan en horario de Guatemala.</div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-muted">@Model.TotalRegistros registro(s)</span>
+                <span class="text-muted">Página @Model.Pagina de @Model.TotalPaginas</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Fecha y hora (Guatemala)</th>
+                            <th scope="col">Responsable</th>
+                            <th scope="col">Módulo</th>
+                            <th scope="col">Acción</th>
+                            <th scope="col">Resultado</th>
+                            <th scope="col">IP</th>
+                            <th scope="col" class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Registros.Count == 0)
+                        {
+                            <tr><td colspan="7" class="text-center text-muted py-4">No hay eventos que coincidan con los filtros.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var registro in Model.Registros)
+                            {
+                                <tr>
+                                    <td class="text-nowrap">@registro.FechaHoraGuatemala.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                    <td>@registro.Responsable</td>
+                                    <td>@registro.Modulo</td>
+                                    <td>@registro.Accion</td>
+                                    <td><span class="badge @ClaseResultado(registro.Resultado)">@registro.Resultado</span></td>
+                                    <td><code>@(registro.DireccionIp ?? "—")</code></td>
+                                    <td class="text-end">
+                                        <a asp-action="Detalle" asp-route-id="@registro.Id" class="btn btn-sm btn-outline-primary">Ver detalle</a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPaginas > 1)
+            {
+                <nav aria-label="Paginación de auditoría">
+                    <ul class="pagination justify-content-end mb-0">
+                        <li class="page-item @(Model.Pagina == 1 ? "disabled" : null)">
+                            <a class="page-link" asp-action="Index"
+                               asp-route-pagina="@(Model.Pagina - 1)"
+                               asp-route-fechaDesde="@Model.Filtro.FechaDesde"
+                               asp-route-fechaHasta="@Model.Filtro.FechaHasta"
+                               asp-route-responsable="@Model.Filtro.Responsable"
+                               asp-route-modulo="@Model.Filtro.Modulo"
+                               asp-route-accion="@Model.Filtro.Accion"
+                               asp-route-resultado="@Model.Filtro.Resultado"
+                               asp-route-direccionIp="@Model.Filtro.DireccionIp">Anterior</a>
+                        </li>
+                        <li class="page-item disabled"><span class="page-link">@Model.Pagina / @Model.TotalPaginas</span></li>
+                        <li class="page-item @(Model.Pagina == Model.TotalPaginas ? "disabled" : null)">
+                            <a class="page-link" asp-action="Index"
+                               asp-route-pagina="@(Model.Pagina + 1)"
+                               asp-route-fechaDesde="@Model.Filtro.FechaDesde"
+                               asp-route-fechaHasta="@Model.Filtro.FechaHasta"
+                               asp-route-responsable="@Model.Filtro.Responsable"
+                               asp-route-modulo="@Model.Filtro.Modulo"
+                               asp-route-accion="@Model.Filtro.Accion"
+                               asp-route-resultado="@Model.Filtro.Resultado"
+                               asp-route-direccionIp="@Model.Filtro.DireccionIp">Siguiente</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        </div>
+    </div>
+</div>

@@ -1,0 +1,94 @@
+
+@model Proyecto_Final.ViewModels.Periodos.FormularioPeriodo
+
+@{
+    var esCreacion = Model is Proyecto_Final.ViewModels.Periodos.CrearPeriodo;
+}
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3">
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="CicloEscolarId" class="form-label">
+        </label>
+
+        <select asp-for="CicloEscolarId" asp-items="ViewBag.Ciclos" class="form-select" data-select-busqueda>
+            <option value="">Seleccione...</option>
+        </select>
+
+        <span asp-validation-for="CicloEscolarId" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="Numero" class="form-label">
+        </label>
+
+        @if (esCreacion && Model.Numero == 0 && ViewData.ModelState.IsValid)
+        {
+            <input asp-for="Numero" type="number" min="1" max="4"
+                   value="" class="form-control" />
+        }
+        else
+        {
+            <input asp-for="Numero" type="number" min="1" max="4"
+                   class="form-control" />
+        }
+
+        <span asp-validation-for="Numero" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Nombre" class="form-label">
+        </label>
+
+        <input asp-for="Nombre" class="form-control" />
+
+        <div class="form-text">
+            Ejemplo: Primer Bimestre, Segundo Trimestre o Primer Semestre.
+        </div>
+
+        <span asp-validation-for="Nombre" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="FechaInicio" class="form-label">
+        </label>
+
+        @if (esCreacion && Model.FechaInicio == DateOnly.MinValue && ViewData.ModelState.IsValid)
+        {
+            <input asp-for="FechaInicio" type="date"
+                   value="" class="form-control" />
+        }
+        else
+        {
+            <input asp-for="FechaInicio" type="date"
+                   class="form-control" />
+        }
+
+        <span asp-validation-for="FechaInicio" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="FechaFin" class="form-label">
+        </label>
+
+        @if (esCreacion && Model.FechaFin == DateOnly.MinValue && ViewData.ModelState.IsValid)
+        {
+            <input asp-for="FechaFin" type="date"
+                   value="" class="form-control" />
+        }
+        else
+        {
+            <input asp-for="FechaFin" type="date"
+                   class="form-control" />
+        }
+
+        <span asp-validation-for="FechaFin" class="text-danger small">
+        </span>
+    </div>
+</div>

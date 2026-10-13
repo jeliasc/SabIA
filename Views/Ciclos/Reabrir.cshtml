@@ -1,0 +1,46 @@
+@model Proyecto_Final.ViewModels.Ciclos.ReabrirCiclo
+@{
+    ViewData["Title"] = "Reabrir ciclo escolar";
+}
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1">Reabrir ciclo @Model.Anio</h2>
+        <p class="text-muted mb-0">Operación excepcional reservada para Coordinación y Superusuario.</p>
+    </div>
+    <div class="alert alert-warning" role="alert">
+        La reapertura no desbloquea calificaciones cerradas ni modifica períodos, inscripciones, asignaciones o
+        resultados consolidados.
+    </div>
+    <div class="card shadow-sm border border-secondary">
+        <div class="card-body">
+            <form asp-action="Reabrir" method="post" data-confirmar-accion-academica
+                  data-confirmar-titulo="Confirmar reapertura excepcional"
+                  data-confirmar-mensaje="El ciclo volverá a estar activo, pero sus cierres de calificaciones permanecerán intactos."
+                  data-confirmar-texto="Reabrir ciclo" data-confirmar-color="#dc3545">
+                @Html.AntiForgeryToken()
+                <input asp-for="Id" type="hidden" />
+                <input asp-for="Anio" type="hidden" />
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                <div class="mb-3">
+                    <label asp-for="Justificacion" class="form-label"></label>
+                    <textarea asp-for="Justificacion" class="form-control" rows="5" maxlength="1000"
+                              aria-describedby="ayuda-justificacion"></textarea>
+                    <div id="ayuda-justificacion" class="form-text">Explique la razón institucional de la reapertura
+                        (mínimo 10 caracteres).</div>
+                        <span asp-validation-for="Justificacion" class="text-danger"></span>
+                    </div>
+                    <div class="d-flex flex-column flex-sm-row justify-content-end gap-2">
+                        <a asp-action="Index" class="app-btn app-btn-soft-secondary">Cancelar</a>
+                        <button type="submit" class="app-btn app-btn-soft-danger">Reabrir ciclo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    @section Scripts
+    {
+        <partial name="_ValidationScriptsPartial" />
+        <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+    }

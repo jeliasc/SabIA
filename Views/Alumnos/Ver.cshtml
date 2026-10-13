@@ -1,0 +1,334 @@
+@model Proyecto_Final.ViewModels.Alumnos.AlumnoDetalle
+@using Proyecto_Final.Models
+
+@{
+    ViewData["Title"] = "Ver alumno";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-xl-10">
+            <div class="mb-4">
+                <h2 class="fw-bold mb-1">Detalle de alumno</h2>
+                <p class="text-muted mb-0">Información personal, académica y administrativa registrada.</p>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-lg-3">
+                    <div class="app-card h-100">
+                        <div class="app-card-body">
+                            <div class="text-muted small">Unidades disponibles</div>
+                            <div class="fs-3 fw-bold">@Model.UnidadesDisponibles</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="app-card h-100">
+                        <div class="app-card-body">
+                            <div class="text-muted small">Tareas publicadas</div>
+                            <div class="fs-3 fw-bold">@Model.TareasPublicadas</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="app-card h-100">
+                        <div class="app-card-body">
+                            <div class="text-muted small">Entregas realizadas</div>
+                            <div class="fs-3 fw-bold">@Model.EntregasRealizadas</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="app-card h-100">
+                        <div class="app-card-body">
+                            <div class="text-muted small">Estado</div>
+                            <div class="mt-2">
+                                <span class="app-badge @(Model.Activo ? "app-badge-success" : "app-badge-danger")">
+                                    @(Model.Activo ? "Activo" : "Inactivo")
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">Información personal</h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="detalle-primer-nombre" class="form-label">Primer nombre</label>
+                            <input id="detalle-primer-nombre" type="text" class="form-control"
+                                   value="@Model.PrimerNombre" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="detalle-segundo-nombre" class="form-label">Segundo nombre</label>
+                            <input id="detalle-segundo-nombre" type="text" class="form-control"
+                                   value="@(Model.SegundoNombre ?? "-")" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="detalle-tercer-nombre" class="form-label">Tercer nombre</label>
+                            <input id="detalle-tercer-nombre" type="text" class="form-control"
+                                   value="@(Model.TercerNombre ?? "-")" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="detalle-primer-apellido" class="form-label">Primer apellido</label>
+                            <input id="detalle-primer-apellido" type="text" class="form-control"
+                                   value="@Model.PrimerApellido" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="detalle-segundo-apellido" class="form-label">Segundo apellido</label>
+                            <input id="detalle-segundo-apellido" type="text" class="form-control"
+                                   value="@(Model.SegundoApellido ?? "-")" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="detalle-codigo-personal" class="form-label">Código Personal MINEDUC</label>
+                            <input id="detalle-codigo-personal" type="text" class="form-control"
+                                   value="@Model.CodigoPersonal" readonly />
+                        </div>
+                    </div>
+
+                    @if (Model.MostrarContacto)
+                    {
+                        <hr class="my-4" />
+
+                        <h5 class="fw-bold mb-3">Contacto</h5>
+
+                        <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="detalle-correo" class="form-label">Correo electrónico</label>
+                            <input id="detalle-correo" type="text" class="form-control"
+                                   value="@Model.Correo" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="detalle-telefono" class="form-label">Teléfono</label>
+                            <input id="detalle-telefono" type="text" class="form-control"
+                                   value="@(Model.Telefono ?? "Sin registro")" readonly />
+                        </div>
+                        </div>
+                    }
+
+                    <hr class="my-4" />
+
+                    <h5 class="fw-bold mb-3">Inscripción vigente y estado académico</h5>
+
+                    @if (Model.InscripcionVigente == null)
+                    {
+                        <div class="app-alert app-alert-info mb-0" role="status">
+                            <i class="bi bi-info-circle" aria-hidden="true"></i>
+                            <div>El alumno no tiene una inscripción vigente en el ciclo escolar activo.</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label for="detalle-ciclo-vigente" class="form-label">Ciclo escolar</label>
+                                <input id="detalle-ciclo-vigente" type="text" class="form-control"
+                                       value="@Model.InscripcionVigente.Ciclo" readonly />
+                            </div>
+                            <div class="col-md-3">
+                                <label for="detalle-grado-vigente" class="form-label">Grado</label>
+                                <input id="detalle-grado-vigente" type="text" class="form-control"
+                                       value="@Model.InscripcionVigente.Grado" readonly />
+                            </div>
+                            <div class="col-md-3">
+                                <label for="detalle-seccion-vigente" class="form-label">Sección</label>
+                                <input id="detalle-seccion-vigente" type="text" class="form-control"
+                                       value="@Model.InscripcionVigente.Seccion" readonly />
+                            </div>
+                            <div class="col-md-3">
+                                <span class="form-label d-block">Estado académico</span>
+                                <span class="app-badge app-badge-success">Vigente</span>
+                            </div>
+                            <div class="col-md-8">
+                                <label for="detalle-carrera-vigente" class="form-label">Carrera</label>
+                                <input id="detalle-carrera-vigente" type="text" class="form-control"
+                                       value="@Model.InscripcionVigente.Carrera" readonly />
+                            </div>
+                            <div class="col-md-4">
+                                <label for="detalle-fecha-inscripcion" class="form-label">Fecha de inscripción</label>
+                                <input id="detalle-fecha-inscripcion" type="text" class="form-control"
+                                       value="@Model.InscripcionVigente.Fecha.ToString("dd/MM/yyyy")" readonly />
+                            </div>
+                        </div>
+                    }
+
+                    @if (Model.MostrarHistorial)
+                    {
+                    <hr class="my-4" />
+
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                        <h5 class="fw-bold mb-0">Historial de inscripciones</h5>
+                        <span class="text-muted small">
+                            @Model.Inscripciones.Count inscripción(es) registrada(s)
+                        </span>
+                    </div>
+
+                    @if (Model.Inscripciones.Count == 0)
+                    {
+                        <div class="app-alert app-alert-info mb-0" role="status">
+                            <i class="bi bi-info-circle" aria-hidden="true"></i>
+                            <div>El alumno no tiene inscripciones registradas.</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive d-none d-md-block">
+                            <table class="table app-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Ciclo</th>
+                                        <th>Grado y sección</th>
+                                        <th>Carrera</th>
+                                        <th>Fecha</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var inscripcion in Model.Inscripciones)
+                                    {
+                                        var claseEstado = inscripcion.Estado == EstadoInscripcion.Activa
+                                            ? "app-badge-success"
+                                            : inscripcion.Estado == EstadoInscripcion.Finalizada
+                                                ? "app-badge-primary"
+                                                : "app-badge-danger";
+
+                                        <tr>
+                                            <td>@inscripcion.Ciclo</td>
+                                            <td class="fw-semibold">@inscripcion.Grado @inscripcion.Seccion</td>
+                                            <td>@inscripcion.Carrera</td>
+                                            <td>@inscripcion.Fecha.ToString("dd/MM/yyyy")</td>
+                                            <td>
+                                                <span class="app-badge @claseEstado">@inscripcion.Estado</span>
+                                                @if (inscripcion.EsVigente)
+                                                {
+                                                    <span class="app-badge app-badge-success ms-1">Vigente</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-md-none">
+                            @foreach (var inscripcion in Model.Inscripciones)
+                            {
+                                var claseEstado = inscripcion.Estado == EstadoInscripcion.Activa
+                                    ? "app-badge-success"
+                                    : inscripcion.Estado == EstadoInscripcion.Finalizada
+                                        ? "app-badge-primary"
+                                        : "app-badge-danger";
+
+                                <div class="card border-0 bg-light mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                            <div class="fw-semibold">@inscripcion.Grado @inscripcion.Seccion</div>
+                                            <div class="d-flex flex-column align-items-end gap-1">
+                                                <span class="app-badge @claseEstado">@inscripcion.Estado</span>
+                                                @if (inscripcion.EsVigente)
+                                                {
+                                                    <span class="app-badge app-badge-success">Vigente</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div>@inscripcion.Carrera</div>
+                                        <div class="text-muted small mt-2">Ciclo @inscripcion.Ciclo</div>
+                                        <div class="text-muted small">Inscripción: @inscripcion.Fecha.ToString("dd/MM/yyyy")</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    }
+
+                    @if (Model.MostrarEncargados)
+                    {
+                    <hr class="my-4" />
+
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                        <h5 class="fw-bold mb-0">Encargados registrados</h5>
+                        <span class="text-muted small">@Model.Encargados.Count encargado(s)</span>
+                    </div>
+
+                    @if (Model.Encargados.Count == 0)
+                    {
+                        <div class="app-alert app-alert-info mb-0" role="status">
+                            <i class="bi bi-info-circle" aria-hidden="true"></i>
+                            <div>El alumno no tiene encargados registrados.</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row g-3">
+                            @foreach (var encargado in Model.Encargados)
+                            {
+                                <div class="col-12 col-md-6">
+                                    <div class="card border-0 bg-light h-100">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                                                <div class="fw-semibold">@encargado.NombreCompleto</div>
+                                                <span class="app-badge app-badge-primary">@encargado.Parentesco</span>
+                                            </div>
+                                            <div class="small text-muted">Teléfono principal</div>
+                                            <div class="mb-2">@encargado.Telefono</div>
+                                            @if (!string.IsNullOrWhiteSpace(encargado.TelefonoAlterno))
+                                            {
+                                                <div class="small text-muted">Teléfono alterno</div>
+                                                <div class="mb-2">@encargado.TelefonoAlterno</div>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(encargado.Correo))
+                                            {
+                                                <div class="small text-muted">Correo</div>
+                                                <div class="text-break">@encargado.Correo</div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    }
+
+                    @if (Model.MostrarInformacionAdministrativa)
+                    {
+                    <hr class="my-4" />
+
+                    <h5 class="fw-bold mb-3">Información administrativa</h5>
+
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <span class="form-label d-block">Estado de la cuenta</span>
+                            <span class="app-badge @(Model.Activo ? "app-badge-success" : "app-badge-danger")">
+                                @(Model.Activo ? "Activo" : "Inactivo")
+                            </span>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="detalle-usuario" class="form-label">Usuario</label>
+                            <input id="detalle-usuario" type="text" class="form-control"
+                                   value="@Model.Usuario" readonly />
+                        </div>
+                        <div class="col-md-4">
+                            <label for="detalle-fecha-creacion" class="form-label">Fecha de creación</label>
+                            <input id="detalle-fecha-creacion" type="text" class="form-control"
+                                   value="@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")" readonly />
+                        </div>
+                    </div>
+                    }
+
+                    <div class="app-alert app-alert-info mt-4 mb-0">
+                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                        <div>La información académica mostrada en SabIA es de apoyo y no sustituye los registros oficiales de la institución.</div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-4">
+                        <a asp-controller="Alumnos" asp-action="Index"
+                           class="app-btn app-btn-soft-primary">Regresar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

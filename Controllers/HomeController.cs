@@ -1,39 +1,31 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Proyecto_Final.Servicios.Demostracion;
+using Proyecto_Final.Servicios.Dashboard;
 using Proyecto_Final.ViewModels;
 
 namespace Proyecto_Final.Controllers;
 
-public class HomeController : Controller
+public class HomeController(IDashboardServicio dashboardServicio) : Controller
 {
-    // MOSTRAR DASHBOARD DE COORDINACIÓN
-    public IActionResult Index()
+    [HttpGet]
+    public async Task<IActionResult> Index(string? contexto)
     {
-        return View(DatosFicticiosSabia.ObtenerDashboard());
+        var resultado = await dashboardServicio.ObtenerAsync(User, contexto);
+
+        if (!resultado.Permitido)
+        {
+            return Forbid();
+        }
+        ViewBag.TituloDashboard = resultado.Titulo;
+        ViewBag.DescripcionDashboard = resultado.Descripcion;
+        return View(resultado.Modelo);
     }
 
-    // MOSTRAR POLÍTICA DE PRIVACIDAD
-    public IActionResult Privacy()
-    {
-        return View();
-    }
+    public IActionResult Privacy() => View();
 
-    // MOSTRAR PÁGINA DE ERROR
-    [ResponseCache(
-        Duration = 0,
-        Location = ResponseCacheLocation.None,
-        NoStore = true
-    )]
-    public IActionResult Error()
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult Error() => View(new ErrorViewModel
     {
-        return View(
-            new ErrorViewModel
-            {
-                RequestId =
-                    Activity.Current?.Id ??
-                    HttpContext.TraceIdentifier
-            }
-        );
-    }
+        RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
+    });
 }

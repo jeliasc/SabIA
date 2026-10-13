@@ -1,0 +1,52 @@
+@model Proyecto_Final.ViewModels.Grados.FormularioGrado
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3">
+</div>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <label asp-for="Nivel" class="form-label">
+        </label>
+
+        <select asp-for="Nivel" asp-items="Html.GetEnumSelectList<Proyecto_Final.Models.NivelEducativo>()"
+                class="form-select">
+        </select>
+
+        <span asp-validation-for="Nivel" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Nombre" class="form-label">
+        </label>
+
+        <input asp-for="Nombre" class="form-control" />
+
+        <span asp-validation-for="Nombre" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-md-4">
+        <label asp-for="Orden" class="form-label">
+        </label>
+
+        <input asp-for="Orden" class="form-control" />
+
+        <span asp-validation-for="Orden" class="text-danger small">
+        </span>
+    </div>
+
+    <div class="col-12">
+        <label asp-for="Carrera" class="form-label">
+        </label>
+
+        <input asp-for="Carrera" class="form-control" />
+
+        <div class="form-text">
+            Use una descripción general cuando el nivel no maneje carrera.
+        </div>
+
+        <span asp-validation-for="Carrera" class="text-danger small">
+        </span>
+    </div>
+</div>

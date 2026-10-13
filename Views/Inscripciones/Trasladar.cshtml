@@ -1,0 +1,77 @@
+@model Proyecto_Final.ViewModels.Inscripciones.TrasladarInscripcion
+
+@{
+    ViewData["Title"] = "Trasladar alumno";
+}
+
+<div class="container-fluid">
+    <h2 class="fw-bold mb-1">
+        Trasladar alumno
+    </h2>
+
+    <p class="text-muted mb-4">
+        @Model.Alumno
+    </p>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <form method="post">
+                @Html.AntiForgeryToken()
+
+                <input asp-for="Id" type="hidden" />
+
+                <input asp-for="SeccionOrigenId" type="hidden" />
+
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3">
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="SeccionDestinoId" class="form-label">
+                        Sección de destino
+                    </label>
+
+                    <select asp-for="SeccionDestinoId" class="form-select" data-select-busqueda>
+                        <option value="">Seleccione...</option>
+
+                        @foreach (var x in Model.Secciones)
+                        {
+                            <option value="@x.Id">
+                                @x.Texto
+                            </option>
+                        }
+                    </select>
+
+                    <span asp-validation-for="SeccionDestinoId" class="text-danger">
+                    </span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Motivo" class="form-label">
+                        Motivo
+                    </label>
+
+                    <textarea asp-for="Motivo" class="form-control" rows="4">
+                    </textarea>
+
+                    <span asp-validation-for="Motivo" class="text-danger">
+                    </span>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-action="Index" class="app-btn app-btn-secondary">
+                        Cancelar
+                    </a>
+
+                    <button class="app-btn app-btn-soft-primary">
+                        Confirmar traslado
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <partial name="_ValidationScriptsPartial" />
+}

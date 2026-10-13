@@ -1,0 +1,91 @@
+@model Proyecto_Final.ViewModels.Inscripciones.CrearInscripcion
+
+@{
+    ViewData["Title"] = "Nueva inscripción";
+}
+
+<div class="container-fluid">
+    <h2 class="fw-bold mb-4">
+        Nueva inscripción
+    </h2>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <form method="post">
+                @Html.AntiForgeryToken()
+
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3">
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <label asp-for="AlumnoId" class="form-label">
+                            Alumno
+                        </label>
+
+                        <select asp-for="AlumnoId" class="form-select"
+                                data-select-busqueda
+                                data-search-placeholder="Buscar por nombre o Código Personal MINEDUC...">
+                            <option value="">Seleccione...</option>
+
+                            @foreach (var x in Model.Alumnos)
+                            {
+                                <option value="@x.Id">
+                                    @x.Texto
+                                </option>
+                            }
+                        </select>
+
+                        <span asp-validation-for="AlumnoId" class="text-danger">
+                        </span>
+                    </div>
+
+                    <div class="col-md-5">
+                        <label asp-for="SeccionId" class="form-label">
+                            Sección
+                        </label>
+
+                        <select asp-for="SeccionId" class="form-select"
+                                data-select-busqueda
+                                data-search-placeholder="Buscar por ciclo, grado o sección...">
+                            <option value="">Seleccione...</option>
+
+                            @foreach (var x in Model.Secciones)
+                            {
+                                <option value="@x.Id">
+                                    @x.Texto
+                                </option>
+                            }
+                        </select>
+
+                        <span asp-validation-for="SeccionId" class="text-danger">
+                        </span>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label asp-for="Fecha" class="form-label">
+                            Fecha
+                        </label>
+
+                        <input asp-for="Fecha" type="date" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a asp-action="Index" class="app-btn app-btn-secondary">
+                        Cancelar
+                    </a>
+
+                    <button class="app-btn app-btn-soft-primary">
+                        Inscribir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -146,13 +146,13 @@
 
                             @if (Model.Activo)
                             {
-                                <span class="badge bg-success">
+                                <span class="app-badge app-badge-success">
                                     Activo
                                 </span>
                             }
                             else
                             {
-                                <span class="badge bg-secondary">
+                                <span class="app-badge app-badge-danger">
                                     Inactivo
                                 </span>
                             }
@@ -165,13 +165,13 @@
 
                             @if (Model.CambiarContrasena)
                             {
-                                <span class="badge bg-warning text-dark">
+                                <span class="app-badge app-badge-warning">
                                     Pendiente
                                 </span>
                             }
                             else
                             {
-                                <span class="badge bg-success">
+                                <span class="app-badge app-badge-success">
                                     Actualizada
                                 </span>
                             }
@@ -206,7 +206,7 @@
 
                         <a asp-controller="Usuarios"
                            asp-action="Index"
-                           class="btn btn-outline-secondary">
+                           class="app-btn app-btn-soft-primary">
                             Regresar
                         </a>
 

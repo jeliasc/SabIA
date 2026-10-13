@@ -1,0 +1,73 @@
+@model Proyecto_Final.ViewModels.Entregas.ReabrirEntrega
+
+@{
+    ViewData["Title"] = "Reabrir entrega";
+}
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1">Reabrir entrega</h2>
+        <p class="text-muted mb-0">
+            Habilite un nuevo plazo individual sin alterar los intentos anteriores.
+        </p>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-body">
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-md-6">
+                    <div class="text-muted small">Alumno</div>
+                    <div class="fw-semibold">@Model.Alumno</div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="text-muted small">Curso</div>
+                    <div class="fw-semibold">@Model.Curso</div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="text-muted small">Tarea</div>
+                    <div class="fw-semibold">@Model.Tarea</div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="text-muted small">Intento actual</div>
+                    <div class="fw-semibold">
+                        #@Model.NumeroEnvioActual · @Model.EstadoActual
+                    </div>
+                </div>
+            </div>
+
+            <form asp-action="Reabrir" method="post" data-reabrir-entrega>
+                <input asp-for="Id" type="hidden" />
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label asp-for="FechaLimite" class="form-label">Nueva fecha límite</label>
+                        <input asp-for="FechaLimite" type="datetime-local"
+                               class="form-control" />
+                        <span asp-validation-for="FechaLimite" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="Motivo" class="form-label">Motivo</label>
+                        <textarea asp-for="Motivo" class="form-control" rows="4"
+                                  placeholder="Explique por qué se autoriza este nuevo plazo."></textarea>
+                        <span asp-validation-for="Motivo" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
+                    <a asp-action="Index" class="app-btn app-btn-soft-secondary">Cancelar</a>
+                    <button type="submit" class="app-btn app-btn-danger">
+                        Confirmar reapertura
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/entregas.js" asp-append-version="true"></script>
+}

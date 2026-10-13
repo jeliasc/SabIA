@@ -1,0 +1,142 @@
+@model Proyecto_Final.ViewModels.Cuestionarios.CrearPregunta
+
+@{
+    ViewData["Title"] = "Agregar pregunta";
+}
+
+<div class="container-fluid">
+    <h2 class="fw-bold mb-1">
+        Agregar pregunta
+    </h2>
+
+    <p class="text-muted mb-4">
+        @Model.Cuestionario
+    </p>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <form method="post">
+                @Html.AntiForgeryToken()
+
+                <input asp-for="CuestionarioId" type="hidden" />
+                <input asp-for="Cuestionario" type="hidden" />
+                <input asp-for="UsaTiempoPorPregunta" type="hidden" />
+                <input asp-for="TiempoPredeterminadoSegundos" type="hidden" />
+
+                <div asp-validation-summary="ModelOnly" class="text-danger">
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label asp-for="Orden" class="form-label">
+                            Orden
+                        </label>
+
+                        <input asp-for="Orden" class="form-control" />
+                        <span asp-validation-for="Orden" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Tipo" class="form-label">
+                            Tipo
+                        </label>
+
+                        <select asp-for="Tipo" asp-items="Html.GetEnumSelectList<Proyecto_Final.Models.TipoPregunta>()"
+                                class="form-select">
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label asp-for="Punteo" class="form-label">
+                            Punteo
+                        </label>
+
+                        <input asp-for="Punteo" class="form-control" />
+                    </div>
+
+                    @if (Model.UsaTiempoPorPregunta)
+                    {
+                        <div class="col-md-4">
+                            <label asp-for="TiempoLimiteSegundos" class="form-label">
+                                Tiempo de esta pregunta (segundos)
+                            </label>
+
+                            <input asp-for="TiempoLimiteSegundos" class="form-control" min="10" max="3600"
+                                   placeholder="@(Model.TiempoPredeterminadoSegundos?.ToString() ?? "")" />
+                            <span asp-validation-for="TiempoLimiteSegundos" class="text-danger small"></span>
+
+                            <div class="form-text">
+                                @if (Model.TiempoPredeterminadoSegundos.HasValue)
+                                {
+                                    <text>Déjelo vacío para usar @Model.TiempoPredeterminadoSegundos segundos.</text>
+                                }
+                                else
+                                {
+                                    <text>Obligatorio para esta modalidad.</text>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <div class="col-12">
+                        <label asp-for="Enunciado" class="form-label">
+                            Pregunta
+                        </label>
+
+                        <textarea asp-for="Enunciado" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Enunciado" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="OpcionesSeparadas" class="form-label">
+                            Opciones
+                        </label>
+
+                        <textarea asp-for="OpcionesSeparadas" class="form-control" rows="5"
+                                  placeholder="Una opción por línea"></textarea>
+                        <span asp-validation-for="OpcionesSeparadas" class="text-danger small"></span>
+
+                        <div class="form-text">
+                            Para Verdadero/Falso se generan automáticamente. En respuesta directa (texto corto) se deja vacío.
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="RespuestaCorrecta" class="form-label">
+                            Respuesta correcta
+                        </label>
+
+                        <textarea asp-for="RespuestaCorrecta" class="form-control" rows="5"></textarea>
+                        <span asp-validation-for="RespuestaCorrecta" class="text-danger small"></span>
+
+                        <div class="form-text">
+                            En selección debe coincidir con una de las opciones.
+                            En respuesta directa puede escribir varias respuestas válidas, una por línea.
+                            No se toman en cuenta mayúsculas, tildes ni espacios de más.
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="Retroalimentacion" class="form-label">
+                            Retroalimentación (opcional)
+                        </label>
+
+                        <textarea asp-for="Retroalimentacion" class="form-control" rows="2"
+                                  placeholder="Explicación que verá el alumno al revisar su resultado"></textarea>
+                        <span asp-validation-for="Retroalimentacion" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-column flex-md-row justify-content-end gap-2 mt-4">
+                    <a asp-action="Index" class="app-btn app-btn-secondary">
+                        Finalizar
+                    </a>
+
+                    <button class="app-btn app-btn-soft-primary">
+                        Guardar y agregar otra
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

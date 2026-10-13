@@ -1,0 +1,42 @@
+@model Proyecto_Final.ViewModels.Materiales.EditarMaterial
+
+@{
+    ViewData["Title"] = "Editar material";
+}
+
+<div class="container-fluid">
+    <h2 class="fw-bold mb-4">
+        Editar material
+    </h2>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <form method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => m.Id)
+
+                <div class="app-alert app-alert-info mb-3">
+                    Archivo actual: @(Model.ArchivoActual ?? "Ninguno").
+                    Si carga otro archivo, será reemplazado.
+                </div>
+
+                <partial name="Formulario" model="Model" />
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a asp-action="Index" class="app-btn app-btn-secondary">
+                        Cancelar
+                    </a>
+
+                    <button class="app-btn app-btn-soft-primary">
+                        Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -54,6 +54,14 @@
 
                         <input asp-for="Id" type="hidden" />
 
+                        @if (!string.IsNullOrWhiteSpace(Model.AdvertenciaConfiguracionRol))
+                        {
+                            <div class="app-alert app-alert-warning mb-4" role="alert">
+                                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                                <div>@Model.AdvertenciaConfiguracionRol</div>
+                            </div>
+                        }
+
                         <h5 class="fw-semibold mb-3">
                             Información personal
                         </h5>
@@ -167,7 +175,8 @@
                                 <label asp-for="Rol" class="form-label">
                                 </label>
 
-                                <select asp-for="Rol" class="form-select">
+                                <select asp-for="Rol" class="form-select" data-select-busqueda
+                                        data-search-placeholder="Buscar rol...">
 
                                     <option value="">
                                         Seleccione un rol
@@ -189,7 +198,7 @@
 
                         </div>
 
-                        <div class="alert alert-info" role="alert">
+                        <div class="app-alert app-alert-info-danger-text" role="alert">
 
                             La contraseña del usuario no se modifica desde
                             esta pantalla. Para cambiarla, utilice la opción
@@ -202,13 +211,13 @@
                             justify-content-end
                             gap-2 mt-4">
 
-                            <a asp-controller="Usuarios" asp-action="Index" class="btn btn-outline-secondary">
+                            <a asp-controller="Usuarios" asp-action="Index" class="app-btn app-btn-soft-secondary">
 
                                 Cancelar
 
                             </a>
 
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="app-btn app-btn-soft-primary">
 
                                 Guardar cambios
 
@@ -232,7 +241,6 @@
 
     <partial name="_ValidationScriptsPartial" />
 
-    <script src="~/js/usuarios.js" asp-append-version="true">
-    </script>
+    <script src="~/js/usuarios.js" asp-append-version="true"></script>
 
 }
