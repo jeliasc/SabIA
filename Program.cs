@@ -107,7 +107,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 
     options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.Cookie.SameSite = SameSiteMode.Lax;
 });
 
@@ -182,6 +182,7 @@ builder.Services.AddScoped<IPlanificacionServicio, PlanificacionServicio>();
 builder.Services.AddScoped<ITareaServicio, TareaServicio>();
 builder.Services.AddScoped<IEntregaServicio, EntregaServicio>();
 builder.Services.AddScoped<ICuestionarioServicio, CuestionarioServicio>();
+builder.Services.AddHostedService<FinalizadorIntentosVencidos>();
 builder.Services.AddScoped<IDocumentoServicio, DocumentoServicio>();
 builder.Services.AddScoped<INotificacionServicio, NotificacionServicio>();
 builder.Services.AddScoped<ICalificacionServicio, CalificacionServicio>();

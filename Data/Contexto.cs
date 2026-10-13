@@ -1009,6 +1009,18 @@ public class Contexto
             })
             .IsUnique();
 
+        // Un alumno solo puede tener un intento en curso por cuestionario
+        // e inscripción. Evita que dos pestañas inicien intentos paralelos.
+        builder.Entity<IntentoCuestionario>()
+            .HasIndex(i => new
+            {
+                i.CuestionarioId,
+                i.InscripcionId
+            })
+            .IsUnique()
+            .HasFilter("\"Estado\" = 1")
+            .HasDatabaseName("IX_IntentosCuestionarios_IntentoEnCurso");
+
         builder.Entity<IntentoCuestionario>()
             .HasOne(i => i.Cuestionario)
             .WithMany(c => c.Intentos)

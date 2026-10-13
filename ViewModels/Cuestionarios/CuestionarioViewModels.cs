@@ -31,6 +31,16 @@ public sealed class ConfigurarCuestionario
     public ModalidadTiempoCuestionario ModalidadTiempo { get; set; } =
         ModalidadTiempoCuestionario.SinLimite;
 
+    [Range(1, 300, ErrorMessage = "El tiempo total debe estar entre 1 y 300 minutos.")]
+    public int? TiempoGeneralMinutos { get; set; }
+
+    [Range(10, 3600, ErrorMessage = "El tiempo por pregunta debe estar entre 10 y 3600 segundos.")]
+    public int? TiempoPorPreguntaSegundos { get; set; }
+
+    public bool PermitirNavegacion { get; set; }
+
+    public bool OrdenAleatorio { get; set; }
+
     [Range(0, 100)]
     public int MaximoIntentos { get; set; } = 1;
 
@@ -38,10 +48,6 @@ public sealed class ConfigurarCuestionario
         CriterioCalificacionIntentos.MejorNota;
 
     public bool MostrarResultadosAlFinalizar { get; set; } = true;
-
-    public decimal CalificacionAplicada { get; set; }
-
-    public bool MostrarResultados { get; set; } = true;
 
     public bool MostrarRespuestasCorrectas { get; set; }
 }
@@ -51,6 +57,10 @@ public sealed class CrearPregunta
     public int CuestionarioId { get; set; }
 
     public string Cuestionario { get; set; } = string.Empty;
+
+    public bool UsaTiempoPorPregunta { get; set; }
+
+    public int? TiempoPredeterminadoSegundos { get; set; }
 
     [Range(1, 500)]
     public int Orden { get; set; } = 1;
@@ -68,26 +78,77 @@ public sealed class CrearPregunta
     public string RespuestaCorrecta { get; set; } = string.Empty;
 
     public string? OpcionesSeparadas { get; set; }
+
+    [Range(10, 3600, ErrorMessage = "El tiempo debe estar entre 10 y 3600 segundos.")]
+    public int? TiempoLimiteSegundos { get; set; }
+
+    [StringLength(2000)]
+    public string? Retroalimentacion { get; set; }
 }
 
-public sealed class ResolverCuestionario
+// Pantalla previa al cuestionario: reglas, tiempo e intentos.
+public sealed class InicioCuestionario
 {
     public int CuestionarioId { get; set; }
 
     public string Titulo { get; set; } = string.Empty;
 
-    public int IntentosUsados { get; set; }
+    public string? Instrucciones { get; set; }
+
+    public int CantidadPreguntas { get; set; }
 
     public int MaximoIntentos { get; set; }
 
-    public List<RespuestaCuestionario> Respuestas { get; set; } = [];
+    public int IntentosUsados { get; set; }
+
+    public ModalidadTiempoCuestionario ModalidadTiempo { get; set; }
+
+    public int? TiempoGeneralSegundos { get; set; }
+
+    public int? TiempoPorPreguntaSegundos { get; set; }
+
+    public bool PermitirNavegacion { get; set; }
+
+    public int? IntentoEnCursoId { get; set; }
+
+    public int? UltimoIntentoId { get; set; }
+
+    public bool PlazoVencido { get; set; }
+
+    public bool PuedeIniciar =>
+        IntentoEnCursoId.HasValue ||
+        (!PlazoVencido && CantidadPreguntas > 0 &&
+         (MaximoIntentos == 0 || IntentosUsados < MaximoIntentos));
 }
 
-public sealed class RespuestaCuestionario
+// Intento en curso. En modo navegable se envían todas las preguntas;
+// en modo secuencial solo la pregunta actual.
+public sealed class IntentoEnCurso
+{
+    public int IntentoId { get; set; }
+
+    public int CuestionarioId { get; set; }
+
+    public string Titulo { get; set; } = string.Empty;
+
+    public bool PermitirNavegacion { get; set; }
+
+    public int TotalPreguntas { get; set; }
+
+    // Segundos restantes de todo el intento; nulo si no hay límite general.
+    public int? SegundosRestantes { get; set; }
+
+    // Segundos restantes de la pregunta actual (solo tiempo por pregunta).
+    public int? SegundosRestantesPregunta { get; set; }
+
+    public List<PreguntaIntento> Preguntas { get; set; } = [];
+}
+
+public sealed class PreguntaIntento
 {
     public int PreguntaId { get; set; }
 
-    public int Orden { get; set; }
+    public int Numero { get; set; }
 
     public TipoPregunta Tipo { get; set; }
 
@@ -97,11 +158,21 @@ public sealed class RespuestaCuestionario
 
     public string? Texto { get; set; }
 
-    public int? OpcionId { get; set; }
-
     public List<int> OpcionIds { get; set; } = [];
 
     public List<OpcionCuestionario> Opciones { get; set; } = [];
+}
+
+// Respuesta enviada por el alumno para una pregunta.
+public sealed class RespuestaCuestionario
+{
+    public int PreguntaId { get; set; }
+
+    public string? Texto { get; set; }
+
+    public int? OpcionId { get; set; }
+
+    public List<int> OpcionIds { get; set; } = [];
 }
 
 public sealed class OpcionCuestionario
@@ -111,8 +182,30 @@ public sealed class OpcionCuestionario
     public string Texto { get; set; } = string.Empty;
 }
 
+public sealed class FinalizarIntento
+{
+    public int IntentoId { get; set; }
+
+    public List<RespuestaCuestionario> Respuestas { get; set; } = [];
+}
+
+public sealed class ResponderPregunta
+{
+    public int IntentoId { get; set; }
+
+    public RespuestaCuestionario Respuesta { get; set; } = new();
+}
+
 public sealed class ResultadoIntento
 {
+    public int IntentoId { get; set; }
+
+    public int CuestionarioId { get; set; }
+
+    public string Titulo { get; set; } = string.Empty;
+
+    public bool Expirado { get; set; }
+
     public decimal Calificacion { get; set; }
 
     public decimal PunteoObtenido { get; set; }
@@ -124,4 +217,25 @@ public sealed class ResultadoIntento
     public bool MostrarResultados { get; set; } = true;
 
     public bool MostrarRespuestasCorrectas { get; set; }
+
+    public List<DetalleRespuestaIntento> Detalle { get; set; } = [];
+}
+
+public sealed class DetalleRespuestaIntento
+{
+    public int Numero { get; set; }
+
+    public string Enunciado { get; set; } = string.Empty;
+
+    public string RespuestaAlumno { get; set; } = string.Empty;
+
+    public string RespuestaCorrecta { get; set; } = string.Empty;
+
+    public bool Correcta { get; set; }
+
+    public decimal PunteoObtenido { get; set; }
+
+    public decimal Punteo { get; set; }
+
+    public string? Retroalimentacion { get; set; }
 }

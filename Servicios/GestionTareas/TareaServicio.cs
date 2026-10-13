@@ -253,8 +253,8 @@ public sealed class TareaServicio(
                 Instrucciones = Lim(m.Instrucciones),
                 Estado = EstadoTarea.Borrador,
                 PunteoMaximo = m.PunteoMaximo,
-                FechaDisponibilidad = m.FechaDisponibilidad,
-                FechaLimite = m.FechaLimite,
+                FechaDisponibilidad = HoraGuatemala.ParaGuardar(m.FechaDisponibilidad),
+                FechaLimite = HoraGuatemala.ParaGuardar(m.FechaLimite),
                 PermitirEntregaTardia = m.PermitirEntregaTardia,
                 FechaCreacion = DateTime.UtcNow,
                 CreadoPorUsuarioId = uid,
@@ -342,6 +342,8 @@ public sealed class TareaServicio(
 
         if (m != null)
         {
+            m.FechaDisponibilidad = HoraGuatemala.ParaFormulario(m.FechaDisponibilidad);
+            m.FechaLimite = HoraGuatemala.ParaFormulario(m.FechaLimite);
             await PrepararAsync(m);
         }
 
@@ -416,8 +418,8 @@ public sealed class TareaServicio(
             t.Titulo = m.Titulo.Trim();
             t.Instrucciones = Lim(m.Instrucciones);
             t.PunteoMaximo = m.PunteoMaximo;
-            t.FechaDisponibilidad = m.FechaDisponibilidad;
-            t.FechaLimite = m.FechaLimite;
+            t.FechaDisponibilidad = HoraGuatemala.ParaGuardar(m.FechaDisponibilidad);
+            t.FechaLimite = HoraGuatemala.ParaGuardar(m.FechaLimite);
             t.PermitirEntregaTardia = m.PermitirEntregaTardia;
 
             if (g != null)

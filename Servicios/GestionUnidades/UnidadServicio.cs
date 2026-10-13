@@ -256,8 +256,8 @@ public sealed class UnidadServicio(
                     PeriodoId = m.PeriodoId,
                     Orden = m.Orden,
                     Estado = EstadoPublicacionUnidad.Borrador,
-                    FechaDisponibilidad = m.FechaDisponibilidad,
-                    FechaCierreAcceso = m.FechaCierreAcceso,
+                    FechaDisponibilidad = HoraGuatemala.ParaGuardar(m.FechaDisponibilidad),
+                    FechaCierreAcceso = HoraGuatemala.ParaGuardar(m.FechaCierreAcceso),
                     AsignadoPorUsuarioId = uid
                 }
             );
@@ -298,6 +298,8 @@ public sealed class UnidadServicio(
 
         if (m != null)
         {
+            m.FechaDisponibilidad = HoraGuatemala.ParaFormulario(m.FechaDisponibilidad);
+            m.FechaCierreAcceso = HoraGuatemala.ParaFormulario(m.FechaCierreAcceso);
             await PrepararAsync(m);
         }
 
@@ -372,8 +374,8 @@ public sealed class UnidadServicio(
             ua.AsignacionId = m.AsignacionId;
             ua.PeriodoId = m.PeriodoId;
             ua.Orden = m.Orden;
-            ua.FechaDisponibilidad = m.FechaDisponibilidad;
-            ua.FechaCierreAcceso = m.FechaCierreAcceso;
+            ua.FechaDisponibilidad = HoraGuatemala.ParaGuardar(m.FechaDisponibilidad);
+            ua.FechaCierreAcceso = HoraGuatemala.ParaGuardar(m.FechaCierreAcceso);
 
             await c.SaveChangesAsync();
             await tx.CommitAsync();

@@ -605,13 +605,22 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Property<bool>("MostrarResultadosAlFinalizar")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("OrdenAleatorio")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Origen")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("PermitirNavegacion")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("TareaId")
                         .HasColumnType("integer");
 
                     b.Property<int?>("TiempoGeneralSegundos")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TiempoPorPreguntaSegundos")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -1049,15 +1058,31 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Property<DateTime>("FechaInicio")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("FechaLimite")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int?>("InscripcionId")
                         .HasColumnType("integer");
 
                     b.Property<int>("NumeroIntento")
                         .HasColumnType("integer");
 
+                    b.Property<string>("OrdenPreguntas")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<int>("PreguntaActual")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AlumnoId");
+
+                    b.HasIndex("CuestionarioId", "InscripcionId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_IntentosCuestionarios_IntentoEnCurso")
+                        .HasFilter("\"Estado\" = 1");
 
                     b.HasIndex("InscripcionId", "AlumnoId");
 
@@ -1593,6 +1618,10 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Property<decimal>("Punteo")
                         .HasPrecision(9, 2)
                         .HasColumnType("numeric(9,2)");
+
+                    b.Property<string>("Retroalimentacion")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<int?>("TiempoLimiteSegundos")
                         .HasColumnType("integer");

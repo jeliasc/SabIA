@@ -102,11 +102,16 @@ public class CuestionariosController(ICuestionarioServicio s) : Controller
         );
     }
 
+    // =====================================================================
+    // RESOLUCIÓN (ALUMNO)
+    // =====================================================================
+
+    // Pantalla previa: reglas del cuestionario, tiempo e intentos.
     [HttpGet]
     [Authorize(Policy = Permisos.Cuestionarios.Resolver)]
     public async Task<IActionResult> Resolver(int id)
     {
-        var m = await s.ObtenerParaResolverAsync(id);
+        var m = await s.ObtenerInicioAsync(id);
 
         return m == null
             ? NotFound()
@@ -116,16 +121,101 @@ public class CuestionariosController(ICuestionarioServicio s) : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Cuestionarios.Resolver)]
-    public async Task<IActionResult> Resolver(ResolverCuestionario m)
+    public async Task<IActionResult> Iniciar(int id)
     {
-        var r = await s.ResolverAsync(m);
+        var r = await s.IniciarAsync(id);
 
-        if (!r.Exitoso || r.Datos == null)
+        if (!r.Exitoso)
+        {
+            TempData["Error"] = r.Mensaje;
+            return RedirectToAction(nameof(Resolver), new { id });
+        }
+
+        return RedirectToAction(nameof(Intento), new { id = r.Datos });
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Permisos.Cuestionarios.Resolver)]
+    public async Task<IActionResult> Intento(int id)
+    {
+        var vista = await s.ObtenerIntentoAsync(id);
+
+        if (!vista.Existe)
+            return NotFound();
+
+        if (vista.Finalizado || vista.Modelo == null)
+            return RedirectToAction(nameof(Resultado), new { id = vista.IntentoId });
+
+        return View(vista.Modelo);
+    }
+
+    // Guardado automático de una respuesta en modo navegable.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Permisos.Cuestionarios.Resolver)]
+    public async Task<IActionResult> GuardarRespuesta(ResponderPregunta m)
+    {
+        var r = await s.GuardarRespuestaAsync(m.IntentoId, m.Respuesta);
+
+        return Json(new
+        {
+            exitoso = r.Exitoso,
+            finalizado = r.Datos,
+            mensaje = r.Mensaje,
+            urlResultado = Url.Action(nameof(Resultado), new { id = m.IntentoId })
+        });
+    }
+
+    // Respuesta de la pregunta en curso en modo secuencial.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Permisos.Cuestionarios.Resolver)]
+    public async Task<IActionResult> Responder(ResponderPregunta m)
+    {
+        var r = await s.ResponderAsync(m);
+
+        if (!r.Exitoso)
         {
             TempData["Error"] = r.Mensaje;
             return RedirectToAction(nameof(Index));
         }
 
-        return View("Resultado", r.Datos);
+        if (r.Datos)
+            return RedirectToAction(nameof(Resultado), new { id = m.IntentoId });
+
+        if (r.Mensaje.StartsWith("El tiempo", StringComparison.Ordinal))
+            TempData["Advertencia"] = r.Mensaje;
+
+        return RedirectToAction(nameof(Intento), new { id = m.IntentoId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Permisos.Cuestionarios.Resolver)]
+    public async Task<IActionResult> Finalizar(FinalizarIntento m)
+    {
+        var r = await s.FinalizarAsync(m);
+
+        if (!r.Exitoso)
+        {
+            TempData["Error"] = r.Mensaje;
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (r.Mensaje.StartsWith("El tiempo", StringComparison.Ordinal))
+            TempData["Advertencia"] = r.Mensaje;
+
+        return RedirectToAction(nameof(Resultado), new { id = r.Datos });
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Permisos.Cuestionarios.Resolver)]
+    public async Task<IActionResult> Resultado(int id)
+    {
+        var m = await s.ObtenerResultadoAsync(id);
+
+        return m == null
+            ? NotFound()
+            : View(m);
     }
 }

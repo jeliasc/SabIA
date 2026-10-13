@@ -12,6 +12,7 @@ WORKDIR /app
 
 COPY --from=build /app/publish .
 
+ENV TZ=America/Guatemala
 ENV ASPNETCORE_URLS=http://0.0.0.0:10000
 EXPOSE 10000
 

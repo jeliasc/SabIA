@@ -1,3 +1,4 @@
+using Proyecto_Final.Servicios.Comunes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Proyecto_Final.Seguridad;
@@ -25,8 +26,8 @@ public class TareasController(ITareaServicio s) : Controller
     {
         var m = new CrearTarea
         {
-            FechaDisponibilidad = DateTime.Now,
-            FechaLimite = DateTime.Now.AddDays(7)
+            FechaDisponibilidad = HoraGuatemala.Ahora(),
+            FechaLimite = HoraGuatemala.Ahora().AddDays(7)
         };
 
         await s.PrepararAsync(m);
