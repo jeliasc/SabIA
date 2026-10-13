@@ -78,10 +78,13 @@ public sealed class CuestionarioServicio(
                   x.Tarea.Asignacion.Seccion.CicloEscolar.Activo);
         }
 
+        var puedeVerResultados = !alumnoId.HasValue;
+
         return await consulta
             .OrderByDescending(x => x.Id)
             .Select(x => new CuestionarioLista
             {
+                PuedeVerResultados = puedeVerResultados,
                 Id = x.Id,
                 TareaId = x.TareaId,
                 Tarea = x.Tarea.Titulo,
@@ -843,7 +846,7 @@ public sealed class CuestionarioServicio(
                 Enunciado = pregunta.Enunciado,
                 RespuestaAlumno = DescribirRespuestaAlumno(pregunta, registro),
                 RespuestaCorrecta = DescribirRespuestaCorrecta(pregunta),
-                Correcta = Evaluar(pregunta, registro),
+                Correcta = EsCorrecta(pregunta, registro),
                 PunteoObtenido = registro?.PunteoObtenido ?? 0,
                 Punteo = pregunta.Punteo,
                 Retroalimentacion = pregunta.Retroalimentacion
@@ -888,6 +891,408 @@ public sealed class CuestionarioServicio(
         }
 
         return finalizados;
+    }
+
+    // =====================================================================
+    // REVISIÓN DEL DOCENTE
+    // =====================================================================
+
+    public async Task<ResultadosCuestionario?> ObtenerResultadosAsync(int id)
+    {
+        var datos = await contexto.Cuestionarios
+            .AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new
+            {
+                x.Id,
+                x.TareaId,
+                x.Tarea.AsignacionId,
+                x.Tarea.Titulo,
+                x.Tarea.Estado,
+                x.Tarea.PunteoMaximo,
+                Curso = x.Tarea.Asignacion.Curso.Nombre,
+                GradoSeccion = x.Tarea.Asignacion.Seccion.Grado.Nombre + " " + x.Tarea.Asignacion.Seccion.Nombre,
+                x.MaximoIntentos,
+                x.CriterioCalificacion
+            })
+            .FirstOrDefaultAsync();
+
+        if (datos is null || !await PuedeRevisarAsync(datos.AsignacionId))
+            return null;
+
+        var preguntas = await contexto.Preguntas
+            .AsNoTracking()
+            .Include(x => x.Opciones)
+            .Include(x => x.RespuestasAceptadas)
+            .Where(x => x.CuestionarioId == id)
+            .OrderBy(x => x.Orden)
+            .ToListAsync();
+
+        var entregas = await contexto.Entregas
+            .AsNoTracking()
+            .Where(x => x.TareaId == datos.TareaId)
+            .Select(x => new
+            {
+                x.AlumnoId,
+                x.NumeroEnvio,
+                x.Calificacion,
+                Nombre = x.Alumno.Usuario.PrimerApellido + ", " + x.Alumno.Usuario.PrimerNombre,
+                Codigo = x.Alumno.CodigoPersonal
+            })
+            .ToListAsync();
+
+        var intentos = await contexto.IntentosCuestionarios
+            .AsNoTracking()
+            .Where(x => x.CuestionarioId == id)
+            .Select(x => new
+            {
+                x.Id,
+                x.AlumnoId,
+                x.NumeroIntento,
+                x.Estado,
+                x.Calificacion,
+                x.FechaInicio,
+                x.FechaFinalizacion,
+                Nombre = x.Alumno.Usuario.PrimerApellido + ", " + x.Alumno.Usuario.PrimerNombre,
+                Codigo = x.Alumno.CodigoPersonal
+            })
+            .ToListAsync();
+
+        // Una fila por alumno: los que tienen entrega de la tarea y los que
+        // tengan intentos aunque ya no estén inscritos en la sección.
+        var alumnos = entregas
+            .GroupBy(x => x.AlumnoId)
+            .Select(g => g.OrderByDescending(x => x.NumeroEnvio).First())
+            .Select(x => new { x.AlumnoId, x.Nombre, x.Codigo, Nota = x.Calificacion })
+            .ToList();
+
+        alumnos.AddRange(intentos
+            .Where(i => alumnos.All(a => a.AlumnoId != i.AlumnoId))
+            .GroupBy(i => i.AlumnoId)
+            .Select(g => new { AlumnoId = g.Key, g.First().Nombre, g.First().Codigo, Nota = (decimal?)null }));
+
+        var modelo = new ResultadosCuestionario
+        {
+            CuestionarioId = datos.Id,
+            Titulo = datos.Titulo,
+            Curso = datos.Curso,
+            GradoSeccion = datos.GradoSeccion,
+            EstadoTarea = datos.Estado,
+            PunteoMaximo = datos.PunteoMaximo,
+            MaximoIntentos = datos.MaximoIntentos,
+            CriterioCalificacion = datos.CriterioCalificacion,
+            TotalAlumnos = alumnos.Count
+        };
+
+        foreach (var alumno in alumnos.OrderBy(x => x.Nombre))
+        {
+            var propios = intentos
+                .Where(x => x.AlumnoId == alumno.AlumnoId)
+                .OrderBy(x => x.NumeroIntento)
+                .ToList();
+
+            var ultimo = propios.LastOrDefault();
+            var estado = ultimo?.Estado switch
+            {
+                null => "Sin iniciar",
+                EstadoIntentoCuestionario.EnCurso => "En curso",
+                EstadoIntentoCuestionario.Expirado => "Terminado por tiempo",
+                EstadoIntentoCuestionario.Anulado => "Anulado",
+                _ => "Finalizado"
+            };
+
+            modelo.Alumnos.Add(new ResultadoAlumnoCuestionario
+            {
+                AlumnoId = alumno.AlumnoId,
+                Alumno = alumno.Nombre,
+                CodigoPersonal = alumno.Codigo ?? string.Empty,
+                Estado = estado,
+                NotaEntrega = alumno.Nota,
+                Intentos = propios.Select(x => new IntentoResumen
+                {
+                    IntentoId = x.Id,
+                    Numero = x.NumeroIntento,
+                    Estado = x.Estado,
+                    Calificacion = x.Calificacion,
+                    Fecha = x.FechaFinalizacion ?? x.FechaInicio
+                }).ToList()
+            });
+        }
+
+        // Estadísticas: el intento que define la nota de cada alumno
+        // (el mejor con el criterio "mejor nota"; el último en los demás).
+        var ultimosTerminados = intentos
+            .Where(x => x.Estado is EstadoIntentoCuestionario.Finalizado or EstadoIntentoCuestionario.Expirado)
+            .GroupBy(x => x.AlumnoId)
+            .Select(g => datos.CriterioCalificacion == CriterioCalificacionIntentos.MejorNota
+                ? g.OrderByDescending(x => x.Calificacion ?? 0).ThenByDescending(x => x.NumeroIntento).First()
+                : g.OrderByDescending(x => x.NumeroIntento).First())
+            .ToList();
+
+        modelo.AlumnosConIntento = ultimosTerminados.Count;
+        modelo.PromedioPorcentaje = ultimosTerminados.Count == 0
+            ? null
+            : Math.Round(ultimosTerminados.Average(x => x.Calificacion ?? 0), 2);
+
+        var idsIntentos = ultimosTerminados.Select(x => x.Id).ToList();
+        var respuestas = await contexto.RespuestasAlumnos
+            .AsNoTracking()
+            .Include(x => x.OpcionesSeleccionadas)
+            .Where(x => idsIntentos.Contains(x.IntentoCuestionarioId))
+            .ToListAsync();
+
+        var numero = 1;
+        foreach (var pregunta in preguntas)
+        {
+            var propias = idsIntentos
+                .Select(intentoId => respuestas.FirstOrDefault(r =>
+                    r.IntentoCuestionarioId == intentoId && r.PreguntaId == pregunta.Id))
+                .ToList();
+
+            modelo.Preguntas.Add(new EstadisticaPregunta
+            {
+                Numero = numero++,
+                Enunciado = pregunta.Enunciado,
+                Tipo = pregunta.Tipo,
+                Evaluados = propias.Count,
+                SinResponder = propias.Count(r => SinResponder(pregunta, r)),
+                Correctas = propias.Count(r => EsCorrecta(pregunta, r))
+            });
+        }
+
+        return modelo;
+    }
+
+    public async Task<RevisionIntento?> ObtenerRevisionIntentoAsync(int intentoId)
+    {
+        var intento = await contexto.IntentosCuestionarios
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(x => x.Alumno).ThenInclude(x => x.Usuario)
+            .Include(x => x.Cuestionario).ThenInclude(x => x.Tarea)
+            .Include(x => x.Cuestionario).ThenInclude(x => x.Preguntas).ThenInclude(x => x.Opciones)
+            .Include(x => x.Cuestionario).ThenInclude(x => x.Preguntas).ThenInclude(x => x.RespuestasAceptadas)
+            .Include(x => x.Respuestas).ThenInclude(x => x.OpcionesSeleccionadas)
+            .Include(x => x.Respuestas).ThenInclude(x => x.CalificadoPorUsuario)
+            .FirstOrDefaultAsync(x => x.Id == intentoId);
+
+        if (intento is null || !await PuedeRevisarAsync(intento.Cuestionario.Tarea.AsignacionId))
+            return null;
+
+        var cuestionario = intento.Cuestionario;
+        var terminado = intento.Estado is EstadoIntentoCuestionario.Finalizado or EstadoIntentoCuestionario.Expirado;
+
+        var notaEntrega = await contexto.Entregas
+            .AsNoTracking()
+            .Where(x =>
+                x.TareaId == cuestionario.TareaId &&
+                x.AlumnoId == intento.AlumnoId &&
+                (x.InscripcionId == intento.InscripcionId || !x.InscripcionId.HasValue))
+            .OrderByDescending(x => x.NumeroEnvio)
+            .Select(x => x.Calificacion)
+            .FirstOrDefaultAsync();
+
+        var modelo = new RevisionIntento
+        {
+            IntentoId = intento.Id,
+            CuestionarioId = cuestionario.Id,
+            Titulo = cuestionario.Tarea.Titulo,
+            Alumno = intento.Alumno.Usuario.PrimerNombre + " " + intento.Alumno.Usuario.PrimerApellido,
+            CodigoPersonal = intento.Alumno.CodigoPersonal ?? string.Empty,
+            NumeroIntento = intento.NumeroIntento,
+            Estado = intento.Estado,
+            FechaInicio = intento.FechaInicio,
+            FechaFinalizacion = intento.FechaFinalizacion,
+            Calificacion = intento.Calificacion ?? 0,
+            PunteoObtenido = intento.Respuestas.Sum(x => x.PunteoObtenido ?? 0),
+            PunteoTotal = cuestionario.Preguntas.Sum(x => x.Punteo),
+            NotaEntrega = notaEntrega,
+            PunteoMaximoTarea = cuestionario.Tarea.PunteoMaximo,
+            PuedeAjustar = terminado && await PuedeAjustarAsync(cuestionario.Tarea.AsignacionId)
+        };
+
+        var orden = LeerOrden(intento.OrdenPreguntas);
+        if (orden.Count == 0)
+            orden = cuestionario.Preguntas.OrderBy(x => x.Orden).Select(x => x.Id).ToList();
+
+        var numero = 1;
+        foreach (var preguntaId in orden)
+        {
+            var pregunta = cuestionario.Preguntas.FirstOrDefault(x => x.Id == preguntaId);
+            if (pregunta is null)
+                continue;
+
+            var registro = intento.Respuestas.FirstOrDefault(x => x.PreguntaId == preguntaId);
+            modelo.Detalle.Add(new DetalleRevision
+            {
+                RespuestaId = registro?.Id,
+                Numero = numero++,
+                Tipo = pregunta.Tipo,
+                Enunciado = pregunta.Enunciado,
+                RespuestaAlumno = DescribirRespuestaAlumno(pregunta, registro),
+                RespuestaCorrecta = DescribirRespuestaCorrecta(pregunta),
+                SinResponder = SinResponder(pregunta, registro),
+                Correcta = terminado ? EsCorrecta(pregunta, registro) : Evaluar(pregunta, registro),
+                PunteoObtenido = registro?.PunteoObtenido ?? 0,
+                Punteo = pregunta.Punteo,
+                Retroalimentacion = pregunta.Retroalimentacion,
+                AjusteManual = registro?.CalificadoPorUsuarioId is not null,
+                AjustadoPor = registro?.CalificadoPorUsuario is { } usuario
+                    ? usuario.PrimerNombre + " " + usuario.PrimerApellido
+                    : null,
+                FechaAjuste = registro?.CalificadoPorUsuarioId is not null ? registro.FechaCalificacion : null
+            });
+        }
+
+        return modelo;
+    }
+
+    // Acepta como correcta (o revierte) una respuesta directa que la
+    // comparación automática no reconoció, y recalcula el intento y la entrega.
+    public async Task<ResultadoOperacion<int>> AjustarRespuestaDirectaAsync(int respuestaId, bool aceptar)
+    {
+        var registro = await contexto.RespuestasAlumnos
+            .Include(x => x.Pregunta).ThenInclude(x => x.RespuestasAceptadas)
+            .Include(x => x.IntentoCuestionario).ThenInclude(x => x.Cuestionario).ThenInclude(x => x.Tarea)
+            .Include(x => x.IntentoCuestionario).ThenInclude(x => x.Cuestionario).ThenInclude(x => x.Preguntas)
+            .FirstOrDefaultAsync(x => x.Id == respuestaId);
+
+        if (registro is null)
+            return ResultadoOperacion<int>.Error("La respuesta no existe.");
+
+        var intento = registro.IntentoCuestionario;
+        var cuestionario = intento.Cuestionario;
+
+        if (!await PuedeAjustarAsync(cuestionario.Tarea.AsignacionId))
+            return ResultadoOperacion<int>.Error("No tiene permiso para ajustar respuestas de este cuestionario.");
+
+        if (intento.Estado is not (EstadoIntentoCuestionario.Finalizado or EstadoIntentoCuestionario.Expirado))
+            return ResultadoOperacion<int>.Error("Solo se pueden ajustar intentos terminados.");
+
+        if (registro.Pregunta.Tipo != TipoPregunta.TextoCorto)
+            return ResultadoOperacion<int>.Error("Solo se ajustan preguntas de respuesta directa.");
+
+        if (string.IsNullOrWhiteSpace(registro.TextoRespuesta))
+            return ResultadoOperacion<int>.Error("La pregunta no tiene respuesta del alumno.");
+
+        var ahora = DateTime.UtcNow;
+        string mensaje;
+
+        if (aceptar)
+        {
+            if (registro.PunteoObtenido >= registro.Pregunta.Punteo)
+                return ResultadoOperacion<int>.Correcto(intento.Id, "La respuesta ya estaba calificada como correcta.");
+
+            registro.PunteoObtenido = registro.Pregunta.Punteo;
+            registro.CalificadoPorUsuarioId = acceso.UsuarioId;
+            registro.FechaCalificacion = ahora;
+            registro.RequiereRevisionManual = false;
+            mensaje = "La respuesta fue aceptada como correcta y la nota se recalculó.";
+        }
+        else
+        {
+            if (registro.CalificadoPorUsuarioId is null)
+                return ResultadoOperacion<int>.Error("La respuesta no tiene un ajuste manual que revertir.");
+
+            registro.PunteoObtenido = Evaluar(registro.Pregunta, registro) ? registro.Pregunta.Punteo : 0;
+            registro.CalificadoPorUsuarioId = null;
+            registro.FechaCalificacion = ahora;
+            mensaje = "Se revirtió el ajuste y la nota se recalculó.";
+        }
+
+        await using var transaccion = await contexto.Database.BeginTransactionAsync();
+        try
+        {
+            await contexto.SaveChangesAsync();
+
+            var orden = LeerOrden(intento.OrdenPreguntas);
+            var preguntas = orden.Count > 0
+                ? cuestionario.Preguntas.Where(x => orden.Contains(x.Id)).ToList()
+                : cuestionario.Preguntas.ToList();
+
+            var total = preguntas.Sum(x => x.Punteo);
+            var obtenido = await contexto.RespuestasAlumnos
+                .Where(x => x.IntentoCuestionarioId == intento.Id)
+                .SumAsync(x => x.PunteoObtenido ?? 0);
+
+            intento.Calificacion = total > 0 ? Math.Round(obtenido / total * 100, 2) : 0;
+            intento.FechaCalificacion = ahora;
+            await contexto.SaveChangesAsync();
+
+            await ActualizarEntregaAsync(intento, cuestionario, ahora);
+            await transaccion.CommitAsync();
+        }
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
+
+        return ResultadoOperacion<int>.Correcto(intento.Id, mensaje);
+    }
+
+    // Desde Entregas: lleva al último intento terminado del alumno.
+    public async Task<(int? IntentoId, int? CuestionarioId)> ObtenerIntentoDeEntregaAsync(int entregaId)
+    {
+        var entrega = await contexto.Entregas
+            .AsNoTracking()
+            .Where(x => x.Id == entregaId && x.Tarea.Cuestionario != null)
+            .Select(x => new
+            {
+                x.AlumnoId,
+                x.InscripcionId,
+                x.Tarea.AsignacionId,
+                CuestionarioId = x.Tarea.Cuestionario!.Id,
+                x.Tarea.Cuestionario.CriterioCalificacion
+            })
+            .FirstOrDefaultAsync();
+
+        if (entrega is null || !await PuedeRevisarAsync(entrega.AsignacionId))
+            return (null, null);
+
+        var intentos = await contexto.IntentosCuestionarios
+            .AsNoTracking()
+            .Where(x =>
+                x.CuestionarioId == entrega.CuestionarioId &&
+                x.AlumnoId == entrega.AlumnoId &&
+                (x.InscripcionId == entrega.InscripcionId || !x.InscripcionId.HasValue) &&
+                x.Estado != EstadoIntentoCuestionario.Anulado)
+            .Select(x => new { x.Id, x.NumeroIntento, x.Estado, x.Calificacion })
+            .ToListAsync();
+
+        // El intento que define la nota; si ninguno terminó, el que está en curso.
+        var terminados = intentos
+            .Where(x => x.Estado is EstadoIntentoCuestionario.Finalizado or EstadoIntentoCuestionario.Expirado)
+            .ToList();
+
+        var elegido = terminados.Count == 0
+            ? intentos.OrderByDescending(x => x.NumeroIntento).FirstOrDefault()
+            : entrega.CriterioCalificacion == CriterioCalificacionIntentos.MejorNota
+                ? terminados.OrderByDescending(x => x.Calificacion ?? 0).ThenByDescending(x => x.NumeroIntento).First()
+                : terminados.OrderByDescending(x => x.NumeroIntento).First();
+
+        return (elegido?.Id, entrega.CuestionarioId);
+    }
+
+    // Docente de la asignación (también ciclos anteriores) o coordinación.
+    private async Task<bool> PuedeRevisarAsync(int asignacionId)
+    {
+        var perfil = await acceso.ObtenerContextoUsuarioAsync();
+        if (perfil.AlumnoId.HasValue && !perfil.DocenteId.HasValue)
+            return false;
+
+        return await acceso.PuedeConsultarAsignacionHistoricaAsync(asignacionId);
+    }
+
+    // Solo en asignaciones vigentes: los ciclos cerrados quedan de consulta.
+    private async Task<bool> PuedeAjustarAsync(int asignacionId)
+    {
+        var perfil = await acceso.ObtenerContextoUsuarioAsync();
+        if (perfil.AlumnoId.HasValue && !perfil.DocenteId.HasValue)
+            return false;
+
+        return acceso.TienePermiso(Seguridad.Permisos.Entregas.Calificar) &&
+            await acceso.PuedeGestionarAsignacionVigenteAsync(asignacionId);
     }
 
     // =====================================================================
@@ -1017,39 +1422,8 @@ public sealed class CuestionarioServicio(
             intento.Calificacion = notaIntento;
             intento.FechaCalificacion = ahora;
 
-            var notasPrevias = await contexto.IntentosCuestionarios
-                .AsNoTracking()
-                .Where(x =>
-                    x.Id != intento.Id &&
-                    x.CuestionarioId == intento.CuestionarioId &&
-                    x.AlumnoId == intento.AlumnoId &&
-                    (x.InscripcionId == intento.InscripcionId || !x.InscripcionId.HasValue) &&
-                    (x.Estado == EstadoIntentoCuestionario.Finalizado ||
-                     x.Estado == EstadoIntentoCuestionario.Expirado))
-                .OrderBy(x => x.NumeroIntento)
-                .Select(x => x.Calificacion ?? 0)
-                .ToListAsync();
-
-            var notaAplicada = AplicarCriterio(
-                cuestionario.CriterioCalificacion,
-                notasPrevias.Append(notaIntento).ToList());
-
-            var entrega = await contexto.Entregas
-                .Where(x =>
-                    x.TareaId == cuestionario.TareaId &&
-                    x.AlumnoId == intento.AlumnoId &&
-                    (x.InscripcionId == intento.InscripcionId || !x.InscripcionId.HasValue))
-                .OrderByDescending(x => x.InscripcionId == intento.InscripcionId)
-                .ThenByDescending(x => x.NumeroEnvio)
-                .FirstOrDefaultAsync();
-
-            if (entrega is not null)
-            {
-                entrega.FechaEntrega ??= ahora;
-                entrega.Estado = EstadoEntrega.Calificada;
-                entrega.Calificacion = Math.Round(notaAplicada / 100 * cuestionario.Tarea.PunteoMaximo, 2);
-                entrega.FechaCalificacion = ahora;
-            }
+            await contexto.SaveChangesAsync();
+            await ActualizarEntregaAsync(intento, cuestionario, ahora);
 
             await contexto.SaveChangesAsync();
             await transaccion.CommitAsync();
@@ -1059,6 +1433,50 @@ public sealed class CuestionarioServicio(
             await transaccion.RollbackAsync();
             throw;
         }
+    }
+
+    // Recalcula la calificación de la entrega con todos los intentos terminados
+    // del alumno, según el criterio del cuestionario. Se usa al finalizar un
+    // intento y cuando el docente ajusta una respuesta.
+    private async Task ActualizarEntregaAsync(
+        IntentoCuestionario intento,
+        Cuestionario cuestionario,
+        DateTime ahora)
+    {
+        var notas = await contexto.IntentosCuestionarios
+            .AsNoTracking()
+            .Where(x =>
+                x.CuestionarioId == intento.CuestionarioId &&
+                x.AlumnoId == intento.AlumnoId &&
+                (x.InscripcionId == intento.InscripcionId || !x.InscripcionId.HasValue) &&
+                (x.Estado == EstadoIntentoCuestionario.Finalizado ||
+                 x.Estado == EstadoIntentoCuestionario.Expirado))
+            .OrderBy(x => x.NumeroIntento)
+            .Select(x => x.Calificacion ?? 0)
+            .ToListAsync();
+
+        if (notas.Count == 0)
+            return;
+
+        var notaAplicada = AplicarCriterio(cuestionario.CriterioCalificacion, notas);
+
+        var entrega = await contexto.Entregas
+            .Where(x =>
+                x.TareaId == cuestionario.TareaId &&
+                x.AlumnoId == intento.AlumnoId &&
+                (x.InscripcionId == intento.InscripcionId || !x.InscripcionId.HasValue))
+            .OrderByDescending(x => x.InscripcionId == intento.InscripcionId)
+            .ThenByDescending(x => x.NumeroEnvio)
+            .FirstOrDefaultAsync();
+
+        if (entrega is null)
+            return;
+
+        entrega.FechaEntrega ??= ahora;
+        entrega.Estado = EstadoEntrega.Calificada;
+        entrega.Calificacion = Math.Round(notaAplicada / 100 * cuestionario.Tarea.PunteoMaximo, 2);
+        entrega.FechaCalificacion = ahora;
+        await contexto.SaveChangesAsync();
     }
 
     private RespuestaAlumno ObtenerOCrearRespuesta(IntentoCuestionario intento, int preguntaId, DateTime presentacion)
@@ -1205,6 +1623,16 @@ public sealed class CuestionarioServicio(
             _ => notas.Max()
         };
     }
+
+    // Correcta según el punteo registrado, que incluye los ajustes del docente.
+    private static bool EsCorrecta(Pregunta pregunta, RespuestaAlumno? registro) =>
+        registro?.PunteoObtenido is decimal punteo && pregunta.Punteo > 0 && punteo >= pregunta.Punteo;
+
+    private static bool SinResponder(Pregunta pregunta, RespuestaAlumno? registro) =>
+        registro is null ||
+        (pregunta.Tipo == TipoPregunta.TextoCorto
+            ? string.IsNullOrWhiteSpace(registro.TextoRespuesta)
+            : registro.OpcionesSeleccionadas.Count == 0);
 
     public static bool Evaluar(Pregunta pregunta, RespuestaAlumno? registro)
     {

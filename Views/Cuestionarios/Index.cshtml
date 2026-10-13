@@ -93,6 +93,15 @@
                                             </a>
                                         }
 
+                                        @if (x.PuedeVerResultados &&
+                                            x.EstadoTarea != Proyecto_Final.Models.EstadoTarea.Borrador)
+                                        {
+                                            <a asp-action="Resultados" asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Resultados
+                                            </a>
+                                        }
+
                                         @if (resolver &&
                                             x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Publicada)
                                         {

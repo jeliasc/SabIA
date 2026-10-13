@@ -218,4 +218,61 @@ public class CuestionariosController(ICuestionarioServicio s) : Controller
             ? NotFound()
             : View(m);
     }
+
+    // =====================================================================
+    // REVISIÓN (DOCENTE Y COORDINACIÓN)
+    // =====================================================================
+
+    [HttpGet]
+    public async Task<IActionResult> Resultados(int id)
+    {
+        var m = await s.ObtenerResultadosAsync(id);
+
+        return m == null
+            ? NotFound()
+            : View(m);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> RevisarIntento(int id)
+    {
+        var m = await s.ObtenerRevisionIntentoAsync(id);
+
+        return m == null
+            ? NotFound()
+            : View(m);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Permisos.Entregas.Calificar)]
+    public async Task<IActionResult> AjustarRespuesta(int respuestaId, int intentoId, bool aceptar)
+    {
+        var r = await s.AjustarRespuestaDirectaAsync(respuestaId, aceptar);
+
+        if (r.Exitoso)
+            TempData["Exito"] = r.Mensaje;
+        else
+            TempData["Error"] = r.Mensaje;
+
+        return RedirectToAction(nameof(RevisarIntento), new { id = r.Exitoso ? r.Datos : intentoId });
+    }
+
+    // Acceso directo desde Entregas.
+    [HttpGet]
+    public async Task<IActionResult> RespuestasEntrega(int id)
+    {
+        var (intentoId, cuestionarioId) = await s.ObtenerIntentoDeEntregaAsync(id);
+
+        if (intentoId.HasValue)
+            return RedirectToAction(nameof(RevisarIntento), new { id = intentoId });
+
+        if (cuestionarioId.HasValue)
+        {
+            TempData["Informacion"] = "El alumno todavía no ha iniciado el cuestionario.";
+            return RedirectToAction(nameof(Resultados), new { id = cuestionarioId });
+        }
+
+        return NotFound();
+    }
 }

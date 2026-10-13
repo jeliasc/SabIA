@@ -20,6 +20,9 @@ public sealed class CuestionarioLista
     public OrigenCuestionario Origen { get; set; }
 
     public EstadoTarea EstadoTarea { get; set; }
+
+    // El docente o coordinación pueden revisar resultados; el alumno no.
+    public bool PuedeVerResultados { get; set; }
 }
 
 public sealed class ConfigurarCuestionario
@@ -238,4 +241,151 @@ public sealed class DetalleRespuestaIntento
     public decimal Punteo { get; set; }
 
     public string? Retroalimentacion { get; set; }
+}
+
+
+// =====================================================================
+// REVISIÓN DEL DOCENTE
+// =====================================================================
+
+public sealed class ResultadosCuestionario
+{
+    public int CuestionarioId { get; set; }
+
+    public string Titulo { get; set; } = string.Empty;
+
+    public string Curso { get; set; } = string.Empty;
+
+    public string GradoSeccion { get; set; } = string.Empty;
+
+    public EstadoTarea EstadoTarea { get; set; }
+
+    public decimal PunteoMaximo { get; set; }
+
+    public int MaximoIntentos { get; set; }
+
+    public CriterioCalificacionIntentos CriterioCalificacion { get; set; }
+
+    public int TotalAlumnos { get; set; }
+
+    public int AlumnosConIntento { get; set; }
+
+    public decimal? PromedioPorcentaje { get; set; }
+
+    public List<EstadisticaPregunta> Preguntas { get; set; } = [];
+
+    public List<ResultadoAlumnoCuestionario> Alumnos { get; set; } = [];
+}
+
+public sealed class EstadisticaPregunta
+{
+    public int Numero { get; set; }
+
+    public string Enunciado { get; set; } = string.Empty;
+
+    public TipoPregunta Tipo { get; set; }
+
+    // Intentos considerados: el que define la nota de cada alumno.
+    public int Evaluados { get; set; }
+
+    public int SinResponder { get; set; }
+
+    public int Correctas { get; set; }
+
+    public decimal Porcentaje => Evaluados == 0 ? 0 : Math.Round(Correctas * 100m / Evaluados, 1);
+}
+
+public sealed class ResultadoAlumnoCuestionario
+{
+    public int AlumnoId { get; set; }
+
+    public string Alumno { get; set; } = string.Empty;
+
+    public string CodigoPersonal { get; set; } = string.Empty;
+
+    public string Estado { get; set; } = string.Empty;
+
+    public decimal? NotaEntrega { get; set; }
+
+    public List<IntentoResumen> Intentos { get; set; } = [];
+}
+
+public sealed class IntentoResumen
+{
+    public int IntentoId { get; set; }
+
+    public int Numero { get; set; }
+
+    public EstadoIntentoCuestionario Estado { get; set; }
+
+    public decimal? Calificacion { get; set; }
+
+    public DateTime? Fecha { get; set; }
+}
+
+public sealed class RevisionIntento
+{
+    public int IntentoId { get; set; }
+
+    public int CuestionarioId { get; set; }
+
+    public string Titulo { get; set; } = string.Empty;
+
+    public string Alumno { get; set; } = string.Empty;
+
+    public string CodigoPersonal { get; set; } = string.Empty;
+
+    public int NumeroIntento { get; set; }
+
+    public EstadoIntentoCuestionario Estado { get; set; }
+
+    public DateTime FechaInicio { get; set; }
+
+    public DateTime? FechaFinalizacion { get; set; }
+
+    public decimal Calificacion { get; set; }
+
+    public decimal PunteoObtenido { get; set; }
+
+    public decimal PunteoTotal { get; set; }
+
+    public decimal? NotaEntrega { get; set; }
+
+    public decimal PunteoMaximoTarea { get; set; }
+
+    public bool PuedeAjustar { get; set; }
+
+    public List<DetalleRevision> Detalle { get; set; } = [];
+}
+
+public sealed class DetalleRevision
+{
+    public int? RespuestaId { get; set; }
+
+    public int Numero { get; set; }
+
+    public TipoPregunta Tipo { get; set; }
+
+    public string Enunciado { get; set; } = string.Empty;
+
+    public string RespuestaAlumno { get; set; } = string.Empty;
+
+    public string RespuestaCorrecta { get; set; } = string.Empty;
+
+    public bool SinResponder { get; set; }
+
+    public bool Correcta { get; set; }
+
+    public decimal PunteoObtenido { get; set; }
+
+    public decimal Punteo { get; set; }
+
+    public string? Retroalimentacion { get; set; }
+
+    // Ajuste manual del docente en preguntas de respuesta directa.
+    public bool AjusteManual { get; set; }
+
+    public string? AjustadoPor { get; set; }
+
+    public DateTime? FechaAjuste { get; set; }
 }

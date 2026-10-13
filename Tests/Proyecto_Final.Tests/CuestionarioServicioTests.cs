@@ -387,6 +387,119 @@ public sealed class CuestionarioServicioTests
     }
 
     // -----------------------------------------------------------------
+    // Revisión del docente
+    // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Revision_DocenteVeResultadosYAlumnoNo()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, c => c.PermitirNavegacion = true);
+        var alumno = CrearServicioAlumno(contexto);
+        var intentoId = (await alumno.IniciarAsync(CuestionarioId)).Datos;
+        await alumno.FinalizarAsync(new FinalizarIntento
+        {
+            IntentoId = intentoId,
+            Respuestas = [Unica(OpcionCorrectaUnica), Directa("arbolito")]
+        });
+
+        Assert.Null(await alumno.ObtenerResultadosAsync(CuestionarioId));
+        Assert.Null(await alumno.ObtenerRevisionIntentoAsync(intentoId));
+
+        var docente = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: null, usuario: "docente"));
+        var resultados = await docente.ObtenerResultadosAsync(CuestionarioId);
+
+        Assert.NotNull(resultados);
+        var fila = Assert.Single(resultados!.Alumnos);
+        Assert.Equal("Finalizado", fila.Estado);
+        Assert.Equal(3.33m, fila.NotaEntrega);
+        Assert.Equal(1, resultados.AlumnosConIntento);
+        Assert.Equal([1, 0, 0], resultados.Preguntas.Select(x => x.Correctas).ToList());
+        Assert.Equal(1, resultados.Preguntas[2].SinResponder);
+
+        var revision = await docente.ObtenerRevisionIntentoAsync(intentoId);
+        Assert.NotNull(revision);
+        Assert.True(revision!.PuedeAjustar);
+        var directa = revision.Detalle.Single(x => x.Tipo == TipoPregunta.TextoCorto);
+        Assert.Equal("arbolito", directa.RespuestaAlumno);
+        Assert.False(directa.Correcta);
+        Assert.True(revision.Detalle.Single(x => x.Tipo == TipoPregunta.SeleccionMultiple).SinResponder);
+    }
+
+    [Fact]
+    public async Task Revision_AceptarYRevertirRespuestaDirectaRecalculaNotas()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, c => c.PermitirNavegacion = true);
+        var alumno = CrearServicioAlumno(contexto);
+        var intentoId = (await alumno.IniciarAsync(CuestionarioId)).Datos;
+        await alumno.FinalizarAsync(new FinalizarIntento
+        {
+            IntentoId = intentoId,
+            Respuestas = [Unica(OpcionCorrectaUnica), Directa("arbolito"), Multiple(OpcionMultipleX, OpcionMultipleY)]
+        });
+        contexto.ChangeTracker.Clear();
+
+        var respuestaId = await contexto.RespuestasAlumnos
+            .Where(x => x.PreguntaId == PreguntaDirecta)
+            .Select(x => x.Id)
+            .SingleAsync(TestContext.Current.CancellationToken);
+
+        var docente = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: null, usuario: "docente"));
+        var aceptar = await docente.AjustarRespuestaDirectaAsync(respuestaId, aceptar: true);
+        Assert.True(aceptar.Exitoso, aceptar.Mensaje);
+
+        contexto.ChangeTracker.Clear();
+        var intento = await contexto.IntentosCuestionarios.SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(100m, intento.Calificacion);
+        Assert.Equal(10m, (await contexto.Entregas.SingleAsync(TestContext.Current.CancellationToken)).Calificacion);
+
+        var revision = await docente.ObtenerRevisionIntentoAsync(intentoId);
+        var directa = revision!.Detalle.Single(x => x.Tipo == TipoPregunta.TextoCorto);
+        Assert.True(directa.Correcta);
+        Assert.True(directa.AjusteManual);
+
+        // El alumno ve la pregunta como correcta en su resultado.
+        contexto.ChangeTracker.Clear();
+        var resultadoAlumno = await CrearServicioAlumno(contexto).ObtenerResultadoAsync(intentoId);
+        Assert.Equal(100m, resultadoAlumno!.Calificacion);
+
+        contexto.ChangeTracker.Clear();
+        var revertir = await docente.AjustarRespuestaDirectaAsync(respuestaId, aceptar: false);
+        Assert.True(revertir.Exitoso, revertir.Mensaje);
+
+        contexto.ChangeTracker.Clear();
+        intento = await contexto.IntentosCuestionarios.SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(66.67m, intento.Calificacion);
+        Assert.Equal(6.67m, (await contexto.Entregas.SingleAsync(TestContext.Current.CancellationToken)).Calificacion);
+    }
+
+    [Fact]
+    public async Task Revision_NoSeAjustanPreguntasDeSeleccionNiLoHaceElAlumno()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, c => c.PermitirNavegacion = true);
+        var alumno = CrearServicioAlumno(contexto);
+        var intentoId = (await alumno.IniciarAsync(CuestionarioId)).Datos;
+        await alumno.FinalizarAsync(new FinalizarIntento
+        {
+            IntentoId = intentoId,
+            Respuestas = [Unica(OpcionIncorrectaUnica), Directa("otra cosa")]
+        });
+        contexto.ChangeTracker.Clear();
+
+        var unicaId = await contexto.RespuestasAlumnos.Where(x => x.PreguntaId == PreguntaUnica)
+            .Select(x => x.Id).SingleAsync(TestContext.Current.CancellationToken);
+        var directaId = await contexto.RespuestasAlumnos.Where(x => x.PreguntaId == PreguntaDirecta)
+            .Select(x => x.Id).SingleAsync(TestContext.Current.CancellationToken);
+
+        var docente = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: null, usuario: "docente"));
+        Assert.False((await docente.AjustarRespuestaDirectaAsync(unicaId, aceptar: true)).Exitoso);
+        Assert.False((await alumno.AjustarRespuestaDirectaAsync(directaId, aceptar: true)).Exitoso);
+        Assert.False((await docente.AjustarRespuestaDirectaAsync(directaId, aceptar: false)).Exitoso);
+    }
+
+    // -----------------------------------------------------------------
     // Escenario
     // -----------------------------------------------------------------
 
@@ -553,9 +666,9 @@ public sealed class CuestionarioServicioTests
         Activo = true
     };
 
-    internal sealed class AccesoPrueba(int? alumnoId) : IAccesoAcademicoServicio
+    internal sealed class AccesoPrueba(int? alumnoId, string? usuario = null) : IAccesoAcademicoServicio
     {
-        public string? UsuarioId => alumnoId.HasValue ? "alumno" : null;
+        public string? UsuarioId => usuario ?? (alumnoId.HasValue ? "alumno" : null);
         public bool EsOperadorInstitucional => false;
         public bool TienePermiso(string permiso) => true;
         public Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync() =>

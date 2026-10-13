@@ -94,6 +94,7 @@ public sealed class EntregaServicio(
                 Calificacion = x.Calificacion,
                 PunteoMaximo = x.Tarea.PunteoMaximo,
                 NumeroEnvio = x.NumeroEnvio,
+                CuestionarioId = x.Tarea.Cuestionario != null ? x.Tarea.Cuestionario.Id : null,
                 PuedeEntregarse = alumnoId.HasValue &&
                     x.AlumnoId == alumnoId.Value &&
                     (x.Estado == EstadoEntrega.Pendiente ||

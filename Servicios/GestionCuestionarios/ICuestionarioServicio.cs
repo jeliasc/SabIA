@@ -20,4 +20,9 @@ public interface ICuestionarioServicio
     Task<ResultadoOperacion<int>> FinalizarAsync(FinalizarIntento m);
     Task<ResultadoIntento?> ObtenerResultadoAsync(int intentoId);
     Task<int> FinalizarVencidosAsync(DateTime ahora, CancellationToken cancellationToken = default);
+
+    Task<ResultadosCuestionario?> ObtenerResultadosAsync(int id);
+    Task<RevisionIntento?> ObtenerRevisionIntentoAsync(int intentoId);
+    Task<ResultadoOperacion<int>> AjustarRespuestaDirectaAsync(int respuestaId, bool aceptar);
+    Task<(int? IntentoId, int? CuestionarioId)> ObtenerIntentoDeEntregaAsync(int entregaId);
 }
