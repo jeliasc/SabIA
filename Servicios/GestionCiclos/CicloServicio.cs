@@ -325,12 +325,13 @@ public sealed class CicloServicio(
             .Select(x => new { x.Id, x.Nombre })
             .ToListAsync();
         var asignaciones = await contexto.Asignaciones.AsNoTracking()
-            .Where(x => x.Estado == EstadoRegistro.Activo &&
-                        x.Seccion.CicloEscolarId == cicloId &&
-                        x.Seccion.Estado == EstadoRegistro.Activo &&
-                        x.Curso.Estado == EstadoRegistro.Activo)
+            .Where(x => x.Seccion.CicloEscolarId == cicloId)
             .Select(x => new AsignacionRevision(
                 x.Id,
+                x.SeccionId,
+                x.CursoId,
+                x.Estado,
+                x.FechaInicioVigencia,
                 x.Docente.Usuario.PrimerNombre + " " + x.Docente.Usuario.PrimerApellido,
                 x.Curso.Nombre,
                 x.Seccion.Grado.Nombre,
@@ -340,10 +341,17 @@ public sealed class CicloServicio(
                     i.CicloEscolarId == cicloId && i.Estado == EstadoInscripcion.Activa)))
             .ToListAsync();
 
-        var evaluables = asignaciones.Where(x => x.Alumnos > 0).ToList();
+        var grupos = asignaciones.GroupBy(x => new { x.SeccionId, x.CursoId }).ToList();
+        var evaluables = grupos.Where(x => x.Max(a => a.Alumnos) > 0).ToList();
         var pendientes = new List<PendienteCierreCiclo>();
-        foreach (var asignacion in evaluables)
+        foreach (var versiones in evaluables)
         {
+            var asignacion = versiones
+                .OrderByDescending(x => x.Estado == EstadoRegistro.Activo)
+                .ThenByDescending(x => x.FechaInicioVigencia)
+                .ThenByDescending(x => x.Id)
+                .First();
+            var idsVersiones = versiones.Select(x => x.Id).ToList();
             if (periodos.Count == 0)
             {
                 pendientes.Add(Pendiente(asignacion, "—", "El ciclo no tiene períodos obligatorios configurados."));
@@ -352,38 +360,45 @@ public sealed class CicloServicio(
 
             foreach (var periodo in periodos)
             {
-                var configuracion = await contexto.ConfiguracionesEvaluacion.AsNoTracking()
-                    .Where(x => x.AsignacionId == asignacion.Id && x.PeriodoId == periodo.Id)
+                var configuraciones = await contexto.ConfiguracionesEvaluacion.AsNoTracking()
+                    .Where(x => idsVersiones.Contains(x.AsignacionId) && x.PeriodoId == periodo.Id)
+                    .OrderByDescending(x => x.Asignacion.FechaInicioVigencia)
+                    .ThenByDescending(x => x.AsignacionId)
                     .Select(x => new
                     {
                         x.Id,
+                        x.AsignacionId,
                         x.Estado,
                         Actividades = x.Actividades.Count(a => a.Activa)
-                    }).SingleOrDefaultAsync();
-                if (configuracion == null)
+                    }).ToListAsync();
+                if (configuraciones.Count == 0)
                 {
                     pendientes.Add(Pendiente(asignacion, periodo.Nombre, "Falta la configuración de evaluación."));
                     continue;
                 }
+                foreach (var configuracion in configuraciones)
+                {
+                    var version = versiones.Single(x => x.Id == configuracion.AsignacionId);
                 if (configuracion.Estado != EstadoConfiguracionEvaluacion.Activa || configuracion.Actividades == 0)
-                    pendientes.Add(Pendiente(asignacion, periodo.Nombre,
+                    pendientes.Add(Pendiente(version, periodo.Nombre,
                         "La configuración de evaluación no está activa o no contiene actividades evaluables."));
 
                 if (!await contexto.CierresCalificaciones.AsNoTracking().AnyAsync(x =>
                     x.ConfiguracionEvaluacionId == configuracion.Id && x.Estado == EstadoCierreCalificaciones.Cerrado))
-                    pendientes.Add(Pendiente(asignacion, periodo.Nombre, "Las calificaciones no han sido cerradas."));
+                    pendientes.Add(Pendiente(version, periodo.Nombre, "Las calificaciones no han sido cerradas."));
 
                 var resultados = await contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
                     .CountAsync(x => x.ConfiguracionEvaluacionId == configuracion.Id);
-                if (resultados < asignacion.Alumnos)
-                    pendientes.Add(Pendiente(asignacion, periodo.Nombre,
-                        $"Faltan resultados consolidados ({resultados} de {asignacion.Alumnos})."));
+                if (resultados < version.Alumnos)
+                    pendientes.Add(Pendiente(version, periodo.Nombre,
+                        $"Faltan resultados consolidados ({resultados} de {version.Alumnos})."));
 
                 if (await contexto.SolicitudesCorreccionesCalificaciones.AsNoTracking().AnyAsync(x =>
                     x.ActividadEvaluable.ConfiguracionEvaluacionId == configuracion.Id &&
                     (x.Estado == EstadoSolicitudCorreccion.Pendiente || x.Estado == EstadoSolicitudCorreccion.Aprobada)))
-                    pendientes.Add(Pendiente(asignacion, periodo.Nombre,
+                    pendientes.Add(Pendiente(version, periodo.Nombre,
                         "Existen correcciones pendientes o aprobadas sin aplicar."));
+                }
             }
         }
 
@@ -394,7 +409,7 @@ public sealed class CicloServicio(
             Estado = ciclo.Estado,
             Pendientes = pendientes,
             AsignacionesEvaluables = evaluables.Count,
-            AsignacionesSinObligaciones = asignaciones.Count - evaluables.Count
+            AsignacionesSinObligaciones = grupos.Count - evaluables.Count
         };
     }
 
@@ -489,6 +504,7 @@ public sealed class CicloServicio(
     }
 
     private sealed record AsignacionRevision(
-        int Id, string Docente, string Curso, string Grado,
+        int Id, int SeccionId, int CursoId, EstadoRegistro Estado,
+        DateTime? FechaInicioVigencia, string Docente, string Curso, string Grado,
         string Carrera, string Seccion, int Alumnos);
 }

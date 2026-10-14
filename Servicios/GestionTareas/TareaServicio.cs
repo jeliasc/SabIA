@@ -54,7 +54,13 @@ public sealed class TareaServicio(
                           i.CicloEscolarId == x.Asignacion.Seccion.CicloEscolarId &&
                           i.Estado == EstadoInscripcion.Activa)))
                 : q.Where(x =>
-                    x.Asignacion.Estado == EstadoRegistro.Activo &&
+                    (x.Asignacion.Estado == EstadoRegistro.Activo ||
+                     c.DelegacionesAcademicas.Any(d =>
+                        d.AsignacionId == x.AsignacionId && d.Activa &&
+                        d.FechaInicioUtc <= ahora &&
+                        (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= ahora) &&
+                        (d.Operaciones & OperacionDelegacionAcademica.ContinuarActividadesAlumnos) ==
+                            OperacionDelegacionAcademica.ContinuarActividadesAlumnos)) &&
                     x.Asignacion.Seccion.CicloEscolar.Activo &&
                     x.Estado == EstadoTarea.Publicada &&
                     (!x.FechaDisponibilidad.HasValue || x.FechaDisponibilidad <= ahora) &&

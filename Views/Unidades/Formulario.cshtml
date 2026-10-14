@@ -1,5 +1,9 @@
 @model Proyecto_Final.ViewModels.Unidades.FormularioUnidad
 
+@{
+    var edicion = Model as Proyecto_Final.ViewModels.Unidades.EditarUnidad;
+}
+
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3">
 </div>
 
@@ -38,7 +42,7 @@
         </select>
     </div>
 
-    <div class="col-md-9">
+    <div class="col-12">
         <label asp-for="Titulo" class="form-label">
             Título
         </label>
@@ -46,12 +50,17 @@
         <input asp-for="Titulo" class="form-control" />
     </div>
 
-    <div class="col-md-3">
-        <label asp-for="Orden" class="form-label">
-            Orden
-        </label>
-
-        <input asp-for="Orden" class="form-control" />
+    <div class="col-12">
+        <div class="app-alert app-alert-info mb-0">
+            @if (edicion is null)
+            {
+                <span>El orden se asignará automáticamente dentro de la asignación seleccionada.</span>
+            }
+            else
+            {
+                <span>Orden actual: <strong>@edicion.Orden</strong>. Solo cambiará automáticamente si selecciona otra asignación.</span>
+            }
+        </div>
     </div>
 
     <div class="col-12">

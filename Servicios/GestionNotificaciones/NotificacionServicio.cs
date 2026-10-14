@@ -20,6 +20,35 @@ public sealed class NotificacionServicio(
 
         if (d.HasValue)
         {
+            var relevos = await c.RelevosAsignaciones.AsNoTracking()
+                .Where(x => (x.DocenteAnteriorId == d.Value || x.DocenteSustitutoId == d.Value) &&
+                            x.FechaRegistroUtc >= ahora.AddDays(-30))
+                .OrderByDescending(x => x.FechaRegistroUtc)
+                .Take(5)
+                .Select(x => new
+                {
+                    x.AsignacionNuevaId,
+                    x.Tipo,
+                    Curso = x.AsignacionNueva.Curso.Nombre,
+                    Seccion = x.AsignacionNueva.Seccion.Nombre,
+                    EsSustituto = x.DocenteSustitutoId == d.Value
+                })
+                .ToListAsync();
+
+            foreach (var relevo in relevos)
+            {
+                r.Add(new NotificacionLista
+                {
+                    Titulo = relevo.EsSustituto ? "Nueva asignación por relevo" : "Asignación finalizada por relevo",
+                    Mensaje = $"{relevo.Curso} · sección {relevo.Seccion} ({relevo.Tipo}).",
+                    Icono = "bi bi-arrow-left-right",
+                    Tipo = relevo.Tipo == TipoRelevoAsignacion.Excepcional ? "warning" : "info",
+                    Controlador = "Asignaciones",
+                    Accion = "Index",
+                    Id = relevo.AsignacionNuevaId
+                });
+            }
+
             var entregas = await c.Entregas.CountAsync(x =>
                 x.Tarea.Asignacion.DocenteId == d.Value &&
                 x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
@@ -72,6 +101,34 @@ public sealed class NotificacionServicio(
         }
         else if (a.HasValue)
         {
+            var relevoReciente = await c.RelevosAsignaciones.AsNoTracking()
+                .Where(x => x.FechaRegistroUtc >= ahora.AddDays(-30) &&
+                            c.Inscripciones.Any(i =>
+                                i.AlumnoId == a.Value &&
+                                i.SeccionId == x.AsignacionNueva.SeccionId &&
+                                i.CicloEscolarId == x.AsignacionNueva.Seccion.CicloEscolarId))
+                .OrderByDescending(x => x.FechaRegistroUtc)
+                .Select(x => new
+                {
+                    Curso = x.AsignacionNueva.Curso.Nombre,
+                    Docente = x.AsignacionNueva.Docente.Usuario.PrimerNombre + " " +
+                              x.AsignacionNueva.Docente.Usuario.PrimerApellido
+                })
+                .FirstOrDefaultAsync();
+
+            if (relevoReciente != null)
+            {
+                r.Add(new NotificacionLista
+                {
+                    Titulo = "Nuevo docente responsable",
+                    Mensaje = $"{relevoReciente.Docente} asumió el curso {relevoReciente.Curso}.",
+                    Icono = "bi bi-person-check",
+                    Tipo = "info",
+                    Controlador = "Unidades",
+                    Accion = "Index"
+                });
+            }
+
             var pendientes = await c.Entregas.CountAsync(x =>
                 x.AlumnoId == a.Value &&
                 x.Estado == EstadoEntrega.Pendiente &&

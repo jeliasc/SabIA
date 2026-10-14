@@ -21,23 +21,17 @@
         </span>
     </div>
 
-    <div class="col-md-3">
-        <label asp-for="Numero" class="form-label">
-        </label>
-
-        @if (esCreacion && Model.Numero == 0 && ViewData.ModelState.IsValid)
-        {
-            <input asp-for="Numero" type="number" min="1" max="4"
-                   value="" class="form-control" />
-        }
-        else
-        {
-            <input asp-for="Numero" type="number" min="1" max="4"
-                   class="form-control" />
-        }
-
-        <span asp-validation-for="Numero" class="text-danger small">
-        </span>
+    <div class="col-md-6">
+        <div class="app-alert app-alert-info mb-0 h-100">
+            @if (Model is Proyecto_Final.ViewModels.Periodos.EditarPeriodo edicion)
+            {
+                <span>Número actual: <strong>@edicion.Numero</strong>. Solo cambiará automáticamente si selecciona otro ciclo escolar.</span>
+            }
+            else
+            {
+                <span>El número se asignará automáticamente dentro del ciclo escolar seleccionado. Se permiten hasta cuatro períodos por ciclo.</span>
+            }
+        </div>
     </div>
 
     <div class="col-md-6">

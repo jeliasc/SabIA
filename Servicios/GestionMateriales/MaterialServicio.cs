@@ -471,20 +471,24 @@ public sealed class MaterialServicio(
             permitido = material.Estado == EstadoPublicacionMaterial.Publicado &&
                 await contexto.UnidadesAsignaciones.AnyAsync(unidadAsignacion =>
                     unidadAsignacion.UnidadId == material.UnidadId &&
-                    unidadAsignacion.Asignacion.Estado == EstadoRegistro.Activo &&
-                    unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo &&
                     unidadAsignacion.Estado == EstadoPublicacionUnidad.Publicada &&
-                    (!unidadAsignacion.FechaDisponibilidad.HasValue ||
-                        unidadAsignacion.FechaDisponibilidad <= ahora) &&
-                    (!unidadAsignacion.FechaCierreAcceso.HasValue ||
-                        unidadAsignacion.FechaCierreAcceso >= ahora) &&
-                    contexto.Inscripciones.Any(inscripcion =>
-                        inscripcion.AlumnoId == perfil.AlumnoId.Value &&
-                        inscripcion.SeccionId == unidadAsignacion.Asignacion.SeccionId &&
-                        inscripcion.CicloEscolarId ==
-                            unidadAsignacion.Asignacion.Seccion.CicloEscolarId &&
-                        inscripcion.Estado == EstadoInscripcion.Activa &&
-                        inscripcion.Seccion.CicloEscolar.Activo),
+                    ((unidadAsignacion.Asignacion.Estado == EstadoRegistro.Activo &&
+                      unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo &&
+                      (!unidadAsignacion.FechaDisponibilidad.HasValue ||
+                          unidadAsignacion.FechaDisponibilidad <= ahora) &&
+                      (!unidadAsignacion.FechaCierreAcceso.HasValue ||
+                          unidadAsignacion.FechaCierreAcceso >= ahora) &&
+                      contexto.Inscripciones.Any(inscripcion =>
+                          inscripcion.AlumnoId == perfil.AlumnoId.Value &&
+                          inscripcion.SeccionId == unidadAsignacion.Asignacion.SeccionId &&
+                          inscripcion.CicloEscolarId == unidadAsignacion.Asignacion.Seccion.CicloEscolarId &&
+                          inscripcion.Estado == EstadoInscripcion.Activa &&
+                          inscripcion.Seccion.CicloEscolar.Activo)) ||
+                     (unidadAsignacion.Asignacion.Estado == EstadoRegistro.Inactivo &&
+                      contexto.Inscripciones.Any(inscripcion =>
+                          inscripcion.AlumnoId == perfil.AlumnoId.Value &&
+                          inscripcion.SeccionId == unidadAsignacion.Asignacion.SeccionId &&
+                          inscripcion.CicloEscolarId == unidadAsignacion.Asignacion.Seccion.CicloEscolarId))),
                     ct);
             puedeDescargar = permitido && material.Descargable;
         }

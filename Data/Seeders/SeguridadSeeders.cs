@@ -376,6 +376,11 @@ public static class SeguridadSeeders
             Permisos.Ciclos.Cerrar => "Cerrar formalmente ciclos escolares.",
             Permisos.Ciclos.Reabrir => "Reabrir excepcionalmente ciclos escolares cerrados.",
 
+            Permisos.Asignaciones.Relevar =>
+                "Crear una nueva versión histórica al realizar un relevo docente ordinario.",
+            Permisos.Asignaciones.RelevarExcepcional =>
+                "Autorizar relevos docentes excepcionales con obligaciones académicas pendientes.",
+
             _ => CrearDescripcionGenerica(codigoPermiso)
         };
     }

@@ -16,4 +16,8 @@ public interface IAsignacionServicio
     Task<ResultadoOperacion> EditarAsync(EditarAsignacion m);
 
     Task<ResultadoOperacion> CambiarEstadoAsync(int id, bool activo);
+
+    Task<ReemplazarDocenteAsignacion?> PrepararRelevoAsync(int id);
+
+    Task<ResultadoOperacion> ReemplazarDocenteAsync(ReemplazarDocenteAsignacion modelo);
 }

@@ -92,6 +92,39 @@ public class AsignacionesController(IAsignacionServicio s) : Controller
     public async Task<IActionResult> Activar(int id) =>
         await Estado(id, true);
 
+    [HttpGet]
+    [Authorize(Policy = Politicas.RelevarAsignacion)]
+    public async Task<IActionResult> ReemplazarDocente(int id)
+    {
+        var modelo = await s.PrepararRelevoAsync(id);
+        return modelo == null ? NotFound() : View(modelo);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Politicas.RelevarAsignacion)]
+    public async Task<IActionResult> ReemplazarDocente(ReemplazarDocenteAsignacion modelo)
+    {
+        if (ModelState.IsValid)
+        {
+            var resultado = await s.ReemplazarDocenteAsync(modelo);
+            if (resultado.Exitoso)
+            {
+                TempData["Exito"] = resultado.Mensaje;
+                return RedirectToAction(nameof(Index));
+            }
+            Err(resultado);
+        }
+
+        var preparado = await s.PrepararRelevoAsync(modelo.AsignacionId);
+        if (preparado == null) return NotFound();
+        modelo.ContextoAcademico = preparado.ContextoAcademico;
+        modelo.DocenteAnterior = preparado.DocenteAnterior;
+        modelo.Docentes = preparado.Docentes;
+        modelo.Obligaciones = preparado.Obligaciones;
+        return View(modelo);
+    }
+
     private async Task<IActionResult> Estado(int id, bool a)
     {
         var r = await s.CambiarEstadoAsync(id, a);

@@ -99,6 +99,17 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy(Politicas.RelevarAsignacion, politica =>
+        politica.RequireAssertion(contexto =>
+            contexto.User.IsInRole(Roles.Superusuario) ||
+            contexto.User.HasClaim(TiposClaims.Permiso, Permisos.Asignaciones.Relevar) ||
+            (contexto.User.HasClaim(TiposClaims.Permiso, Permisos.Asignaciones.RelevarExcepcional) &&
+             contexto.User.HasClaim(TiposClaims.Permiso, Permisos.Dashboard.CoordinacionVer))));
+    options.AddPolicy(Permisos.Asignaciones.RelevarExcepcional, politica =>
+        politica.RequireAssertion(contexto =>
+            contexto.User.IsInRole(Roles.Superusuario) ||
+            (contexto.User.HasClaim(TiposClaims.Permiso, Permisos.Asignaciones.RelevarExcepcional) &&
+             contexto.User.HasClaim(TiposClaims.Permiso, Permisos.Dashboard.CoordinacionVer))));
     options.AddPolicy(Permisos.Ciclos.Cerrar, politica =>
         politica.RequireAssertion(contexto =>
             contexto.User.IsInRole(Roles.Superusuario) ||
@@ -161,6 +172,7 @@ builder.Services.AddScoped<IGradoServicio, GradoServicio>();
 builder.Services.AddScoped<ISeccionServicio, SeccionServicio>();
 builder.Services.AddScoped<ICursoServicio, CursoServicio>();
 builder.Services.AddScoped<IAsignacionServicio, AsignacionServicio>();
+builder.Services.AddScoped<IDelegacionAcademicaServicio, DelegacionAcademicaServicio>();
 builder.Services.AddScoped<IInscripcionServicio, InscripcionServicio>();
 builder.Services.AddScoped<IUnidadServicio, UnidadServicio>();
 builder.Services.AddScoped<IMaterialServicio, MaterialServicio>();

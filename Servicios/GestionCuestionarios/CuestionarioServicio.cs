@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
+using Proyecto_Final.Servicios.GestionAsignaciones;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.ViewModels.Cuestionarios;
 
@@ -9,7 +10,8 @@ namespace Proyecto_Final.Servicios.GestionCuestionarios;
 
 public sealed class CuestionarioServicio(
     Contexto contexto,
-    IAccesoAcademicoServicio acceso) : ICuestionarioServicio
+    IAccesoAcademicoServicio acceso,
+    IDelegacionAcademicaServicio? delegaciones = null) : ICuestionarioServicio
 {
     // Margen para la latencia de red y el envío automático al vencer el tiempo.
     public const int ToleranciaSegundos = 10;
@@ -32,11 +34,19 @@ public sealed class CuestionarioServicio(
         if (docenteId.HasValue)
         {
             consulta = consulta.Where(x =>
-                x.Tarea.Asignacion.DocenteId == docenteId.Value &&
                 (historial
-                    ? x.Tarea.Asignacion.Estado != EstadoRegistro.Activo ||
-                      !x.Tarea.Asignacion.Seccion.CicloEscolar.Activo
-                    : x.Tarea.Asignacion.Estado == EstadoRegistro.Activo &&
+                    ? x.Tarea.Asignacion.DocenteId == docenteId.Value &&
+                      (x.Tarea.Asignacion.Estado != EstadoRegistro.Activo ||
+                       !x.Tarea.Asignacion.Seccion.CicloEscolar.Activo)
+                    : ((x.Tarea.Asignacion.DocenteId == docenteId.Value &&
+                        x.Tarea.Asignacion.Estado == EstadoRegistro.Activo) ||
+                       contexto.DelegacionesAcademicas.Any(d =>
+                          d.AsignacionId == x.Tarea.AsignacionId &&
+                          d.DocenteId == docenteId.Value && d.Activa &&
+                          d.FechaInicioUtc <= DateTime.UtcNow &&
+                          (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= DateTime.UtcNow) &&
+                          (d.Operaciones & OperacionDelegacionAcademica.RevisarCuestionarios) ==
+                              OperacionDelegacionAcademica.RevisarCuestionarios)) &&
                       x.Tarea.Asignacion.Seccion.CicloEscolar.Activo));
         }
         else if (alumnoId.HasValue)
@@ -57,7 +67,13 @@ public sealed class CuestionarioServicio(
                           i.CicloEscolarId == x.Tarea.Asignacion.Seccion.CicloEscolarId &&
                           i.Estado == EstadoInscripcion.Activa)))
                 : consulta.Where(x =>
-                    x.Tarea.Asignacion.Estado == EstadoRegistro.Activo &&
+                    (x.Tarea.Asignacion.Estado == EstadoRegistro.Activo ||
+                     contexto.DelegacionesAcademicas.Any(d =>
+                        d.AsignacionId == x.Tarea.AsignacionId && d.Activa &&
+                        d.FechaInicioUtc <= ahora &&
+                        (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= ahora) &&
+                        (d.Operaciones & OperacionDelegacionAcademica.ContinuarActividadesAlumnos) ==
+                            OperacionDelegacionAcademica.ContinuarActividadesAlumnos)) &&
                     x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
                     x.Tarea.Estado == EstadoTarea.Publicada &&
                     (!x.Tarea.FechaDisponibilidad.HasValue || x.Tarea.FechaDisponibilidad <= ahora) &&
@@ -396,7 +412,13 @@ public sealed class CuestionarioServicio(
             .Where(x =>
                 x.Id == id &&
                 x.Tarea.Estado == EstadoTarea.Publicada &&
-                x.Tarea.Asignacion.Estado == EstadoRegistro.Activo &&
+                (x.Tarea.Asignacion.Estado == EstadoRegistro.Activo ||
+                 contexto.DelegacionesAcademicas.Any(d =>
+                    d.AsignacionId == x.Tarea.AsignacionId && d.Activa &&
+                    d.FechaInicioUtc <= ahora &&
+                    (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= ahora) &&
+                    (d.Operaciones & OperacionDelegacionAcademica.ContinuarActividadesAlumnos) ==
+                        OperacionDelegacionAcademica.ContinuarActividadesAlumnos)) &&
                 x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
                 (!x.Tarea.FechaDisponibilidad.HasValue || x.Tarea.FechaDisponibilidad <= ahora))
             .Select(x => new
@@ -479,7 +501,13 @@ public sealed class CuestionarioServicio(
             .FirstOrDefaultAsync(x =>
                 x.Id == id &&
                 x.Tarea.Estado == EstadoTarea.Publicada &&
-                x.Tarea.Asignacion.Estado == EstadoRegistro.Activo &&
+                (x.Tarea.Asignacion.Estado == EstadoRegistro.Activo ||
+                 contexto.DelegacionesAcademicas.Any(d =>
+                    d.AsignacionId == x.Tarea.AsignacionId && d.Activa &&
+                    d.FechaInicioUtc <= ahora &&
+                    (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= ahora) &&
+                    (d.Operaciones & OperacionDelegacionAcademica.ContinuarActividadesAlumnos) ==
+                        OperacionDelegacionAcademica.ContinuarActividadesAlumnos)) &&
                 x.Tarea.Asignacion.Seccion.CicloEscolar.Activo);
 
         if (cuestionario is null ||
@@ -591,7 +619,7 @@ public sealed class CuestionarioServicio(
             return VistaIntento.Terminado(intento.Id);
 
         var ahora = DateTime.UtcNow;
-        if (!TareaDisponible(intento.Cuestionario.Tarea) || Vencido(intento, ahora))
+        if (!await TareaDisponibleAsync(intento.Cuestionario.Tarea) || Vencido(intento, ahora))
         {
             await FinalizarInternoAsync(intento, EstadoIntentoCuestionario.Expirado, ahora);
             return VistaIntento.Terminado(intento.Id);
@@ -661,7 +689,7 @@ public sealed class CuestionarioServicio(
             return ResultadoOperacion<bool>.Correcto(true, "El intento ya fue finalizado.");
 
         var ahora = DateTime.UtcNow;
-        if (!TareaDisponible(intento.Cuestionario.Tarea) || Vencido(intento, ahora))
+        if (!await TareaDisponibleAsync(intento.Cuestionario.Tarea) || Vencido(intento, ahora))
         {
             await FinalizarInternoAsync(intento, EstadoIntentoCuestionario.Expirado, ahora);
             return ResultadoOperacion<bool>.Correcto(true, "El tiempo del cuestionario terminó.");
@@ -690,7 +718,7 @@ public sealed class CuestionarioServicio(
             return ResultadoOperacion<bool>.Correcto(true, "El intento ya fue finalizado.");
 
         var ahora = DateTime.UtcNow;
-        if (!TareaDisponible(intento.Cuestionario.Tarea) || Vencido(intento, ahora))
+        if (!await TareaDisponibleAsync(intento.Cuestionario.Tarea) || Vencido(intento, ahora))
         {
             await FinalizarInternoAsync(intento, EstadoIntentoCuestionario.Expirado, ahora);
             return ResultadoOperacion<bool>.Correcto(true, "El tiempo del cuestionario terminó.");
@@ -750,7 +778,7 @@ public sealed class CuestionarioServicio(
             return ResultadoOperacion<int>.Correcto(intento.Id, "El intento ya fue finalizado.");
 
         var ahora = DateTime.UtcNow;
-        if (!TareaDisponible(intento.Cuestionario.Tarea) || Vencido(intento, ahora))
+        if (!await TareaDisponibleAsync(intento.Cuestionario.Tarea) || Vencido(intento, ahora))
         {
             await FinalizarInternoAsync(intento, EstadoIntentoCuestionario.Expirado, ahora);
             return ResultadoOperacion<int>.Correcto(
@@ -1291,8 +1319,15 @@ public sealed class CuestionarioServicio(
         if (perfil.AlumnoId.HasValue && !perfil.DocenteId.HasValue)
             return false;
 
-        return acceso.TienePermiso(Seguridad.Permisos.Entregas.Calificar) &&
-            await acceso.PuedeGestionarAsignacionVigenteAsync(asignacionId);
+        if (!acceso.TienePermiso(Seguridad.Permisos.Entregas.Calificar))
+            return false;
+        if (await acceso.PuedeGestionarAsignacionVigenteAsync(asignacionId))
+            return true;
+
+        return perfil.DocenteId.HasValue && delegaciones != null &&
+            await delegaciones.PuedeActuarAsync(
+                asignacionId, perfil.DocenteId.Value,
+                OperacionDelegacionAcademica.RevisarCuestionarios);
     }
 
     // =====================================================================
@@ -1596,10 +1631,23 @@ public sealed class CuestionarioServicio(
     private static bool Vencido(IntentoCuestionario intento, DateTime ahora) =>
         intento.FechaLimite.HasValue && ahora > intento.FechaLimite.Value + Tolerancia;
 
-    private static bool TareaDisponible(Tarea tarea) =>
-        tarea.Estado == EstadoTarea.Publicada &&
-        tarea.Asignacion.Estado == EstadoRegistro.Activo &&
-        tarea.Asignacion.Seccion.CicloEscolar.Activo;
+    private async Task<bool> TareaDisponibleAsync(Tarea tarea)
+    {
+        if (tarea.Estado != EstadoTarea.Publicada ||
+            !tarea.Asignacion.Seccion.CicloEscolar.Activo)
+            return false;
+
+        if (tarea.Asignacion.Estado == EstadoRegistro.Activo)
+            return true;
+
+        var ahora = DateTime.UtcNow;
+        return await contexto.DelegacionesAcademicas.AsNoTracking().AnyAsync(d =>
+            d.AsignacionId == tarea.AsignacionId && d.Activa &&
+            d.FechaInicioUtc <= ahora &&
+            (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= ahora) &&
+            (d.Operaciones & OperacionDelegacionAcademica.ContinuarActividadesAlumnos) ==
+                OperacionDelegacionAcademica.ContinuarActividadesAlumnos);
+    }
 
     private static int SegundosHasta(DateTime limite, DateTime ahora) =>
         Math.Max(0, (int)Math.Ceiling((limite - ahora).TotalSeconds));

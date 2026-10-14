@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
+using Proyecto_Final.Servicios.GestionAsignaciones;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.ViewModels.Calificaciones;
@@ -13,7 +14,8 @@ namespace Proyecto_Final.Servicios.GestionCalificaciones;
 
 public sealed class CalificacionServicio(
     Contexto contexto,
-    IAccesoAcademicoServicio acceso) : ICalificacionServicio
+    IAccesoAcademicoServicio acceso,
+    IDelegacionAcademicaServicio? delegaciones = null) : ICalificacionServicio
 {
     private static readonly JsonSerializerOptions JsonOpciones = new(JsonSerializerDefaults.Web);
 
@@ -24,7 +26,17 @@ public sealed class CalificacionServicio(
 
         if (perfil.DocenteId.HasValue)
         {
-            consulta = consulta.Where(x => x.Asignacion.DocenteId == perfil.DocenteId.Value);
+            consulta = consulta.Where(x =>
+                x.Asignacion.DocenteId == perfil.DocenteId.Value ||
+                contexto.DelegacionesAcademicas.Any(d =>
+                    d.AsignacionId == x.AsignacionId &&
+                    d.DocenteId == perfil.DocenteId.Value && d.Activa &&
+                    d.FechaInicioUtc <= DateTime.UtcNow &&
+                    (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= DateTime.UtcNow) &&
+                    ((d.Operaciones & OperacionDelegacionAcademica.GestionarEvaluaciones) ==
+                        OperacionDelegacionAcademica.GestionarEvaluaciones ||
+                     (d.Operaciones & OperacionDelegacionAcademica.SolicitarCorrecciones) ==
+                        OperacionDelegacionAcademica.SolicitarCorrecciones)));
         }
         else if (perfil.AlumnoId.HasValue)
         {
@@ -742,7 +754,14 @@ public sealed class CalificacionServicio(
                     PuedeAplicar = perfil.DocenteId.HasValue &&
                         acceso.TienePermiso(Permisos.Calificaciones.SolicitarCorreccion) &&
                         x.Estado == EstadoSolicitudCorreccion.Aprobada &&
-                        x.ActividadEvaluable.ConfiguracionEvaluacion.Asignacion.DocenteId == perfil.DocenteId.Value
+                        (x.ActividadEvaluable.ConfiguracionEvaluacion.Asignacion.DocenteId == perfil.DocenteId.Value ||
+                         contexto.DelegacionesAcademicas.Any(d =>
+                            d.AsignacionId == x.ActividadEvaluable.AsignacionId &&
+                            d.DocenteId == perfil.DocenteId.Value && d.Activa &&
+                            d.FechaInicioUtc <= DateTime.UtcNow &&
+                            (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= DateTime.UtcNow) &&
+                            (d.Operaciones & OperacionDelegacionAcademica.SolicitarCorrecciones) ==
+                                OperacionDelegacionAcademica.SolicitarCorrecciones))
                 }).ToListAsync()
         };
     }
@@ -1059,16 +1078,25 @@ public sealed class CalificacionServicio(
     private async Task<bool> EsDocenteResponsableVigenteAsync(ConfiguracionEvaluacion configuracion)
     {
         var docenteId = await acceso.ObtenerDocenteIdAsync();
-        return docenteId.HasValue && configuracion.Asignacion.DocenteId == docenteId.Value &&
-            configuracion.Asignacion.Estado == EstadoRegistro.Activo &&
-            configuracion.Asignacion.Seccion.CicloEscolar.Activo;
+        if (!docenteId.HasValue || !configuracion.Asignacion.Seccion.CicloEscolar.Activo)
+            return false;
+        if (configuracion.Asignacion.DocenteId == docenteId.Value &&
+            configuracion.Asignacion.Estado == EstadoRegistro.Activo)
+            return true;
+        return delegaciones != null && await delegaciones.PuedeActuarAsync(
+            configuracion.AsignacionId, docenteId.Value,
+            OperacionDelegacionAcademica.GestionarEvaluaciones);
     }
 
     private async Task<bool> EsDocenteResponsableVigenteOHistoricoAsync(
         ConfiguracionEvaluacion configuracion)
     {
         var docenteId = await acceso.ObtenerDocenteIdAsync();
-        return docenteId.HasValue && configuracion.Asignacion.DocenteId == docenteId.Value;
+        if (!docenteId.HasValue) return false;
+        if (configuracion.Asignacion.DocenteId == docenteId.Value) return true;
+        return delegaciones != null && await delegaciones.PuedeActuarAsync(
+            configuracion.AsignacionId, docenteId.Value,
+            OperacionDelegacionAcademica.SolicitarCorrecciones);
     }
 
     private Task<bool> EstaCerradaAsync(int configuracionId) =>

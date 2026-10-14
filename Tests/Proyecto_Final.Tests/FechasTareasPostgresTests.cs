@@ -32,7 +32,9 @@ public sealed class FechasTareasPostgresTests
     [Fact]
     public async Task Postgres_CrearYEditarTareaConFechasDelFormulario()
     {
-        Assert.SkipWhen(string.IsNullOrWhiteSpace(Conexion), "Sin SABIA_PRUEBAS_PG.");
+        Assert.SkipWhen(string.IsNullOrWhiteSpace(Conexion) ||
+            !CuestionarioPostgresTests.DestinoConfirmado,
+            "PostgreSQL descartable no configurado o no confirmado.");
 
         await using var baseDatos = await CuestionarioPostgresTests.BasePrueba.CrearAsync(Conexion!);
         await using (var contexto = baseDatos.Contexto())

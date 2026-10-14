@@ -50,7 +50,13 @@ public sealed class AccesoAcademicoServicio(
 
         return await contexto.Asignaciones.AnyAsync(a =>
             a.Id == asignacionId &&
-            a.Estado == EstadoRegistro.Activo &&
+            (a.Estado == EstadoRegistro.Activo ||
+             contexto.DelegacionesAcademicas.Any(d =>
+                d.AsignacionId == a.Id && d.Activa &&
+                d.FechaInicioUtc <= DateTime.UtcNow &&
+                (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= DateTime.UtcNow) &&
+                (d.Operaciones & OperacionDelegacionAcademica.ContinuarActividadesAlumnos) ==
+                    OperacionDelegacionAcademica.ContinuarActividadesAlumnos)) &&
             a.Seccion.CicloEscolar.Activo &&
             contexto.Inscripciones.Any(i =>
                 i.AlumnoId == alumnoId.Value &&
@@ -68,8 +74,12 @@ public sealed class AccesoAcademicoServicio(
         {
             return await contexto.Asignaciones.AsNoTracking().AnyAsync(x =>
                 x.Id == asignacionId &&
-                x.DocenteId == perfil.DocenteId.Value &&
-                x.Estado == EstadoRegistro.Activo &&
+                ((x.DocenteId == perfil.DocenteId.Value &&
+                  x.Estado == EstadoRegistro.Activo) ||
+                 contexto.DelegacionesAcademicas.Any(d =>
+                    d.AsignacionId == x.Id && d.DocenteId == perfil.DocenteId.Value &&
+                    d.Activa && d.FechaInicioUtc <= DateTime.UtcNow &&
+                    (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= DateTime.UtcNow))) &&
                 x.Seccion.CicloEscolar.Activo);
         }
 
@@ -77,7 +87,13 @@ public sealed class AccesoAcademicoServicio(
         {
             return await contexto.Asignaciones.AsNoTracking().AnyAsync(x =>
                 x.Id == asignacionId &&
-                x.Estado == EstadoRegistro.Activo &&
+                (x.Estado == EstadoRegistro.Activo ||
+                 contexto.DelegacionesAcademicas.Any(d =>
+                    d.AsignacionId == x.Id && d.Activa &&
+                    d.FechaInicioUtc <= DateTime.UtcNow &&
+                    (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= DateTime.UtcNow) &&
+                    (d.Operaciones & OperacionDelegacionAcademica.ContinuarActividadesAlumnos) ==
+                        OperacionDelegacionAcademica.ContinuarActividadesAlumnos)) &&
                 x.Seccion.CicloEscolar.Activo &&
                 contexto.Inscripciones.Any(i =>
                     i.AlumnoId == perfil.AlumnoId.Value &&
@@ -98,7 +114,12 @@ public sealed class AccesoAcademicoServicio(
         {
             return await contexto.Asignaciones.AsNoTracking().AnyAsync(x =>
                 x.Id == asignacionId &&
-                x.DocenteId == perfil.DocenteId.Value);
+                (x.DocenteId == perfil.DocenteId.Value ||
+                 contexto.Asignaciones.Any(actual =>
+                    actual.DocenteId == perfil.DocenteId.Value &&
+                    actual.Estado == EstadoRegistro.Activo &&
+                    actual.SeccionId == x.SeccionId &&
+                    actual.CursoId == x.CursoId)));
         }
 
         if (perfil.AlumnoId.HasValue)

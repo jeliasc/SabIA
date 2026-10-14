@@ -16,11 +16,14 @@ public sealed class CuestionarioPostgresTests
 {
     private static readonly string? Conexion =
         Environment.GetEnvironmentVariable("SABIA_PRUEBAS_PG");
+    internal static bool DestinoConfirmado =>
+        Environment.GetEnvironmentVariable("SABIA_PRUEBAS_PG_CONFIRMAR") == "BASE_DESCARTABLE";
 
     [Fact]
     public async Task Postgres_FlujoNavegableYSecuencialCompleto()
     {
-        Assert.SkipWhen(string.IsNullOrWhiteSpace(Conexion), "Sin SABIA_PRUEBAS_PG.");
+        Assert.SkipWhen(string.IsNullOrWhiteSpace(Conexion) || !DestinoConfirmado,
+            "PostgreSQL descartable no configurado o no confirmado.");
 
         await using var baseDatos = await BasePrueba.CrearAsync(Conexion!);
 
@@ -114,7 +117,8 @@ public sealed class CuestionarioPostgresTests
     [Fact]
     public async Task Postgres_IndiceImpideDosIntentosEnCurso()
     {
-        Assert.SkipWhen(string.IsNullOrWhiteSpace(Conexion), "Sin SABIA_PRUEBAS_PG.");
+        Assert.SkipWhen(string.IsNullOrWhiteSpace(Conexion) || !DestinoConfirmado,
+            "PostgreSQL descartable no configurado o no confirmado.");
 
         await using var baseDatos = await BasePrueba.CrearAsync(Conexion!);
         await using (var contexto = baseDatos.Contexto())
@@ -148,7 +152,8 @@ public sealed class CuestionarioPostgresTests
     [Fact]
     public async Task Postgres_FinalizadorVencidos()
     {
-        Assert.SkipWhen(string.IsNullOrWhiteSpace(Conexion), "Sin SABIA_PRUEBAS_PG.");
+        Assert.SkipWhen(string.IsNullOrWhiteSpace(Conexion) || !DestinoConfirmado,
+            "PostgreSQL descartable no configurado o no confirmado.");
 
         await using var baseDatos = await BasePrueba.CrearAsync(Conexion!);
         await using (var contexto = baseDatos.Contexto())

@@ -47,6 +47,12 @@ public class Contexto
     public DbSet<Asignacion> Asignaciones =>
         Set<Asignacion>();
 
+    public DbSet<RelevoAsignacion> RelevosAsignaciones =>
+        Set<RelevoAsignacion>();
+
+    public DbSet<DelegacionAcademica> DelegacionesAcademicas =>
+        Set<DelegacionAcademica>();
+
     public DbSet<Inscripcion> Inscripciones =>
         Set<Inscripcion>();
 
@@ -348,7 +354,37 @@ public class Contexto
                 asignacion.SeccionId,
                 asignacion.CursoId
             })
+            .HasDatabaseName("IX_Asignaciones_SeccionId_CursoId_Activa")
+            .HasFilter($"\"Estado\" = {(int)EstadoRegistro.Activo}")
             .IsUnique();
+
+        builder.Entity<Asignacion>()
+            .HasIndex(asignacion => asignacion.AsignacionAnteriorId)
+            .IsUnique()
+            .HasFilter("\"AsignacionAnteriorId\" IS NOT NULL");
+
+        builder.Entity<Asignacion>()
+            .HasOne(asignacion => asignacion.AsignacionAnterior)
+            .WithMany()
+            .HasForeignKey(asignacion => asignacion.AsignacionAnteriorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Asignacion>()
+            .ToTable(tabla =>
+            {
+                tabla.HasCheckConstraint(
+                    "CK_Asignaciones_Vigencia",
+                    "\"FechaFinVigencia\" IS NULL OR \"FechaInicioVigencia\" IS NULL OR \"FechaInicioVigencia\" <= \"FechaFinVigencia\"");
+                tabla.HasCheckConstraint(
+                    "CK_Asignaciones_SinAutorreferencia",
+                    "\"AsignacionAnteriorId\" IS NULL OR \"AsignacionAnteriorId\" <> \"Id\"");
+                tabla.HasCheckConstraint(
+                    "CK_Asignaciones_VersionConInicio",
+                    "\"AsignacionAnteriorId\" IS NULL OR \"FechaInicioVigencia\" IS NOT NULL");
+                tabla.HasCheckConstraint(
+                    "CK_Asignaciones_ActivaSinFin",
+                    "\"Estado\" <> 1 OR \"FechaFinVigencia\" IS NULL");
+            });
 
         builder.Entity<Asignacion>()
             .HasOne(asignacion => asignacion.Seccion)
@@ -388,6 +424,93 @@ public class Contexto
 
         builder.Entity<Asignacion>()
             .HasIndex(asignacion => asignacion.DocenteId);
+
+        builder.Entity<RelevoAsignacion>()
+            .HasIndex(x => x.AsignacionAnteriorId)
+            .IsUnique();
+        builder.Entity<RelevoAsignacion>()
+            .HasAlternateKey(x => new
+            {
+                x.Id,
+                x.AsignacionAnteriorId,
+                x.DocenteSustitutoId
+            })
+            .HasName("AK_RelevosAsignaciones_Delegacion");
+        builder.Entity<RelevoAsignacion>()
+            .HasIndex(x => x.AsignacionNuevaId)
+            .IsUnique();
+        builder.Entity<RelevoAsignacion>()
+            .HasOne(x => x.AsignacionAnterior).WithMany()
+            .HasForeignKey(x => x.AsignacionAnteriorId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<RelevoAsignacion>()
+            .HasOne(x => x.AsignacionNueva).WithMany()
+            .HasForeignKey(x => x.AsignacionNuevaId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<RelevoAsignacion>()
+            .HasOne(x => x.DocenteAnterior).WithMany()
+            .HasForeignKey(x => x.DocenteAnteriorId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<RelevoAsignacion>()
+            .HasOne(x => x.DocenteSustituto).WithMany()
+            .HasForeignKey(x => x.DocenteSustitutoId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<RelevoAsignacion>()
+            .HasOne(x => x.UsuarioResponsable).WithMany()
+            .HasForeignKey(x => x.UsuarioResponsableId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<RelevoAsignacion>()
+            .ToTable(tabla => tabla.HasCheckConstraint(
+                "CK_RelevosAsignaciones_DocentesDistintos",
+                "\"DocenteAnteriorId\" <> \"DocenteSustitutoId\""));
+
+        builder.Entity<DelegacionAcademica>()
+            .HasIndex(x => x.RelevoAsignacionId);
+        builder.Entity<DelegacionAcademica>()
+            .HasIndex(x => new { x.AsignacionId, x.DocenteId, x.Activa });
+        builder.Entity<DelegacionAcademica>()
+            .HasIndex(x => new
+            {
+                x.RelevoAsignacionId,
+                x.AsignacionId,
+                x.DocenteId,
+                x.Operaciones
+            })
+            .HasDatabaseName("UX_DelegacionesAcademicas_Relevo_Operacion_Activa")
+            .IsUnique()
+            .HasFilter("\"Activa\" = TRUE");
+        builder.Entity<DelegacionAcademica>()
+            .HasOne(x => x.RelevoAsignacion).WithMany(x => x.Delegaciones)
+            .HasForeignKey(x => new
+            {
+                x.RelevoAsignacionId,
+                x.AsignacionId,
+                x.DocenteId
+            })
+            .HasPrincipalKey(x => new
+            {
+                x.Id,
+                x.AsignacionAnteriorId,
+                x.DocenteSustitutoId
+            })
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<DelegacionAcademica>()
+            .HasOne(x => x.Asignacion).WithMany()
+            .HasForeignKey(x => x.AsignacionId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<DelegacionAcademica>()
+            .HasOne(x => x.Docente).WithMany()
+            .HasForeignKey(x => x.DocenteId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<DelegacionAcademica>()
+            .HasOne(x => x.CreadaPorUsuario).WithMany()
+            .HasForeignKey(x => x.CreadaPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<DelegacionAcademica>()
+            .ToTable(tabla =>
+            {
+                tabla.HasCheckConstraint(
+                    "CK_DelegacionesAcademicas_Vigencia",
+                    "\"FechaFinUtc\" IS NULL OR \"FechaInicioUtc\" <= \"FechaFinUtc\"");
+                tabla.HasCheckConstraint(
+                    "CK_DelegacionesAcademicas_Operaciones",
+                    "\"Operaciones\" > 0 AND \"Operaciones\" <= 63");
+                tabla.HasCheckConstraint(
+                    "CK_DelegacionesAcademicas_ActivaSinFin",
+                    "\"Activa\" = FALSE OR \"FechaFinUtc\" IS NULL");
+            });
 
         // Inscripciones
 

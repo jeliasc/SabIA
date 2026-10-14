@@ -9,9 +9,6 @@ public class FormularioPeriodo
     [Display(Name = "Ciclo escolar")]
     public int CicloEscolarId { get; set; }
 
-    [Range(1, 4, ErrorMessage = "El número de periodo debe estar entre 1 y 4.")]
-    public int Numero { get; set; }
-
     [Required, StringLength(50)]
     public string Nombre { get; set; } = string.Empty;
 
@@ -26,7 +23,6 @@ public sealed class CrearPeriodo : FormularioPeriodo
 {
     public CrearPeriodo()
     {
-        Numero = 0;
         FechaInicio = DateOnly.MinValue;
         FechaFin = DateOnly.MinValue;
     }
@@ -35,6 +31,8 @@ public sealed class CrearPeriodo : FormularioPeriodo
 public sealed class EditarPeriodo : FormularioPeriodo
 {
     public int Id { get; set; }
+
+    public int Numero { get; set; }
 }
 
 public sealed class PeriodoLista

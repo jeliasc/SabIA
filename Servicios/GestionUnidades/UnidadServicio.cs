@@ -1,4 +1,6 @@
+using System.Data;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
@@ -12,6 +14,8 @@ public sealed class UnidadServicio(
     Contexto c,
     IAccesoAcademicoServicio acceso) : IUnidadServicio
 {
+    private const int MaximoIntentosOrden = 3;
+
     private async Task<IQueryable<UnidadAsignacion>> Q(bool historial = false)
     {
         var q = c.UnidadesAsignaciones
@@ -79,6 +83,10 @@ public sealed class UnidadServicio(
         await (await Q())
             .OrderByDescending(x => x.Asignacion.Seccion.CicloEscolar.Anio)
             .ThenBy(x => x.Asignacion.Curso.Nombre)
+            .ThenBy(x => x.Asignacion.Seccion.Grado.Nombre)
+            .ThenBy(x => x.Asignacion.Seccion.Nombre)
+            .ThenBy(x => x.Asignacion.DocenteId)
+            .ThenBy(x => x.AsignacionId)
             .ThenBy(x => x.Orden)
             .Select(x => new UnidadLista
             {
@@ -101,6 +109,10 @@ public sealed class UnidadServicio(
         await (await Q(historial: true))
             .OrderByDescending(x => x.Asignacion.Seccion.CicloEscolar.Anio)
             .ThenBy(x => x.Asignacion.Curso.Nombre)
+            .ThenBy(x => x.Asignacion.Seccion.Grado.Nombre)
+            .ThenBy(x => x.Asignacion.Seccion.Nombre)
+            .ThenBy(x => x.Asignacion.DocenteId)
+            .ThenBy(x => x.AsignacionId)
             .ThenBy(x => x.Orden)
             .Select(x => new UnidadLista
             {
@@ -207,16 +219,6 @@ public sealed class UnidadServicio(
             );
         }
 
-        if (await c.UnidadesAsignaciones.AnyAsync(x =>
-            x.AsignacionId == m.AsignacionId &&
-            x.Orden == m.Orden))
-        {
-            return ResultadoOperacion.Validacion(
-                nameof(m.Orden),
-                "Ya existe una unidad con ese orden en la asignación."
-            );
-        }
-
         if (m.PeriodoId.HasValue && !await PeriodoPerteneceAsignacionAsync(
             m.PeriodoId.Value, m.AsignacionId))
         {
@@ -234,49 +236,64 @@ public sealed class UnidadServicio(
             );
         }
 
-        await using var tx =
-            await c.Database.BeginTransactionAsync();
-
-        try
+        for (var intento = 1; intento <= MaximoIntentosOrden; intento++)
         {
-            var u = new Unidad
+            await using var tx = await c.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
+
+            try
             {
-                Titulo = m.Titulo.Trim(),
-                Descripcion = Lim(m.Descripcion),
-                CreadoPorUsuarioId = uid,
-                FechaCreacion = DateTime.UtcNow
-            };
+                var ultimoOrden = await c.UnidadesAsignaciones
+                    .Where(x => x.AsignacionId == m.AsignacionId)
+                    .MaxAsync(x => (int?)x.Orden) ?? 0;
 
-            c.Unidades.Add(u);
-
-            await c.SaveChangesAsync();
-
-            c.UnidadesAsignaciones.Add(
-                new UnidadAsignacion
+                var unidad = new Unidad
                 {
-                    UnidadId = u.Id,
+                    Titulo = m.Titulo.Trim(),
+                    Descripcion = Lim(m.Descripcion),
+                    CreadoPorUsuarioId = uid,
+                    FechaCreacion = DateTime.UtcNow
+                };
+
+                c.UnidadesAsignaciones.Add(new UnidadAsignacion
+                {
+                    Unidad = unidad,
                     AsignacionId = m.AsignacionId,
                     PeriodoId = m.PeriodoId,
-                    Orden = m.Orden,
+                    Orden = checked(ultimoOrden + 1),
                     Estado = EstadoPublicacionUnidad.Borrador,
                     FechaDisponibilidad = fechaDisponibilidadUtc,
                     FechaCierreAcceso = fechaCierreAccesoUtc,
                     AsignadoPorUsuarioId = uid
+                });
+
+                await c.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return ResultadoOperacion.Correcto(
+                    "La unidad fue creada correctamente."
+                );
+            }
+            catch (Exception excepcion) when (EsConflictoOrden(excepcion))
+            {
+                await tx.RollbackAsync();
+                c.ChangeTracker.Clear();
+
+                if (intento == MaximoIntentosOrden)
+                {
+                    return ResultadoOperacion.Error(
+                        "No fue posible asignar el orden de la unidad debido a otra operación simultánea. Intente nuevamente.");
                 }
-            );
-
-            await c.SaveChangesAsync();
-            await tx.CommitAsync();
-
-            return ResultadoOperacion.Correcto(
-                "La unidad fue creada correctamente."
-            );
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                c.ChangeTracker.Clear();
+                throw;
+            }
         }
-        catch
-        {
-            await tx.RollbackAsync();
-            throw;
-        }
+
+        return ResultadoOperacion.Error("No fue posible crear la unidad.");
     }
 
     public async Task<EditarUnidad?> ObtenerEditarAsync(int id)
@@ -320,7 +337,7 @@ public sealed class UnidadServicio(
         }
 
         var ua = await c.UnidadesAsignaciones
-            .Include(x => x.Unidad)
+            .AsNoTracking()
             .FirstOrDefaultAsync(x =>
                 x.Id == m.UnidadAsignacionId &&
                 x.UnidadId == m.Id
@@ -359,42 +376,70 @@ public sealed class UnidadServicio(
                 "El período no pertenece al ciclo de la asignación.");
         }
 
-        if (await c.UnidadesAsignaciones.AnyAsync(x =>
-            x.Id != ua.Id &&
-            x.AsignacionId == m.AsignacionId &&
-            x.Orden == m.Orden))
+        for (var intento = 1; intento <= MaximoIntentosOrden; intento++)
         {
-            return ResultadoOperacion.Validacion(
-                nameof(m.Orden),
-                "Ya existe una unidad con ese orden."
-            );
+            await using var tx = await c.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
+
+            try
+            {
+                var unidadAsignacion = await c.UnidadesAsignaciones
+                    .Include(x => x.Unidad)
+                    .FirstOrDefaultAsync(x =>
+                        x.Id == m.UnidadAsignacionId &&
+                        x.UnidadId == m.Id);
+
+                if (unidadAsignacion is null)
+                {
+                    await tx.RollbackAsync();
+                    return ResultadoOperacion.Error("La unidad ya no existe.");
+                }
+
+                var cambiaAsignacion = unidadAsignacion.AsignacionId != m.AsignacionId;
+                var orden = unidadAsignacion.Orden;
+                if (cambiaAsignacion)
+                {
+                    var ultimoOrden = await c.UnidadesAsignaciones
+                        .Where(x => x.AsignacionId == m.AsignacionId)
+                        .MaxAsync(x => (int?)x.Orden) ?? 0;
+                    orden = checked(ultimoOrden + 1);
+                }
+
+                unidadAsignacion.Unidad.Titulo = m.Titulo.Trim();
+                unidadAsignacion.Unidad.Descripcion = Lim(m.Descripcion);
+                unidadAsignacion.AsignacionId = m.AsignacionId;
+                unidadAsignacion.PeriodoId = m.PeriodoId;
+                unidadAsignacion.Orden = orden;
+                unidadAsignacion.FechaDisponibilidad = fechaDisponibilidadUtc;
+                unidadAsignacion.FechaCierreAcceso = fechaCierreAccesoUtc;
+
+                await c.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return ResultadoOperacion.Correcto(
+                    "La unidad fue actualizada correctamente."
+                );
+            }
+            catch (Exception excepcion) when (EsConflictoOrden(excepcion))
+            {
+                await tx.RollbackAsync();
+                c.ChangeTracker.Clear();
+
+                if (intento == MaximoIntentosOrden)
+                {
+                    return ResultadoOperacion.Error(
+                        "No fue posible asignar el orden en la asignación de destino debido a otra operación simultánea. Intente nuevamente.");
+                }
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                c.ChangeTracker.Clear();
+                throw;
+            }
         }
 
-        await using var tx =
-            await c.Database.BeginTransactionAsync();
-
-        try
-        {
-            ua.Unidad.Titulo = m.Titulo.Trim();
-            ua.Unidad.Descripcion = Lim(m.Descripcion);
-            ua.AsignacionId = m.AsignacionId;
-            ua.PeriodoId = m.PeriodoId;
-            ua.Orden = m.Orden;
-            ua.FechaDisponibilidad = fechaDisponibilidadUtc;
-            ua.FechaCierreAcceso = fechaCierreAccesoUtc;
-
-            await c.SaveChangesAsync();
-            await tx.CommitAsync();
-
-            return ResultadoOperacion.Correcto(
-                "La unidad fue actualizada correctamente."
-            );
-        }
-        catch
-        {
-            await tx.RollbackAsync();
-            throw;
-        }
+        return ResultadoOperacion.Error("No fue posible actualizar la unidad.");
     }
 
     public async Task<ResultadoOperacion> PublicarAsync(int id) =>
@@ -477,5 +522,35 @@ public sealed class UnidadServicio(
         string.IsNullOrWhiteSpace(x)
             ? null
             : x.Trim();
+
+    private static bool EsConflictoOrden(Exception excepcion)
+    {
+        for (var actual = excepcion; actual is not null; actual = actual.InnerException!)
+        {
+            if (actual is PostgresException postgres &&
+                (postgres.SqlState == PostgresErrorCodes.SerializationFailure ||
+                 postgres.SqlState == PostgresErrorCodes.DeadlockDetected ||
+                 postgres.SqlState == PostgresErrorCodes.UniqueViolation &&
+                 string.Equals(
+                     postgres.ConstraintName,
+                     "IX_UnidadesAsignaciones_AsignacionId_Orden",
+                     StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            if (actual.Message.Contains(
+                    "IX_UnidadesAsignaciones_AsignacionId_Orden",
+                    StringComparison.OrdinalIgnoreCase) ||
+                actual.Message.Contains(
+                    "UnidadesAsignaciones.AsignacionId, UnidadesAsignaciones.Orden",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
 }
