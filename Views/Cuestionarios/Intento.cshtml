@@ -1,0 +1,141 @@
+@model Proyecto_Final.ViewModels.Cuestionarios.IntentoEnCurso
+@{
+    ViewData["Title"] = Model.Titulo;
+}
+
+<div class="container-fluid"
+     data-intento-cuestionario
+     data-navegable="@(Model.PermitirNavegacion ? "true" : "false")"
+     data-segundos="@Model.SegundosRestantes"
+     data-segundos-pregunta="@Model.SegundosRestantesPregunta"
+     data-url-guardar="@Url.Action("GuardarRespuesta")">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+        <div>
+            <h2 class="fw-bold mb-1">@Model.Titulo</h2>
+            <p class="text-muted mb-0" data-progreso>
+                @if (Model.PermitirNavegacion)
+                {
+                    <text>Pregunta <span data-numero-actual>1</span> de @Model.TotalPreguntas</text>
+                }
+                else
+                {
+                    <text>Pregunta @Model.Preguntas[0].Numero de @Model.TotalPreguntas</text>
+                }
+            </p>
+        </div>
+
+        <div class="d-flex gap-2">
+            @if (Model.SegundosRestantes.HasValue)
+            {
+                <span class="badge text-bg-secondary fs-6 px-3 py-2" title="Tiempo restante del cuestionario">
+                    <i class="bi bi-hourglass-split me-1"></i>
+                    <span data-reloj-total>--:--</span>
+                </span>
+            }
+            @if (Model.SegundosRestantesPregunta.HasValue)
+            {
+                <span class="badge text-bg-warning fs-6 px-3 py-2" title="Tiempo restante de esta pregunta">
+                    <i class="bi bi-stopwatch me-1"></i>
+                    <span data-reloj-pregunta>--:--</span>
+                </span>
+            }
+        </div>
+    </div>
+
+    @if (Model.PermitirNavegacion)
+    {
+        <form method="post" asp-action="Finalizar" data-form-final>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="IntentoId" value="@Model.IntentoId" />
+
+            <div class="d-flex flex-wrap gap-1 mb-3" data-navegador>
+                @for (var i = 0; i < Model.Preguntas.Count; i++)
+                {
+                    var respondida = Model.Preguntas[i].OpcionIds.Count > 0 ||
+                        !string.IsNullOrWhiteSpace(Model.Preguntas[i].Texto);
+                    <button type="button"
+                            class="app-btn app-btn-sm @(respondida ? "app-btn-soft-success" : "app-btn-soft-secondary")"
+                            data-ir-a="@i"
+                            aria-label="Ir a la pregunta @(i + 1)">
+                        @(i + 1)
+                    </button>
+                }
+            </div>
+
+            @for (var i = 0; i < Model.Preguntas.Count; i++)
+            {
+                var p = Model.Preguntas[i];
+                <div class="card shadow-sm border-0 mb-3" data-pregunta="@i" hidden="@(i != 0)">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between gap-3 mb-3">
+                            <div class="fw-semibold" style="white-space: pre-line">@p.Numero. @p.Enunciado</div>
+                            <span class="text-muted small text-nowrap">@p.Punteo.ToString("0.##") pts.</span>
+                        </div>
+
+                        @await Html.PartialAsync("_PreguntaRespuesta", (p, $"Respuestas[{i}]"))
+                    </div>
+                </div>
+            }
+
+            <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
+                <div class="d-flex gap-2">
+                    <button type="button" class="app-btn app-btn-soft-secondary" data-anterior>
+                        <i class="bi bi-chevron-left"></i> Anterior
+                    </button>
+                    <button type="button" class="app-btn app-btn-soft-secondary" data-siguiente>
+                        Siguiente <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+
+                <button type="submit" class="app-btn app-btn-soft-primary" data-boton-finalizar>
+                    Finalizar cuestionario
+                </button>
+            </div>
+
+            <p class="small text-muted mt-3 mb-0" data-estado-guardado></p>
+        </form>
+    }
+    else
+    {
+        var p = Model.Preguntas[0];
+        var esUltima = p.Numero >= Model.TotalPreguntas;
+
+        <form method="post" asp-action="Responder" data-form-pregunta>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="IntentoId" value="@Model.IntentoId" />
+
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between gap-3 mb-3">
+                        <div class="fw-semibold" style="white-space: pre-line">@p.Numero. @p.Enunciado</div>
+                        <span class="text-muted small text-nowrap">@p.Punteo.ToString("0.##") pts.</span>
+                    </div>
+
+                    @await Html.PartialAsync("_PreguntaRespuesta", (p, "Respuesta"))
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="app-btn app-btn-soft-primary">
+                    @(esUltima ? "Responder y finalizar" : "Responder y continuar")
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+
+            <p class="small text-muted mt-3 mb-0">
+                Al continuar no podrá regresar a esta pregunta.
+            </p>
+        </form>
+
+        @* Envío del cierre cuando se acaba el tiempo total del cuestionario. *@
+        <form method="post" asp-action="Finalizar" data-form-final hidden>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="IntentoId" value="@Model.IntentoId" />
+        </form>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/cuestionarios.js" asp-append-version="true"></script>
+}

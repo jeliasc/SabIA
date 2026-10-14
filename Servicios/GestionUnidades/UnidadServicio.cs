@@ -12,10 +12,6 @@ public sealed class UnidadServicio(
     Contexto c,
     IAccesoAcademicoServicio acceso) : IUnidadServicio
 {
-    private const string IdZonaHorariaIana = "America/Guatemala";
-    private const string IdZonaHorariaWindows = "Central America Standard Time";
-    private static readonly Lazy<TimeZoneInfo> ZonaHoraria = new(ObtenerZonaHoraria);
-
     private async Task<IQueryable<UnidadAsignacion>> Q(bool historial = false)
     {
         var q = c.UnidadesAsignaciones
@@ -196,8 +192,8 @@ public sealed class UnidadServicio(
             );
         }
 
-        var fechaDisponibilidadUtc = ConvertirAUtc(m.FechaDisponibilidad);
-        var fechaCierreAccesoUtc = ConvertirAUtc(m.FechaCierreAcceso);
+        var fechaDisponibilidadUtc = HoraGuatemala.ParaGuardar(m.FechaDisponibilidad);
+        var fechaCierreAccesoUtc = HoraGuatemala.ParaGuardar(m.FechaCierreAcceso);
 
         if (
             fechaDisponibilidadUtc.HasValue &&
@@ -305,8 +301,8 @@ public sealed class UnidadServicio(
 
         if (m != null)
         {
-            m.FechaDisponibilidad = ConvertirAHoraGuatemala(m.FechaDisponibilidad);
-            m.FechaCierreAcceso = ConvertirAHoraGuatemala(m.FechaCierreAcceso);
+            m.FechaDisponibilidad = HoraGuatemala.ParaFormulario(m.FechaDisponibilidad);
+            m.FechaCierreAcceso = HoraGuatemala.ParaFormulario(m.FechaCierreAcceso);
             await PrepararAsync(m);
         }
 
@@ -343,8 +339,8 @@ public sealed class UnidadServicio(
                 "No tiene acceso a la unidad original.");
         }
 
-        var fechaDisponibilidadUtc = ConvertirAUtc(m.FechaDisponibilidad);
-        var fechaCierreAccesoUtc = ConvertirAUtc(m.FechaCierreAcceso);
+        var fechaDisponibilidadUtc = HoraGuatemala.ParaGuardar(m.FechaDisponibilidad);
+        var fechaCierreAccesoUtc = HoraGuatemala.ParaGuardar(m.FechaCierreAcceso);
 
         if (fechaDisponibilidadUtc.HasValue &&
             fechaCierreAccesoUtc.HasValue &&
@@ -482,51 +478,4 @@ public sealed class UnidadServicio(
             ? null
             : x.Trim();
 
-    private static DateTime? ConvertirAUtc(DateTime? fecha)
-    {
-        if (!fecha.HasValue)
-        {
-            return null;
-        }
-
-        return fecha.Value.Kind switch
-        {
-            DateTimeKind.Utc => fecha.Value,
-            DateTimeKind.Local => fecha.Value.ToUniversalTime(),
-            _ => TimeZoneInfo.ConvertTimeToUtc(fecha.Value, ZonaHoraria.Value)
-        };
-    }
-
-    private static DateTime? ConvertirAHoraGuatemala(DateTime? fechaUtc)
-    {
-        if (!fechaUtc.HasValue)
-        {
-            return null;
-        }
-
-        var utc = fechaUtc.Value.Kind switch
-        {
-            DateTimeKind.Utc => fechaUtc.Value,
-            DateTimeKind.Local => fechaUtc.Value.ToUniversalTime(),
-            _ => DateTime.SpecifyKind(fechaUtc.Value, DateTimeKind.Utc)
-        };
-
-        return TimeZoneInfo.ConvertTimeFromUtc(utc, ZonaHoraria.Value);
-    }
-
-    private static TimeZoneInfo ObtenerZonaHoraria()
-    {
-        if (TimeZoneInfo.TryFindSystemTimeZoneById(IdZonaHorariaIana, out var zonaIana))
-        {
-            return zonaIana;
-        }
-
-        if (TimeZoneInfo.TryFindSystemTimeZoneById(IdZonaHorariaWindows, out var zonaWindows))
-        {
-            return zonaWindows;
-        }
-
-        throw new TimeZoneNotFoundException(
-            $"No se encontró la zona horaria {IdZonaHorariaIana} ni su equivalente de Windows.");
-    }
 }

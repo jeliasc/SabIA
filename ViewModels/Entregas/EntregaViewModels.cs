@@ -33,6 +33,10 @@ public sealed class EntregaLista
     public bool PuedeCalificarse { get; set; }
 
     public bool PuedeEntregarse { get; set; }
+
+    // Si la tarea es un cuestionario: el alumno lo resuelve en lugar de
+    // subir un archivo y el docente puede ver sus respuestas.
+    public int? CuestionarioId { get; set; }
 }
 
 public sealed class EntregarTarea

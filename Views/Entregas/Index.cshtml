@@ -100,11 +100,26 @@
                             {
                                 <td>
                                     <div class="app-actions app-actions-table">
-                                    @if (entregar && x.PuedeEntregarse)
+                                    @if (entregar && x.PuedeEntregarse && x.CuestionarioId.HasValue)
+                                    {
+                                        <a asp-controller="Cuestionarios" asp-action="Resolver" asp-route-id="@x.CuestionarioId"
+                                           class="app-btn app-btn-soft-primary app-btn-sm">
+                                            Resolver
+                                        </a>
+                                    }
+                                    else if (entregar && x.PuedeEntregarse)
                                     {
                                         <a asp-action="Entregar" asp-route-id="@x.Id"
                                            class="app-btn app-btn-soft-primary app-btn-sm">
                                             Entregar
+                                        </a>
+                                    }
+
+                                    @if (cal && x.CuestionarioId.HasValue && x.Estado != Proyecto_Final.Models.EstadoEntrega.Pendiente)
+                                    {
+                                        <a asp-controller="Cuestionarios" asp-action="RespuestasEntrega" asp-route-id="@x.Id"
+                                           class="app-btn app-btn-soft-secondary app-btn-sm">
+                                            Ver respuestas
                                         </a>
                                     }
 
@@ -176,10 +191,25 @@
                         </div>
                     }
 
-                    @if (entregar && x.PuedeEntregarse)
+                    @if (entregar && x.PuedeEntregarse && x.CuestionarioId.HasValue)
+                    {
+                        <a asp-controller="Cuestionarios" asp-action="Resolver" asp-route-id="@x.CuestionarioId"
+                           class="app-btn app-btn-soft-primary w-100">
+                            Resolver cuestionario
+                        </a>
+                    }
+                    else if (entregar && x.PuedeEntregarse)
                     {
                         <a asp-action="Entregar" asp-route-id="@x.Id" class="app-btn app-btn-soft-primary w-100">
                             Entregar tarea
+                        </a>
+                    }
+
+                    @if (cal && x.CuestionarioId.HasValue && x.Estado != Proyecto_Final.Models.EstadoEntrega.Pendiente)
+                    {
+                        <a asp-controller="Cuestionarios" asp-action="RespuestasEntrega" asp-route-id="@x.Id"
+                           class="app-btn app-btn-soft-secondary w-100 mt-2">
+                            Ver respuestas
                         </a>
                     }
 

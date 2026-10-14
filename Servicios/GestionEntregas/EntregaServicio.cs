@@ -94,6 +94,7 @@ public sealed class EntregaServicio(
                 Calificacion = x.Calificacion,
                 PunteoMaximo = x.Tarea.PunteoMaximo,
                 NumeroEnvio = x.NumeroEnvio,
+                CuestionarioId = x.Tarea.Cuestionario != null ? x.Tarea.Cuestionario.Id : null,
                 PuedeEntregarse = alumnoId.HasValue &&
                     x.AlumnoId == alumnoId.Value &&
                     (x.Estado == EstadoEntrega.Pendiente ||
@@ -478,7 +479,7 @@ public sealed class EntregaServicio(
                 Curso = x.Tarea.Asignacion.Curso.Nombre,
                 NumeroEnvioActual = x.NumeroEnvio,
                 EstadoActual = x.Estado,
-                FechaLimite = DateTime.UtcNow.AddDays(2)
+                FechaLimite = HoraGuatemala.ParaFormulario(DateTime.UtcNow.AddDays(2))
             })
             .FirstOrDefaultAsync();
     }
@@ -492,9 +493,7 @@ public sealed class EntregaServicio(
                 "Solo el docente responsable puede reabrir esta entrega.");
         }
 
-        var fechaLimite = modelo.FechaLimite.Kind == DateTimeKind.Utc
-            ? modelo.FechaLimite
-            : modelo.FechaLimite.ToUniversalTime();
+        var fechaLimite = HoraGuatemala.ParaGuardar(modelo.FechaLimite);
 
         if (fechaLimite <= DateTime.UtcNow)
         {
