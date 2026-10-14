@@ -22,24 +22,39 @@ public sealed class CicloServicio(
             .OrderByDescending(x => x.Anio)
             .Select(x => new CicloLista
             {
-                Id = x.Id, Anio = x.Anio, Inicio = x.FechaInicio, Fin = x.FechaFin,
-                Activo = x.Activo, Estado = x.Estado,
-                Periodos = x.Periodos.Count, Secciones = x.Secciones.Count
+                Id = x.Id,
+                Anio = x.Anio,
+                Inicio = x.FechaInicio,
+                Fin = x.FechaFin,
+                Activo = x.Activo,
+                Estado = x.Estado,
+                Periodos = x.Periodos.Count,
+                Secciones = x.Secciones.Count
             }).ToListAsync();
 
     public async Task<ResultadoOperacion> CrearAsync(CrearCiclo modelo)
     {
-        var error = await ValidarAsync(modelo.Anio, modelo.FechaInicio, modelo.FechaFin, null);
-        if (error != null) return error;
+        if (!modelo.FechaInicio.HasValue)
+            return ResultadoOperacion.Validacion(
+                nameof(modelo.FechaInicio), "La fecha de inicio es obligatoria.");
 
+        if (!modelo.FechaFin.HasValue)
+            return ResultadoOperacion.Validacion(
+                nameof(modelo.FechaFin), "La fecha de finalización es obligatoria.");
+
+        var inicio = modelo.FechaInicio.Value;
+        var fin = modelo.FechaFin.Value;
+
+        var error = await ValidarAsync(modelo.Anio, inicio, fin, null);
+        if (error != null) return error;
         await using var tx = await contexto.Database.BeginTransactionAsync();
         try
         {
             contexto.CiclosEscolares.Add(new CicloEscolar
             {
                 Anio = modelo.Anio,
-                FechaInicio = modelo.FechaInicio,
-                FechaFin = modelo.FechaFin,
+                FechaInicio = inicio,
+                FechaFin = fin,
                 Activo = false,
                 Estado = EstadoCicloEscolar.Preparacion
             });
@@ -59,13 +74,26 @@ public sealed class CicloServicio(
             .Where(x => x.Id == id && x.Estado != EstadoCicloEscolar.Cerrado)
             .Select(x => new EditarCiclo
             {
-                Id = x.Id, Anio = x.Anio,
-                FechaInicio = x.FechaInicio, FechaFin = x.FechaFin
+                Id = x.Id,
+                Anio = x.Anio,
+                FechaInicio = x.FechaInicio,
+                FechaFin = x.FechaFin
             }).FirstOrDefaultAsync();
 
     public async Task<ResultadoOperacion> EditarAsync(EditarCiclo modelo)
     {
-        var error = await ValidarAsync(modelo.Anio, modelo.FechaInicio, modelo.FechaFin, modelo.Id);
+        if (!modelo.FechaInicio.HasValue)
+            return ResultadoOperacion.Validacion(
+                nameof(modelo.FechaInicio), "La fecha de inicio es obligatoria.");
+
+        if (!modelo.FechaFin.HasValue)
+            return ResultadoOperacion.Validacion(
+                nameof(modelo.FechaFin), "La fecha de finalización es obligatoria.");
+
+        var inicio = modelo.FechaInicio.Value;
+        var fin = modelo.FechaFin.Value;
+
+        var error = await ValidarAsync(modelo.Anio, inicio, fin, modelo.Id);
         if (error != null) return error;
 
         var ciclo = await contexto.CiclosEscolares.FirstOrDefaultAsync(x => x.Id == modelo.Id);
@@ -77,8 +105,8 @@ public sealed class CicloServicio(
         try
         {
             ciclo.Anio = modelo.Anio;
-            ciclo.FechaInicio = modelo.FechaInicio;
-            ciclo.FechaFin = modelo.FechaFin;
+            ciclo.FechaInicio = inicio;
+            ciclo.FechaFin = fin;
             await contexto.SaveChangesAsync();
             await tx.CommitAsync();
             return ResultadoOperacion.Correcto("El ciclo escolar fue actualizado correctamente.");

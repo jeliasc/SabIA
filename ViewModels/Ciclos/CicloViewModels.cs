@@ -11,11 +11,11 @@ public class FormularioCiclo
 
     [Required(ErrorMessage = "La fecha de inicio es obligatoria.")]
     [Display(Name = "Fecha de inicio")]
-    public DateOnly FechaInicio { get; set; }
+    public DateOnly? FechaInicio { get; set; }
 
     [Required(ErrorMessage = "La fecha de finalización es obligatoria.")]
     [Display(Name = "Fecha de finalización")]
-    public DateOnly FechaFin { get; set; }
+    public DateOnly? FechaFin { get; set; }
 }
 public sealed class CrearCiclo : FormularioCiclo { }
 public sealed class EditarCiclo : FormularioCiclo { public int Id { get; set; } }

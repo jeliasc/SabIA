@@ -26,5 +26,17 @@ public interface IMaterialServicio
 
     Task<ResultadoOperacion> OcultarAsync(int id);
 
-    Task<(Stream Stream, string Mime, string Nombre)?> AbrirAsync(int id);
+    Task<ArchivoMaterialAcceso?> VisualizarAsync(
+        int id,
+        CancellationToken ct = default);
+
+    Task<ArchivoMaterialAcceso?> DescargarAsync(
+        int id,
+        CancellationToken ct = default);
 }
+
+public sealed record ArchivoMaterialAcceso(
+    Stream Stream,
+    string Mime,
+    string Nombre,
+    bool PuedeDescargar);

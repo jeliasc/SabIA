@@ -10,6 +10,7 @@ public class FormularioMaterial
     [Range(1, int.MaxValue)]
     public int UnidadId { get; set; }
 
+    [EnumDataType(typeof(TipoMaterial))]
     public TipoMaterial Tipo { get; set; }
 
     [Required, StringLength(200)]
@@ -17,9 +18,6 @@ public class FormularioMaterial
 
     [StringLength(1000)]
     public string? Descripcion { get; set; }
-
-    [Range(1, int.MaxValue)]
-    public int Orden { get; set; } = 1;
 
     public bool Descargable { get; set; } = true;
 
@@ -61,4 +59,17 @@ public sealed class MaterialLista
     public string? Archivo { get; set; }
 
     public string? Url { get; set; }
+
+    public bool PuedeVisualizar { get; set; }
+
+    public bool PuedeDescargar { get; set; }
+}
+
+public sealed class VistaPreviaMaterial
+{
+    public int Id { get; set; }
+
+    public string Nombre { get; set; } = string.Empty;
+
+    public bool PuedeDescargar { get; set; }
 }

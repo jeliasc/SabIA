@@ -116,15 +116,51 @@ public class MaterialesController(IMaterialServicio s) : Controller
     }
 
     [HttpGet]
-    [Authorize(Policy = Permisos.Materiales.Descargar)]
-    public async Task<IActionResult> Descargar(int id)
+    public async Task<IActionResult> Visualizar(int id, CancellationToken ct)
     {
-        var a = await s.AbrirAsync(id);
+        var archivo = await s.VisualizarAsync(id, ct);
 
-        return a == null
-            ? NotFound()
-            : File(a.Value.Stream, a.Value.Mime, a.Value.Nombre);
+        if (archivo is null)
+            return NotFound();
+
+        if (!EsVistaPreviaCompatible(archivo.Mime))
+        {
+            await archivo.Stream.DisposeAsync();
+            return View("VistaPreviaNoDisponible", new VistaPreviaMaterial
+            {
+                Id = id,
+                Nombre = archivo.Nombre,
+                PuedeDescargar = archivo.PuedeDescargar
+            });
+        }
+
+        Response.Headers.ContentDisposition =
+            $"inline; filename*=UTF-8''{Uri.EscapeDataString(archivo.Nombre)}";
+        return File(archivo.Stream, archivo.Mime, enableRangeProcessing: true);
     }
+
+    [HttpGet]
+    [Authorize(Policy = Permisos.Materiales.Descargar)]
+    public async Task<IActionResult> Descargar(int id, CancellationToken ct)
+    {
+        var archivo = await s.DescargarAsync(id, ct);
+
+        return archivo is null
+            ? NotFound()
+            : File(archivo.Stream, archivo.Mime, archivo.Nombre);
+    }
+
+    private static bool EsVistaPreviaCompatible(string mime) =>
+        mime.Equals("application/pdf", StringComparison.OrdinalIgnoreCase) ||
+        mime.Equals("text/plain", StringComparison.OrdinalIgnoreCase) ||
+        mime.Equals("text/csv", StringComparison.OrdinalIgnoreCase) ||
+        mime.Equals("image/png", StringComparison.OrdinalIgnoreCase) ||
+        mime.Equals("image/jpeg", StringComparison.OrdinalIgnoreCase) ||
+        mime.Equals("image/webp", StringComparison.OrdinalIgnoreCase) ||
+        mime.Equals("audio/mpeg", StringComparison.OrdinalIgnoreCase) ||
+        mime.Equals("audio/wav", StringComparison.OrdinalIgnoreCase) ||
+        mime.Equals("video/mp4", StringComparison.OrdinalIgnoreCase) ||
+        mime.Equals("video/webm", StringComparison.OrdinalIgnoreCase);
 
     private void Err(Servicios.Comunes.ResultadoOperacion r)
     {

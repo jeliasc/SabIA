@@ -32,7 +32,7 @@ public static class SeguridadSeeders
 
         foreach (var nombreRol in roles)
         {
-            if (await administradorRoles.RoleExistsAsync(nombreRol))
+            if (await administradorRoles.RoleExistsAsync(nombreRol).ConfigureAwait(false))
             {
                 continue;
             }
@@ -43,7 +43,7 @@ public static class SeguridadSeeders
                     Name = nombreRol,
                     Activo = true
                 }
-            );
+            ).ConfigureAwait(false);
 
             VerificarResultado(
                 resultado,
@@ -55,8 +55,9 @@ public static class SeguridadSeeders
         {
             var existePermiso =
                 await contexto.PermisosSistema
+                    .AsNoTracking()
                     .AnyAsync(permiso =>
-                        permiso.Codigo == codigoPermiso);
+                        permiso.Codigo == codigoPermiso).ConfigureAwait(false);
 
             if (existePermiso)
             {
@@ -83,16 +84,16 @@ public static class SeguridadSeeders
             );
         }
 
-        await contexto.SaveChangesAsync();
+        await contexto.SaveChangesAsync().ConfigureAwait(false);
 
         await AsignarTodosLosPermisosAlSuperusuarioAsync(
             contexto,
             administradorRoles
-        );
+        ).ConfigureAwait(false);
 
         await AsignarDashboardCoordinacionARolesExistentesAsync(
             administradorRoles
-        );
+        ).ConfigureAwait(false);
 
         await AsignarPermisosBaseAsync(
             administradorRoles,
@@ -134,7 +135,7 @@ public static class SeguridadSeeders
                 Permisos.Calificaciones.Cerrar,
                 Permisos.Calificaciones.SolicitarCorreccion
             ]
-        );
+        ).ConfigureAwait(false);
 
         await AsignarPermisosBaseAsync(
             administradorRoles,
@@ -152,7 +153,7 @@ public static class SeguridadSeeders
                 Permisos.Notificaciones.Ver,
                 Permisos.Calificaciones.Ver
             ]
-        );
+        ).ConfigureAwait(false);
 
         var nombreUsuario =
             configuracion["SuperusuarioInicial:Usuario"];
@@ -173,7 +174,7 @@ public static class SeguridadSeeders
         }
 
         var superusuario =
-            await administradorUsuarios.FindByNameAsync(nombreUsuario);
+            await administradorUsuarios.FindByNameAsync(nombreUsuario).ConfigureAwait(false);
 
         if (superusuario == null)
         {
@@ -193,7 +194,7 @@ public static class SeguridadSeeders
                 await administradorUsuarios.CreateAsync(
                     superusuario,
                     contrasena
-                );
+                ).ConfigureAwait(false);
 
             VerificarResultado(
                 resultado,
@@ -203,13 +204,13 @@ public static class SeguridadSeeders
 
         if (!await administradorUsuarios.IsInRoleAsync(
             superusuario,
-            Roles.Superusuario))
+            Roles.Superusuario).ConfigureAwait(false))
         {
             var resultado =
                 await administradorUsuarios.AddToRoleAsync(
                     superusuario,
                     Roles.Superusuario
-                );
+                ).ConfigureAwait(false);
 
             VerificarResultado(
                 resultado,
@@ -223,20 +224,20 @@ public static class SeguridadSeeders
         RoleManager<Rol> administradorRoles)
     {
         var rol =
-            await administradorRoles.FindByNameAsync(Roles.Superusuario)
+            await administradorRoles.FindByNameAsync(Roles.Superusuario).ConfigureAwait(false)
             ?? throw new InvalidOperationException(
                 "No se encontró el rol Superusuario."
             );
 
         var claims =
-            await administradorRoles.GetClaimsAsync(rol);
+            await administradorRoles.GetClaimsAsync(rol).ConfigureAwait(false);
 
         var permisosActivos =
             await contexto.PermisosSistema
                 .AsNoTracking()
                 .Where(permiso => permiso.Activo)
                 .Select(permiso => permiso.Codigo)
-                .ToListAsync();
+                .ToListAsync().ConfigureAwait(false);
 
         foreach (var permiso in permisosActivos)
         {
@@ -254,7 +255,7 @@ public static class SeguridadSeeders
                         TiposClaims.Permiso,
                         permiso
                     )
-                );
+                ).ConfigureAwait(false);
 
             VerificarResultado(
                 resultado,
@@ -269,7 +270,7 @@ public static class SeguridadSeeders
         IEnumerable<string> permisos)
     {
         var rol =
-            await administradorRoles.FindByNameAsync(nombreRol);
+            await administradorRoles.FindByNameAsync(nombreRol).ConfigureAwait(false);
 
         if (rol == null)
         {
@@ -277,7 +278,7 @@ public static class SeguridadSeeders
         }
 
         var claims =
-            await administradorRoles.GetClaimsAsync(rol);
+            await administradorRoles.GetClaimsAsync(rol).ConfigureAwait(false);
 
         foreach (var permiso in permisos)
         {
@@ -295,7 +296,7 @@ public static class SeguridadSeeders
                         TiposClaims.Permiso,
                         permiso
                     )
-                );
+                ).ConfigureAwait(false);
 
             VerificarResultado(
                 resultado,
@@ -309,11 +310,11 @@ public static class SeguridadSeeders
     {
         var roles = await administradorRoles.Roles
             .Where(rol => rol.Activo)
-            .ToListAsync();
+            .ToListAsync().ConfigureAwait(false);
 
         foreach (var rol in roles)
         {
-            var claims = await administradorRoles.GetClaimsAsync(rol);
+            var claims = await administradorRoles.GetClaimsAsync(rol).ConfigureAwait(false);
 
             var esCoordinacion = claims.Any(claim =>
                 claim.Type == TiposClaims.Permiso &&
@@ -341,7 +342,7 @@ public static class SeguridadSeeders
 
                 var resultado = await administradorRoles.AddClaimAsync(
                     rol,
-                    new Claim(TiposClaims.Permiso, permiso));
+                    new Claim(TiposClaims.Permiso, permiso)).ConfigureAwait(false);
 
                 VerificarResultado(
                     resultado,

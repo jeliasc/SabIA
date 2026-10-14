@@ -37,7 +37,7 @@
                        data-actions-column="@(hayAcciones ? "true" : "false")">
                     <thead>
                         <tr>
-                            <th>Orden</th>
+                            <th class="text-start">Orden</th>
                             <th>Material</th>
                             <th>Unidad</th>
                             <th>Tipo</th>
@@ -53,32 +53,40 @@
                         @foreach (var item in Model)
                         {
                             <tr>
-                                <td>@item.Orden</td>
+                                <td class="text-start">@item.Orden</td>
                                 <td class="fw-semibold">@item.Titulo</td>
                                 <td>@item.Unidad</td>
                                 <td>@item.Tipo</td>
-                                @if (hayAcciones)
-                                {
-                                    <td>
-                                        @if (item.Archivo != null && puedeDescargar && !soloLectura)
-                                        {
-                                            <a asp-action="Descargar" asp-route-id="@item.Id">@item.Archivo</a>
-                                        }
-                                        else if (item.Url != null)
-                                        {
-                                            <a href="@item.Url" target="_blank" rel="noopener">Abrir enlace</a>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">Sin recurso</span>
-                                        }
-                                    </td>
-                                }
+                                <td>
+                                    @if (item.Archivo != null && item.PuedeVisualizar)
+                                    {
+                                        <div class="app-actions app-actions-table">
+                                            <a asp-action="Visualizar" asp-route-id="@item.Id"
+                                               class="app-btn app-btn-soft-primary app-btn-sm"
+                                               target="_blank" rel="noopener">Visualizar</a>
+                                            @if (puedeDescargar && item.PuedeDescargar)
+                                            {
+                                                <a asp-action="Descargar" asp-route-id="@item.Id"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">Descargar</a>
+                                            }
+                                        </div>
+                                    }
+                                    else if (item.Url != null)
+                                    {
+                                        <a href="@item.Url" target="_blank" rel="noopener">Abrir enlace</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Sin recurso disponible</span>
+                                    }
+                                </td>
                                 <td><span
                                     class="app-badge @(item.Estado == EstadoPublicacionMaterial.Publicado ? "app-badge-success" : item.Estado == EstadoPublicacionMaterial.Oculto ? "app-badge-danger" : "app-badge-secondary")">@item.Estado</span>
                                 </td>
-                                <td>
-                                    <div class="app-actions app-actions-table">
+                                @if (hayAcciones)
+                                {
+                                    <td>
+                                        <div class="app-actions app-actions-table">
                                         @if (puedeEditar)
                                         {
                                             <a asp-action="Editar" asp-route-id="@item.Id"
@@ -106,8 +114,9 @@
                                                         type="submit">Ocultar</button>
                                             </form>
                                         }
-                                    </div>
-                                </td>
+                                        </div>
+                                    </td>
+                                }
                             </tr>
                         }
                     </tbody>
