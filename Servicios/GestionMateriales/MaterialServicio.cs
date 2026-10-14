@@ -1,4 +1,6 @@
+using System.Data;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Archivos;
@@ -14,6 +16,8 @@ public sealed class MaterialServicio(
     IArchivoFisicoServicio archivosFisicos,
     IAccesoAcademicoServicio acceso) : IMaterialServicio
 {
+    private const int MaximoIntentosOrden = 3;
+
     public async Task<List<MaterialLista>> ObtenerTodosAsync() =>
         await ObtenerListadoAsync(historial: false);
 
@@ -27,7 +31,17 @@ public sealed class MaterialServicio(
         var docenteId = perfil.DocenteId;
         var alumnoId = perfil.AlumnoId;
 
-        if (docenteId.HasValue)
+        if (acceso.EsOperadorInstitucional)
+        {
+            consulta = consulta.Where(material => contexto.UnidadesAsignaciones.Any(unidadAsignacion =>
+                unidadAsignacion.UnidadId == material.UnidadId &&
+                (historial
+                    ? unidadAsignacion.Asignacion.Estado != EstadoRegistro.Activo ||
+                      !unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo
+                    : unidadAsignacion.Asignacion.Estado == EstadoRegistro.Activo &&
+                      unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo)));
+        }
+        else if (docenteId.HasValue)
         {
             consulta = consulta.Where(material =>
                 contexto.UnidadesAsignaciones.Any(unidadAsignacion =>
@@ -76,15 +90,9 @@ public sealed class MaterialServicio(
                         inscripcion.Seccion.CicloEscolar.Activo)));
         }
         else
-        {
-            consulta = consulta.Where(material => contexto.UnidadesAsignaciones.Any(unidadAsignacion =>
-                unidadAsignacion.UnidadId == material.UnidadId &&
-                (historial
-                    ? unidadAsignacion.Asignacion.Estado != EstadoRegistro.Activo ||
-                      !unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo
-                    : unidadAsignacion.Asignacion.Estado == EstadoRegistro.Activo &&
-                      unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo)));
-        }
+            consulta = consulta.Where(_ => false);
+
+        var esGestor = acceso.EsOperadorInstitucional || docenteId.HasValue;
 
         return await consulta
             .OrderBy(material => material.Unidad.Titulo)
@@ -99,7 +107,10 @@ public sealed class MaterialServicio(
                 Estado = material.Estado,
                 Descargable = material.Descargable,
                 Archivo = material.Archivo != null ? material.Archivo.NombreOriginal : null,
-                Url = material.UrlExterna
+                Url = material.UrlExterna,
+                PuedeVisualizar = material.ArchivoId.HasValue && !historial,
+                PuedeDescargar = material.ArchivoId.HasValue && !historial &&
+                    (esGestor || material.Descargable)
             })
             .ToListAsync();
     }
@@ -138,7 +149,7 @@ public sealed class MaterialServicio(
 
     public async Task<ResultadoOperacion> CrearAsync(CrearMaterial modelo, CancellationToken cancellationToken)
     {
-        if (!await PuedeGestionarUnidadAsync(modelo.UnidadId))
+        if (!await PuedeGestionarUnidadAsync(modelo.UnidadId, cancellationToken))
             return ResultadoOperacion.Error("No tiene acceso a esa unidad.");
 
         var validacion = ValidarOrigen(modelo, existeArchivoActual: false);
@@ -165,42 +176,70 @@ public sealed class MaterialServicio(
         if (usuarioId is null)
             return ResultadoOperacion.Error("No se pudo identificar al usuario.");
 
-        await using var transaccion = await contexto.Database.BeginTransactionAsync(cancellationToken);
-        try
+        for (var intento = 1; intento <= MaximoIntentosOrden; intento++)
         {
-            Archivo? archivo = null;
-            if (archivoGuardado is not null)
+            await using var transaccion = await contexto.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
+            try
             {
-                archivo = CrearArchivo(archivoGuardado, usuarioId);
-                contexto.Archivos.Add(archivo);
+                var ultimoOrden = await contexto.Materiales
+                    .Where(x => x.UnidadId == modelo.UnidadId)
+                    .MaxAsync(x => (int?)x.Orden, cancellationToken) ?? 0;
+
+                var archivo = archivoGuardado is null
+                    ? null
+                    : CrearArchivo(archivoGuardado, usuarioId);
+
+                contexto.Materiales.Add(new Material
+                {
+                    UnidadId = modelo.UnidadId,
+                    Archivo = archivo,
+                    UrlExterna = modelo.Tipo == TipoMaterial.Enlace
+                        ? Limpiar(modelo.UrlExterna)
+                        : null,
+                    Tipo = modelo.Tipo,
+                    Estado = EstadoPublicacionMaterial.Borrador,
+                    Titulo = modelo.Titulo.Trim(),
+                    Descripcion = Limpiar(modelo.Descripcion),
+                    Orden = checked(ultimoOrden + 1),
+                    Descargable = modelo.Tipo != TipoMaterial.Enlace && modelo.Descargable,
+                    FechaCreacion = DateTime.UtcNow
+                });
+
                 await contexto.SaveChangesAsync(cancellationToken);
+                await transaccion.CommitAsync(cancellationToken);
+                return ResultadoOperacion.Correcto("El material fue creado correctamente.");
             }
-
-            contexto.Materiales.Add(new Material
+            catch (Exception excepcion) when (EsConflictoDeOrden(excepcion))
             {
-                UnidadId = modelo.UnidadId,
-                ArchivoId = archivo?.Id,
-                UrlExterna = modelo.Tipo == TipoMaterial.Enlace ? Limpiar(modelo.UrlExterna) : null,
-                Tipo = modelo.Tipo,
-                Estado = EstadoPublicacionMaterial.Borrador,
-                Titulo = modelo.Titulo.Trim(),
-                Descripcion = Limpiar(modelo.Descripcion),
-                Orden = modelo.Orden,
-                Descargable = modelo.Descargable,
-                FechaCreacion = DateTime.UtcNow
-            });
+                await transaccion.RollbackAsync(cancellationToken);
+                contexto.ChangeTracker.Clear();
 
-            await contexto.SaveChangesAsync(cancellationToken);
-            await transaccion.CommitAsync(cancellationToken);
-            return ResultadoOperacion.Correcto("El material fue creado correctamente.");
+                if (intento == MaximoIntentosOrden)
+                {
+                    if (archivoGuardado is not null)
+                        await archivosFisicos.EliminarAsync(
+                            archivoGuardado.ClaveAlmacenamiento,
+                            cancellationToken);
+
+                    return ResultadoOperacion.Error(
+                        "No fue posible asignar el orden del material debido a otra operación simultánea. Intente nuevamente.");
+                }
+            }
+            catch
+            {
+                await transaccion.RollbackAsync(cancellationToken);
+                contexto.ChangeTracker.Clear();
+                if (archivoGuardado is not null)
+                    await archivosFisicos.EliminarAsync(
+                        archivoGuardado.ClaveAlmacenamiento,
+                        cancellationToken);
+                throw;
+            }
         }
-        catch
-        {
-            await transaccion.RollbackAsync(cancellationToken);
-            if (archivoGuardado is not null)
-                await archivosFisicos.EliminarAsync(archivoGuardado.ClaveAlmacenamiento, cancellationToken);
-            throw;
-        }
+
+        return ResultadoOperacion.Error("No fue posible crear el material.");
     }
 
     public async Task<EditarMaterial?> ObtenerEditarAsync(int id)
@@ -220,7 +259,6 @@ public sealed class MaterialServicio(
             Tipo = material.Tipo,
             Titulo = material.Titulo,
             Descripcion = material.Descripcion,
-            Orden = material.Orden,
             Descargable = material.Descargable,
             UrlExterna = material.UrlExterna,
             ArchivoActual = material.Archivo?.NombreOriginal
@@ -232,12 +270,13 @@ public sealed class MaterialServicio(
     public async Task<ResultadoOperacion> EditarAsync(EditarMaterial modelo, CancellationToken cancellationToken)
     {
         var material = await contexto.Materiales
+            .AsNoTracking()
             .Include(x => x.Archivo)
             .FirstOrDefaultAsync(x => x.Id == modelo.Id, cancellationToken);
 
         if (material is null ||
-            !await PuedeGestionarUnidadAsync(material.UnidadId) ||
-            !await PuedeGestionarUnidadAsync(modelo.UnidadId))
+            !await PuedeGestionarUnidadAsync(material.UnidadId, cancellationToken) ||
+            !await PuedeGestionarUnidadAsync(modelo.UnidadId, cancellationToken))
         {
             return ResultadoOperacion.Error("El material no existe o no tiene acceso.");
         }
@@ -267,62 +306,99 @@ public sealed class MaterialServicio(
             return ResultadoOperacion.Error("No se pudo identificar al usuario.");
 
         var archivoAnterior = material.Archivo;
-        await using var transaccion = await contexto.Database.BeginTransactionAsync(cancellationToken);
-        try
+        var eliminaArchivoAnterior = archivoAnterior is not null &&
+            (modelo.Tipo == TipoMaterial.Enlace || archivoNuevo is not null);
+
+        for (var intento = 1; intento <= MaximoIntentosOrden; intento++)
         {
-            if (modelo.Tipo == TipoMaterial.Enlace)
+            await using var transaccion = await contexto.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
+            try
             {
-                material.ArchivoId = null;
-                material.Archivo = null;
-                material.UrlExterna = Limpiar(modelo.UrlExterna);
-            }
-            else
-            {
-                material.UrlExterna = null;
-                if (archivoNuevo is not null)
+                var materialActual = await contexto.Materiales
+                    .Include(x => x.Archivo)
+                    .FirstOrDefaultAsync(x => x.Id == modelo.Id, cancellationToken);
+
+                if (materialActual is null)
                 {
-                    var archivo = CrearArchivo(archivoNuevo, usuarioId);
-                    contexto.Archivos.Add(archivo);
-                    await contexto.SaveChangesAsync(cancellationToken);
-                    material.ArchivoId = archivo.Id;
-                    material.Archivo = archivo;
+                    await transaccion.RollbackAsync(cancellationToken);
+                    if (archivoNuevo is not null)
+                        await archivosFisicos.EliminarAsync(
+                            archivoNuevo.ClaveAlmacenamiento,
+                            cancellationToken);
+                    return ResultadoOperacion.Error("El material ya no existe.");
+                }
+
+                var cambiaUnidad = materialActual.UnidadId != modelo.UnidadId;
+                var orden = materialActual.Orden;
+                if (cambiaUnidad)
+                {
+                    var ultimoOrden = await contexto.Materiales
+                        .Where(x => x.UnidadId == modelo.UnidadId)
+                        .MaxAsync(x => (int?)x.Orden, cancellationToken) ?? 0;
+                    orden = checked(ultimoOrden + 1);
+                }
+
+                if (modelo.Tipo == TipoMaterial.Enlace)
+                {
+                    materialActual.ArchivoId = null;
+                    materialActual.Archivo = null;
+                    materialActual.UrlExterna = Limpiar(modelo.UrlExterna);
+                }
+                else
+                {
+                    materialActual.UrlExterna = null;
+                    if (archivoNuevo is not null)
+                        materialActual.Archivo = CrearArchivo(archivoNuevo, usuarioId);
+                }
+
+                materialActual.UnidadId = modelo.UnidadId;
+                materialActual.Tipo = modelo.Tipo;
+                materialActual.Titulo = modelo.Titulo.Trim();
+                materialActual.Descripcion = Limpiar(modelo.Descripcion);
+                materialActual.Orden = orden;
+                materialActual.Descargable =
+                    modelo.Tipo != TipoMaterial.Enlace && modelo.Descargable;
+                materialActual.Estado = EstadoPublicacionMaterial.Borrador;
+
+                await contexto.SaveChangesAsync(cancellationToken);
+                await transaccion.CommitAsync(cancellationToken);
+
+                if (eliminaArchivoAnterior)
+                    await EliminarArchivoAnteriorAsync(archivoAnterior!, cancellationToken);
+
+                return ResultadoOperacion.Correcto("El material fue actualizado correctamente.");
+            }
+            catch (Exception excepcion) when (EsConflictoDeOrden(excepcion))
+            {
+                await transaccion.RollbackAsync(cancellationToken);
+                contexto.ChangeTracker.Clear();
+
+                if (intento == MaximoIntentosOrden)
+                {
+                    if (archivoNuevo is not null)
+                        await archivosFisicos.EliminarAsync(
+                            archivoNuevo.ClaveAlmacenamiento,
+                            cancellationToken);
+
+                    return ResultadoOperacion.Error(
+                        "No fue posible asignar el orden en la unidad de destino debido a otra operación simultánea. Intente nuevamente.");
                 }
             }
-
-            material.UnidadId = modelo.UnidadId;
-            material.Tipo = modelo.Tipo;
-            material.Titulo = modelo.Titulo.Trim();
-            material.Descripcion = Limpiar(modelo.Descripcion);
-            material.Orden = modelo.Orden;
-            material.Descargable = modelo.Descargable;
-            material.Estado = EstadoPublicacionMaterial.Borrador;
-
-            await contexto.SaveChangesAsync(cancellationToken);
-
-            if (archivoAnterior is not null &&
-                (modelo.Tipo == TipoMaterial.Enlace || archivoNuevo is not null))
+            catch
             {
-                contexto.Archivos.Remove(archivoAnterior);
-                await contexto.SaveChangesAsync(cancellationToken);
+                await transaccion.RollbackAsync(cancellationToken);
+                contexto.ChangeTracker.Clear();
+                if (archivoNuevo is not null)
+                    await archivosFisicos.EliminarAsync(
+                        archivoNuevo.ClaveAlmacenamiento,
+                        cancellationToken);
+                throw;
             }
-
-            await transaccion.CommitAsync(cancellationToken);
-
-            if (archivoAnterior is not null &&
-                (modelo.Tipo == TipoMaterial.Enlace || archivoNuevo is not null))
-            {
-                await archivosFisicos.EliminarAsync(archivoAnterior.ClaveAlmacenamiento, cancellationToken);
-            }
-
-            return ResultadoOperacion.Correcto("El material fue actualizado correctamente.");
         }
-        catch
-        {
-            await transaccion.RollbackAsync(cancellationToken);
-            if (archivoNuevo is not null)
-                await archivosFisicos.EliminarAsync(archivoNuevo.ClaveAlmacenamiento, cancellationToken);
-            throw;
-        }
+
+        return ResultadoOperacion.Error("No fue posible actualizar el material.");
     }
 
     public Task<ResultadoOperacion> PublicarAsync(int id) => CambiarEstadoAsync(id, EstadoPublicacionMaterial.Publicado);
@@ -352,55 +428,90 @@ public sealed class MaterialServicio(
         }
     }
 
-    public async Task<(Stream Stream, string Mime, string Nombre)?> AbrirAsync(int id)
+    public Task<ArchivoMaterialAcceso?> VisualizarAsync(
+        int id,
+        CancellationToken ct = default) =>
+        AbrirArchivoAsync(id, requiereDescarga: false, ct);
+
+    public Task<ArchivoMaterialAcceso?> DescargarAsync(
+        int id,
+        CancellationToken ct = default) =>
+        AbrirArchivoAsync(id, requiereDescarga: true, ct);
+
+    private async Task<ArchivoMaterialAcceso?> AbrirArchivoAsync(
+        int id,
+        bool requiereDescarga,
+        CancellationToken ct)
     {
         var material = await contexto.Materiales
             .AsNoTracking()
             .Include(x => x.Archivo)
-            .FirstOrDefaultAsync(x => x.Id == id);
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
 
         if (material?.Archivo is null)
             return null;
 
-        var docenteId = await acceso.ObtenerDocenteIdAsync();
-        var alumnoId = await acceso.ObtenerAlumnoIdAsync();
+        var perfil = await acceso.ObtenerContextoUsuarioAsync();
         bool permitido;
+        bool puedeDescargar;
 
-        if (docenteId.HasValue)
+        if (acceso.EsOperadorInstitucional)
         {
-            permitido = await PuedeGestionarUnidadAsync(material.UnidadId);
+            permitido = await PuedeGestionarUnidadAsync(material.UnidadId, ct);
+            puedeDescargar = permitido;
         }
-        else if (alumnoId.HasValue)
+        else if (perfil.DocenteId.HasValue)
+        {
+            permitido = await PuedeGestionarUnidadAsync(material.UnidadId, ct);
+            puedeDescargar = permitido;
+        }
+        else if (perfil.AlumnoId.HasValue)
         {
             var ahora = DateTime.UtcNow;
-            permitido = material.Estado == EstadoPublicacionMaterial.Publicado && material.Descargable && await contexto.UnidadesAsignaciones.AnyAsync(unidadAsignacion =>
-                unidadAsignacion.UnidadId == material.UnidadId &&
-                unidadAsignacion.Asignacion.Estado == EstadoRegistro.Activo &&
-                unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo &&
-                unidadAsignacion.Estado == EstadoPublicacionUnidad.Publicada &&
-                (!unidadAsignacion.FechaDisponibilidad.HasValue || unidadAsignacion.FechaDisponibilidad <= ahora) &&
-                (!unidadAsignacion.FechaCierreAcceso.HasValue || unidadAsignacion.FechaCierreAcceso >= ahora) &&
-                contexto.Inscripciones.Any(inscripcion =>
-                    inscripcion.AlumnoId == alumnoId.Value &&
-                    inscripcion.SeccionId == unidadAsignacion.Asignacion.SeccionId &&
-                    inscripcion.Estado == EstadoInscripcion.Activa &&
-                    inscripcion.Seccion.CicloEscolar.Activo));
+            permitido = material.Estado == EstadoPublicacionMaterial.Publicado &&
+                await contexto.UnidadesAsignaciones.AnyAsync(unidadAsignacion =>
+                    unidadAsignacion.UnidadId == material.UnidadId &&
+                    unidadAsignacion.Asignacion.Estado == EstadoRegistro.Activo &&
+                    unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo &&
+                    unidadAsignacion.Estado == EstadoPublicacionUnidad.Publicada &&
+                    (!unidadAsignacion.FechaDisponibilidad.HasValue ||
+                        unidadAsignacion.FechaDisponibilidad <= ahora) &&
+                    (!unidadAsignacion.FechaCierreAcceso.HasValue ||
+                        unidadAsignacion.FechaCierreAcceso >= ahora) &&
+                    contexto.Inscripciones.Any(inscripcion =>
+                        inscripcion.AlumnoId == perfil.AlumnoId.Value &&
+                        inscripcion.SeccionId == unidadAsignacion.Asignacion.SeccionId &&
+                        inscripcion.CicloEscolarId ==
+                            unidadAsignacion.Asignacion.Seccion.CicloEscolarId &&
+                        inscripcion.Estado == EstadoInscripcion.Activa &&
+                        inscripcion.Seccion.CicloEscolar.Activo),
+                    ct);
+            puedeDescargar = permitido && material.Descargable;
         }
         else
         {
-            permitido = true;
+            permitido = false;
+            puedeDescargar = false;
         }
 
-        if (!permitido)
+        if (!permitido || (requiereDescarga && !puedeDescargar))
             return null;
 
-        var stream = await archivosFisicos.AbrirLecturaAsync(material.Archivo.ClaveAlmacenamiento);
+        var stream = await archivosFisicos.AbrirLecturaAsync(
+            material.Archivo.ClaveAlmacenamiento,
+            ct);
         return stream is null
             ? null
-            : (stream, material.Archivo.TipoMime, material.Archivo.NombreOriginal);
+            : new ArchivoMaterialAcceso(
+                stream,
+                material.Archivo.TipoMime,
+                material.Archivo.NombreOriginal,
+                puedeDescargar);
     }
 
-    private async Task<bool> PuedeGestionarUnidadAsync(int unidadId)
+    private async Task<bool> PuedeGestionarUnidadAsync(
+        int unidadId,
+        CancellationToken ct = default)
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         if (acceso.EsOperadorInstitucional)
@@ -408,7 +519,8 @@ public sealed class MaterialServicio(
             return await contexto.UnidadesAsignaciones.AnyAsync(x =>
                 x.UnidadId == unidadId &&
                 x.Asignacion.Estado == EstadoRegistro.Activo &&
-                x.Asignacion.Seccion.CicloEscolar.Activo);
+                x.Asignacion.Seccion.CicloEscolar.Activo,
+                ct);
         }
 
         if (!perfil.DocenteId.HasValue)
@@ -418,19 +530,44 @@ public sealed class MaterialServicio(
             x.UnidadId == unidadId &&
             x.Asignacion.DocenteId == perfil.DocenteId.Value &&
             x.Asignacion.Estado == EstadoRegistro.Activo &&
-            x.Asignacion.Seccion.CicloEscolar.Activo);
+            x.Asignacion.Seccion.CicloEscolar.Activo,
+            ct);
     }
 
     private static ResultadoOperacion? ValidarOrigen(FormularioMaterial modelo, bool existeArchivoActual)
     {
+        var tieneArchivo = modelo.Archivo is not null;
+        var tieneUrl = !string.IsNullOrWhiteSpace(modelo.UrlExterna);
+
         if (modelo.Tipo == TipoMaterial.Enlace)
         {
-            return string.IsNullOrWhiteSpace(modelo.UrlExterna)
-                ? ResultadoOperacion.Validacion(nameof(modelo.UrlExterna), "Ingrese la URL del material.")
-                : null;
+            if (tieneArchivo)
+                return ResultadoOperacion.Validacion(
+                    nameof(modelo.Archivo),
+                    "Un enlace no puede incluir un archivo adjunto.");
+
+            if (!tieneUrl)
+                return ResultadoOperacion.Validacion(
+                    nameof(modelo.UrlExterna),
+                    "Ingrese la URL del material.");
+
+            if (!Uri.TryCreate(Limpiar(modelo.UrlExterna), UriKind.Absolute, out var url) ||
+                (url.Scheme != Uri.UriSchemeHttps && url.Scheme != Uri.UriSchemeHttp))
+            {
+                return ResultadoOperacion.Validacion(
+                    nameof(modelo.UrlExterna),
+                    "Ingrese una URL HTTP o HTTPS válida. Se recomienda HTTPS.");
+            }
+
+            return null;
         }
 
-        if (modelo.Archivo is null && !existeArchivoActual)
+        if (tieneUrl)
+            return ResultadoOperacion.Validacion(
+                nameof(modelo.UrlExterna),
+                "Un material con archivo no puede incluir una URL externa.");
+
+        if (!tieneArchivo && !existeArchivoActual)
             return ResultadoOperacion.Validacion(nameof(modelo.Archivo), "Seleccione el archivo del material.");
 
         return null;
@@ -440,7 +577,7 @@ public sealed class MaterialServicio(
     {
         NombreOriginal = guardado.NombreOriginal,
         ClaveAlmacenamiento = guardado.ClaveAlmacenamiento,
-        TipoMime = guardado.TipoMime,
+        TipoMime = ObtenerMimeSeguro(guardado.NombreOriginal),
         TamanoBytes = guardado.TamanoBytes,
         HashSha256 = guardado.HashSha256,
         SubidoPorUsuarioId = usuarioId,
@@ -449,4 +586,93 @@ public sealed class MaterialServicio(
 
     private static string? Limpiar(string? valor) =>
         string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
+
+    private async Task EliminarArchivoAnteriorAsync(
+        Archivo archivo,
+        CancellationToken ct)
+    {
+        try
+        {
+            await archivosFisicos.EliminarAsync(archivo.ClaveAlmacenamiento, ct);
+        }
+        catch
+        {
+            // Se conserva el registro para no perder la referencia de limpieza
+            // si el almacenamiento físico no está disponible temporalmente.
+            return;
+        }
+
+        await using var transaccion = await contexto.Database.BeginTransactionAsync(ct);
+        try
+        {
+            var sigueEnUso = await contexto.Materiales
+                .AnyAsync(x => x.ArchivoId == archivo.Id, ct);
+            var registro = await contexto.Archivos
+                .FirstOrDefaultAsync(x => x.Id == archivo.Id, ct);
+
+            if (!sigueEnUso && registro is not null)
+            {
+                contexto.Archivos.Remove(registro);
+                await contexto.SaveChangesAsync(ct);
+            }
+
+            await transaccion.CommitAsync(ct);
+        }
+        catch
+        {
+            await transaccion.RollbackAsync(ct);
+        }
+    }
+
+    private static bool EsConflictoDeOrden(Exception excepcion)
+    {
+        for (var actual = excepcion; actual is not null; actual = actual.InnerException!)
+        {
+            if (actual is PostgresException postgres &&
+                (postgres.SqlState == PostgresErrorCodes.SerializationFailure ||
+                 postgres.SqlState == PostgresErrorCodes.DeadlockDetected ||
+                 postgres.SqlState == PostgresErrorCodes.UniqueViolation &&
+                 string.Equals(
+                     postgres.ConstraintName,
+                     "IX_Materiales_UnidadId_Orden",
+                     StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            if (actual.Message.Contains(
+                    "IX_Materiales_UnidadId_Orden",
+                    StringComparison.OrdinalIgnoreCase) ||
+                actual.Message.Contains(
+                    "Materiales.UnidadId, Materiales.Orden",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string ObtenerMimeSeguro(string nombre) =>
+        Path.GetExtension(nombre).ToLowerInvariant() switch
+        {
+            ".pdf" => "application/pdf",
+            ".txt" => "text/plain",
+            ".csv" => "text/csv",
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".webp" => "image/webp",
+            ".mp3" => "audio/mpeg",
+            ".wav" => "audio/wav",
+            ".mp4" => "video/mp4",
+            ".webm" => "video/webm",
+            ".doc" => "application/msword",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".xls" => "application/vnd.ms-excel",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".ppt" => "application/vnd.ms-powerpoint",
+            ".pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            _ => "application/octet-stream"
+        };
 }

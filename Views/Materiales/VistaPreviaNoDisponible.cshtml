@@ -1,0 +1,30 @@
+@model Proyecto_Final.ViewModels.Materiales.VistaPreviaMaterial
+
+@{
+    ViewData["Title"] = "Vista previa no disponible";
+}
+
+<div class="container-fluid">
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <h2 class="fw-bold mb-3">Vista previa no disponible</h2>
+            <p class="text-muted">
+                El navegador no puede mostrar <strong>@Model.Nombre</strong> de forma integrada.
+            </p>
+
+            @if (Model.PuedeDescargar)
+            {
+                <a asp-action="Descargar" asp-route-id="@Model.Id"
+                   class="app-btn app-btn-soft-primary">Descargar archivo</a>
+            }
+            else
+            {
+                <div class="app-alert app-alert-info mb-0">
+                    El docente no ha autorizado la descarga de este archivo.
+                </div>
+            }
+
+            <a asp-action="Index" class="app-btn app-btn-secondary ms-2">Volver</a>
+        </div>
+    </div>
+</div>

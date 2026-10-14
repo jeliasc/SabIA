@@ -11,7 +11,7 @@
 
     <div class="card shadow-sm border-0">
         <div class="card-body p-4">
-            <form method="post" enctype="multipart/form-data">
+            <form method="post" enctype="multipart/form-data" data-form-material>
                 @Html.AntiForgeryToken()
 
                 <partial name="Formulario" model="Model" />
@@ -33,4 +33,5 @@
 @section Scripts
 {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/materiales.js" asp-append-version="true"></script>
 }
