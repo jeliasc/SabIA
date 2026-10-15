@@ -41,12 +41,77 @@ using Proyecto_Final.Servicios.Auditoria;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// CONFIGURAR CABECERAS REENVIADAS (PROXY / CLOUDFLARE / NGINX)
+// CONFIGURAR CABECERAS REENVIADAS (PROXY INVERSO)
+var configuracionProxySeguro = builder.Configuration.GetSection("ProxySeguro");
+var confiarEnProxyRender = configuracionProxySeguro.GetValue<bool>("ConfiarEnProxyRender");
+var ejecutandoseEnRender = string.Equals(
+    Environment.GetEnvironmentVariable("RENDER"),
+    "true",
+    StringComparison.OrdinalIgnoreCase);
+
+if (confiarEnProxyRender && !ejecutandoseEnRender)
+{
+    throw new InvalidOperationException(
+        "ProxySeguro:ConfiarEnProxyRender solo puede habilitarse dentro de Render.");
+}
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    options.KnownNetworks.Clear();
+    options.ForwardLimit = 1;
+    options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
+
+    if (confiarEnProxyRender)
+    {
+        // Render no publica direcciones estaticas para sus proxies. Dejar ambas
+        // colecciones vacias confia en cualquier par directo y solo es seguro
+        // cuando el puerto de la aplicacion esta aislado por la red de Render.
+        return;
+    }
+
+    // Comportamiento seguro por defecto: solo loopback y los origenes
+    // autorizados expresamente en la configuracion.
+    options.KnownProxies.Add(IPAddress.Loopback);
+    options.KnownProxies.Add(IPAddress.IPv6Loopback);
+
+    foreach (var entrada in configuracionProxySeguro
+        .GetSection("ProxiesConfiables")
+        .GetChildren())
+    {
+        var valor = entrada.Value;
+        if (string.IsNullOrWhiteSpace(valor))
+        {
+            continue;
+        }
+
+        if (!IPAddress.TryParse(valor, out var proxy))
+        {
+            throw new InvalidOperationException(
+                $"La direccion '{valor}' de ProxySeguro:ProxiesConfiables no es valida.");
+        }
+
+        options.KnownProxies.Add(proxy);
+    }
+
+    foreach (var entrada in configuracionProxySeguro
+        .GetSection("RedesConfiables")
+        .GetChildren())
+    {
+        var valor = entrada.Value;
+        if (string.IsNullOrWhiteSpace(valor))
+        {
+            continue;
+        }
+
+        if (!System.Net.IPNetwork.TryParse(valor, out var red))
+        {
+            throw new InvalidOperationException(
+                $"La red '{valor}' de ProxySeguro:RedesConfiables no es valida.");
+        }
+
+        options.KnownIPNetworks.Add(red);
+    }
 });
 
 builder.Services.AddScoped<AuditoriaSaveChangesInterceptor>();
@@ -198,10 +263,7 @@ builder.Services.AddHttpClient<IIaServicio, IaServicio>((serviceProvider, client
 var app = builder.Build();
 
 // ACTIVAR CABECERAS REENVIADAS AL INICIO DEL PIPELINE
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
+app.UseForwardedHeaders();
 
 var loggerArchivos = app.Services
     .GetRequiredService<ILoggerFactory>()

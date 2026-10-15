@@ -80,7 +80,7 @@
                                 </td>
                                 <td>@docente.Correo</td>
                                 <td>@(docente.NivelAcademico?.ToString() ?? "Sin registrar")</td>
-                                <td>@docente.AsignacionesActivas</td>
+                                <td class="text-start">@docente.AsignacionesActivas</td>
                                 <td>
                                     <span class="app-badge @(docente.Activo ? "app-badge-success" : "app-badge-danger")">
                                         @(docente.Activo ? "Activo" : "Inactivo")

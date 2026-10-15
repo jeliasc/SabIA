@@ -89,7 +89,7 @@
                                     <div class="text-muted small text-break">@alumno.Correo</div>
                                 </td>
                                 <td>@alumno.GradoSeccion</td>
-                                <td>@(alumno.Ciclo?.ToString() ?? "—")</td>
+                                <td class="text-start">@(alumno.Ciclo?.ToString() ?? "—")</td>
                                 <td>@alumno.Encargados</td>
                                 <td>
                                     <span class="app-badge @(alumno.Activo ? "app-badge-success" : "app-badge-danger")">

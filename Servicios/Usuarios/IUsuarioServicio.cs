@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Proyecto_Final.Models;
 using Proyecto_Final.ViewModels.Usuarios;
 
@@ -7,6 +7,8 @@ namespace Proyecto_Final.Servicios.Usuarios;
 public interface IUsuarioServicio
 {
     Task<List<Usuario>> ObtenerTodosAsync();
+
+    Task<Dictionary<string, string>> ObtenerRolesParaListadoAsync();
 
     Task<List<string>> ObtenerRolesDisponiblesAsync(ClaimsPrincipal usuarioActual);
 
