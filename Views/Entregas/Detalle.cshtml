@@ -1,0 +1,83 @@
+@model Proyecto_Final.ViewModels.Entregas.DetalleEntrega
+
+@{
+    ViewData["Title"] = "Historial de intentos";
+    var seleccionado = Model.Intentos.FirstOrDefault(x => x.Id == Model.EntregaSeleccionadaId)
+        ?? Model.Intentos.FirstOrDefault();
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Historial de intentos</h2>
+            <p class="text-muted mb-0">@Model.Tarea</p>
+        </div>
+        <a asp-action="Index" class="app-btn app-btn-secondary">Volver</a>
+    </div>
+
+    @if (Model.CalificacionEfectiva.HasValue)
+    {
+        <div class="app-alert app-alert-info mb-3">
+            Calificación efectiva: <strong>@Model.CalificacionEfectiva / @Model.PunteoMaximo</strong>.
+            @if (Model.TieneIntentoPendienteEvaluacion)
+            {
+                <span> Existe un intento más reciente pendiente de evaluación.</span>
+            }
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <label class="form-label" for="selector-intento">Seleccionar intento</label>
+            <select id="selector-intento" class="form-select mb-4" data-selector-intento>
+                @foreach (var intento in Model.Intentos)
+                {
+                    <option value="@intento.Id" selected="@(intento.Id == seleccionado?.Id)">
+                        Intento @intento.NumeroEnvio — @(intento.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Pendiente")
+                    </option>
+                }
+            </select>
+
+            @foreach (var intento in Model.Intentos)
+            {
+                <section data-intento-id="@intento.Id" hidden="@(intento.Id == seleccionado?.Id ? null : "hidden")">
+                    <h3 class="h5">Intento @intento.NumeroEnvio</h3>
+                    <dl class="row mb-3">
+                        <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">@intento.Estado</dd>
+                        <dt class="col-sm-3">Fecha de entrega</dt><dd class="col-sm-9">@(intento.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Pendiente")</dd>
+                        @if (intento.Calificacion.HasValue) { <dt class="col-sm-3">Calificación</dt><dd class="col-sm-9">@intento.Calificacion / @Model.PunteoMaximo</dd> }
+                        @if (!string.IsNullOrWhiteSpace(intento.Retroalimentacion)) { <dt class="col-sm-3">Retroalimentación</dt><dd class="col-sm-9 white-space-pre-line">@intento.Retroalimentacion</dd> }
+                        @if (!string.IsNullOrWhiteSpace(intento.MotivoReapertura)) { <dt class="col-sm-3">Reapertura</dt><dd class="col-sm-9">@intento.MotivoReapertura</dd> }
+                    </dl>
+                    @if (intento.Archivos.Count > 0)
+                    {
+                        <div class="fw-semibold mb-2">Archivos</div>
+                        <div class="d-flex flex-column gap-2">
+                            @foreach (var archivo in intento.Archivos)
+                            {
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <span>@archivo.Nombre</span>
+                                    @if (archivo.PuedeVisualizar)
+                                    {
+                                        <a asp-action="VisualizarArchivo" asp-route-id="@archivo.Id" target="_blank" rel="noopener" class="app-btn app-btn-soft-secondary app-btn-sm"><i class="bi bi-eye"></i> Visualizar</a>
+                                    }
+                                    <a asp-action="Archivo" asp-route-id="@archivo.Id" class="app-btn app-btn-soft-primary app-btn-sm"><i class="bi bi-download"></i> Descargar</a>
+                                </div>
+                            }
+                        </div>
+                    }
+                </section>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelector('[data-selector-intento]')?.addEventListener('change', function () {
+            document.querySelectorAll('[data-intento-id]').forEach(function (elemento) {
+                elemento.hidden = elemento.dataset.intentoId !== this.value;
+            }, this);
+        });
+    </script>
+}

@@ -10,7 +10,7 @@ public interface ITareaServicio
 
     Task PrepararAsync(FormularioTarea m);
 
-    Task<ResultadoOperacion> CrearAsync(
+    Task<ResultadoOperacion<int>> CrearAsync(
         CrearTarea m,
         CancellationToken ct
     );

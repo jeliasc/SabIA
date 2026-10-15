@@ -32,6 +32,11 @@ public class Tarea
 
     public bool PermitirEntregaTardia { get; set; }
 
+    // Solo aplica a tareas de entrega de archivo. Null representa intentos
+    // ilimitados y evita usar un valor centinela que pueda confundirse con un
+    // límite válido.
+    public int? MaximoIntentosEntrega { get; set; }
+
     public DateTime FechaCreacion { get; set; }
     public DateTime? FechaPublicacion { get; set; }
     public DateTime? FechaCierre { get; set; }

@@ -2300,6 +2300,9 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Property<string>("Instrucciones")
                         .HasColumnType("text");
 
+                    b.Property<int?>("MaximoIntentosEntrega")
+                        .HasColumnType("integer");
+
                     b.Property<int>("NumeroVersion")
                         .HasColumnType("integer");
 
@@ -2340,6 +2343,8 @@ namespace Proyecto_Final.Data.Migraciones
                     b.ToTable("Tareas", t =>
                         {
                             t.HasCheckConstraint("CK_Tareas_Fechas", "\"FechaDisponibilidad\" IS NULL OR \"FechaLimite\" IS NULL OR \"FechaDisponibilidad\" <= \"FechaLimite\"");
+
+                            t.HasCheckConstraint("CK_Tareas_MaximoIntentosEntrega", "(\"Tipo\" = 1 AND (\"MaximoIntentosEntrega\" IS NULL OR \"MaximoIntentosEntrega\" IN (1, 2, 3))) OR (\"Tipo\" <> 1 AND \"MaximoIntentosEntrega\" IS NULL)");
 
                             t.HasCheckConstraint("CK_Tareas_NumeroVersion", "\"NumeroVersion\" >= 1");
 

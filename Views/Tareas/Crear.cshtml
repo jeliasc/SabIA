@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Nueva tarea";
+    var esCuestionario = Model.Tipo == Proyecto_Final.Models.TipoTarea.Cuestionario;
 }
 
 <div class="container-fluid">
@@ -12,8 +13,10 @@
     <div class="card shadow-sm border-0">
         <div class="card-body p-4">
             <form method="post"
-                  enctype="multipart/form-data">
+                  enctype="multipart/form-data"
+                  data-formulario-tarea>
                 @Html.AntiForgeryToken()
+                <input asp-for="TokenCreacion" type="hidden" />
 
                 <partial name="Formulario" model="Model" />
 
@@ -23,8 +26,11 @@
                         Cancelar
                     </a>
 
-                    <button class="app-btn app-btn-soft-primary">
-                        Guardar borrador
+                    <button class="app-btn app-btn-soft-primary"
+                            data-accion-tarea>
+                        <span data-texto-accion-tarea>
+                            @(esCuestionario ? "Configurar cuestionario" : "Guardar borrador")
+                        </span>
                     </button>
                 </div>
             </form>
@@ -35,4 +41,5 @@
 @section Scripts
 {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/tareas-formulario.js" asp-append-version="true"></script>
 }

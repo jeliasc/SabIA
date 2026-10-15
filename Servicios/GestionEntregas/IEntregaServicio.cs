@@ -10,6 +10,8 @@ public interface IEntregaServicio
 
     Task<EntregarTarea?> ObtenerParaEntregarAsync(int id);
 
+    Task<DetalleEntrega?> ObtenerDetalleAsync(int id);
+
     Task<ResultadoOperacion> EntregarAsync(
         EntregarTarea m,
         CancellationToken ct
@@ -26,6 +28,10 @@ public interface IEntregaServicio
     Task<ResultadoOperacion> ReabrirAsync(ReabrirEntrega m);
 
     Task<(Stream Stream, string Mime, string Nombre)?> DescargarArchivoAsync(
+        int archivoId
+    );
+
+    Task<(Stream Stream, string Mime, string Nombre)?> VisualizarArchivoAsync(
         int archivoId
     );
 

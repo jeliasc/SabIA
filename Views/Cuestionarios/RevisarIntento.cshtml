@@ -27,9 +27,14 @@
                 }
             </p>
         </div>
-        <a asp-action="Resultados" asp-route-id="@Model.CuestionarioId" class="app-btn app-btn-soft-secondary">
-            Volver a resultados
-        </a>
+        <div class="d-grid d-md-flex align-items-center gap-2">
+            <a asp-action="Resultados" asp-route-id="@Model.CuestionarioId" class="app-btn app-btn-soft-primary">
+                Ver resultados generales
+            </a>
+            <a asp-controller="Entregas" asp-action="Index" class="app-btn app-btn-soft-secondary">
+                Volver a entrega
+            </a>
+        </div>
     </div>
 
     <div class="card shadow-sm border-0 mb-4">
@@ -40,104 +45,105 @@
             </div>
             <div>
                 <div class="text-muted small">Punteo</div>
-                <div class="fs-3 fw-bold">@Model.PunteoObtenido.ToString("0.##") / @Model.PunteoTotal.ToString("0.##")</div>
+                <div class="fs-3 fw-bold">@Model.PunteoObtenido.ToString("0.##") / @Model.PunteoTotal.ToString("0.##")
+                </div>
             </div>
             <div>
                 <div class="text-muted small">Nota aplicada a la tarea</div>
-                <div class="fs-3 fw-bold">@(Model.NotaEntrega.HasValue ? $"{Model.NotaEntrega:0.##} / {Model.PunteoMaximoTarea:0.##}" : "-")</div>
+                <div class="fs-3 fw-bold">@(Model.NotaEntrega.HasValue ? $"{Model.NotaEntrega:0.##} /       {Model.PunteoMaximoTarea:0.##}" : "-")</div>
             </div>
         </div>
     </div>
 
     @if (Model.Estado == EstadoIntentoCuestionario.EnCurso)
     {
-        <div class="alert alert-info">El alumno todavía está resolviendo este intento. Se muestran las respuestas guardadas hasta ahora.</div>
-    }
+        <div class="alert alert-info">El alumno todavía está resolviendo este intento. Se muestran las respuestas guardadas
+            hasta ahora.</div>
+        }
 
-    @foreach (var d in Model.Detalle)
-    {
-        var borde = d.SinResponder ? "border-secondary" : d.Correcta ? "border-success" : "border-danger";
-        <div class="card shadow-sm border-0 mb-3 border-start border-4 @borde">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between gap-3 mb-2">
-                    <div class="fw-semibold" style="white-space: pre-line">@d.Numero. @d.Enunciado</div>
-                    <div class="text-nowrap align-self-start">
-                        @if (d.SinResponder)
+        @foreach (var d in Model.Detalle)
+        {
+            var borde = d.SinResponder ? "border-secondary" : d.Correcta ? "border-success" : "border-danger";
+            <div class="card shadow-sm border-0 mb-3 border-start border-4 @borde">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between gap-3 mb-2">
+                        <div class="fw-semibold" style="white-space: pre-line">@d.Numero. @d.Enunciado</div>
+                        <div class="text-nowrap align-self-start">
+                            @if (d.SinResponder)
+                            {
+                                <span class="badge text-bg-secondary">Sin responder</span>
+                            }
+                            else if (d.Correcta)
+                            {
+                                <span class="badge text-bg-success">Correcta</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-danger">Incorrecta</span>
+                            }
+                            <span class="small text-muted ms-1">@d.PunteoObtenido.ToString("0.##") /
+                                @d.Punteo.ToString("0.##")</span>
+                            </div>
+                        </div>
+
+                        <div class="small">
+                            <div><span class="text-muted">Respuesta del alumno:</span> @d.RespuestaAlumno</div>
+                            <div><span class="text-muted">Respuesta correcta:</span> @d.RespuestaCorrecta</div>
+                        </div>
+
+                        @if (d.AjusteManual)
                         {
-                            <span class="badge text-bg-secondary">Sin responder</span>
+                            <div class="small text-success mt-2">
+                                <i class="bi bi-person-check me-1"></i>
+                                Aceptada manualmente@(d.AjustadoPor is null ? "" : $" por {d.AjustadoPor}")@(d.FechaAjuste.HasValue ? $" el {d.FechaAjuste.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : "").
+                            </div>
                         }
-                        else if (d.Correcta)
+
+                        @if (Model.PuedeAjustar && d.Tipo == TipoPregunta.TextoCorto && d.RespuestaId.HasValue && !d.SinResponder)
                         {
-                            <span class="badge text-bg-success">Correcta</span>
+                            @if (!d.Correcta)
+                            {
+                                <form asp-action="AjustarRespuesta" method="post" class="mt-3" data-confirmar-accion-academica
+                                      data-confirmar-titulo="Aceptar respuesta"
+                                      data-confirmar-mensaje="Se otorgarán los puntos de esta pregunta y se recalculará la nota del alumno."
+                                      data-confirmar-texto="Aceptar" data-confirmar-color="#198754">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="respuestaId" value="@d.RespuestaId" />
+                                    <input type="hidden" name="intentoId" value="@Model.IntentoId" />
+                                    <input type="hidden" name="aceptar" value="true" />
+                                    <button type="submit" class="app-btn app-btn-soft-success app-btn-sm">
+                                        <i class="bi bi-check2"></i> Aceptar como correcta
+                                    </button>
+                                </form>
+                            }
+                            else if (d.AjusteManual)
+                            {
+                                <form asp-action="AjustarRespuesta" method="post" class="mt-3" data-confirmar-accion-academica
+                                      data-confirmar-titulo="Revertir ajuste"
+                                      data-confirmar-mensaje="La respuesta volverá a calificarse automáticamente y se recalculará la nota."
+                                      data-confirmar-texto="Revertir" data-confirmar-color="#dc3545">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="respuestaId" value="@d.RespuestaId" />
+                                    <input type="hidden" name="intentoId" value="@Model.IntentoId" />
+                                    <input type="hidden" name="aceptar" value="false" />
+                                    <button type="submit" class="app-btn app-btn-soft-danger app-btn-sm">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Revertir ajuste
+                                    </button>
+                                </form>
+                            }
                         }
-                        else
+
+                        @if (!string.IsNullOrWhiteSpace(d.Retroalimentacion))
                         {
-                            <span class="badge text-bg-danger">Incorrecta</span>
+                            <div class="alert alert-light border mt-3 mb-0 small" style="white-space: pre-line">
+                                <i class="bi bi-lightbulb me-1"></i>@d.Retroalimentacion
+                            </div>
                         }
-                        <span class="small text-muted ms-1">@d.PunteoObtenido.ToString("0.##") / @d.Punteo.ToString("0.##")</span>
                     </div>
                 </div>
-
-                <div class="small">
-                    <div><span class="text-muted">Respuesta del alumno:</span> @d.RespuestaAlumno</div>
-                    <div><span class="text-muted">Respuesta correcta:</span> @d.RespuestaCorrecta</div>
-                </div>
-
-                @if (d.AjusteManual)
-                {
-                    <div class="small text-success mt-2">
-                        <i class="bi bi-person-check me-1"></i>
-                        Aceptada manualmente@(d.AjustadoPor is null ? "" : $" por {d.AjustadoPor}")@(d.FechaAjuste.HasValue ? $" el {d.FechaAjuste.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : "").
-                    </div>
-                }
-
-                @if (Model.PuedeAjustar && d.Tipo == TipoPregunta.TextoCorto && d.RespuestaId.HasValue && !d.SinResponder)
-                {
-                    @if (!d.Correcta)
-                    {
-                        <form asp-action="AjustarRespuesta" method="post" class="mt-3"
-                              data-confirmar-accion-academica
-                              data-confirmar-titulo="Aceptar respuesta"
-                              data-confirmar-mensaje="Se otorgarán los puntos de esta pregunta y se recalculará la nota del alumno."
-                              data-confirmar-texto="Aceptar" data-confirmar-color="#198754">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="respuestaId" value="@d.RespuestaId" />
-                            <input type="hidden" name="intentoId" value="@Model.IntentoId" />
-                            <input type="hidden" name="aceptar" value="true" />
-                            <button type="submit" class="app-btn app-btn-soft-success app-btn-sm">
-                                <i class="bi bi-check2"></i> Aceptar como correcta
-                            </button>
-                        </form>
-                    }
-                    else if (d.AjusteManual)
-                    {
-                        <form asp-action="AjustarRespuesta" method="post" class="mt-3"
-                              data-confirmar-accion-academica
-                              data-confirmar-titulo="Revertir ajuste"
-                              data-confirmar-mensaje="La respuesta volverá a calificarse automáticamente y se recalculará la nota."
-                              data-confirmar-texto="Revertir" data-confirmar-color="#dc3545">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="respuestaId" value="@d.RespuestaId" />
-                            <input type="hidden" name="intentoId" value="@Model.IntentoId" />
-                            <input type="hidden" name="aceptar" value="false" />
-                            <button type="submit" class="app-btn app-btn-soft-danger app-btn-sm">
-                                <i class="bi bi-arrow-counterclockwise"></i> Revertir ajuste
-                            </button>
-                        </form>
-                    }
-                }
-
-                @if (!string.IsNullOrWhiteSpace(d.Retroalimentacion))
-                {
-                    <div class="alert alert-light border mt-3 mb-0 small" style="white-space: pre-line">
-                        <i class="bi bi-lightbulb me-1"></i>@d.Retroalimentacion
-                    </div>
-                }
-            </div>
+            }
         </div>
-    }
-</div>
 
-@section Scripts {
-    <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
-}
+        @section Scripts {
+            <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+        }

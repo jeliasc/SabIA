@@ -30,6 +30,13 @@ public class EntregasController(IEntregaServicio s) : Controller
             : View(m);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Detalle(int id)
+    {
+        var modelo = await s.ObtenerDetalleAsync(id);
+        return modelo == null ? NotFound() : View(modelo);
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Entregas.Entregar)]
@@ -158,6 +165,20 @@ public class EntregasController(IEntregaServicio s) : Controller
         return a == null
             ? NotFound()
             : File(a.Value.Stream, a.Value.Mime, a.Value.Nombre);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> VisualizarArchivo(int id)
+    {
+        var a = await s.VisualizarArchivoAsync(id);
+        if (a == null)
+        {
+            return NotFound();
+        }
+
+        Response.Headers.ContentDisposition =
+            $"inline; filename*=UTF-8''{Uri.EscapeDataString(a.Value.Nombre)}";
+        return File(a.Value.Stream, a.Value.Mime, enableRangeProcessing: true);
     }
 
     private void Err(Servicios.Comunes.ResultadoOperacion r)

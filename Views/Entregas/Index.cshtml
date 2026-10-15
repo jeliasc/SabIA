@@ -22,7 +22,9 @@
     )).Succeeded;
 
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
-    var hayAcciones = !soloLectura && (entregar || cal || reabrir);
+    // El historial es una acción de consulta disponible incluso en modo de
+    // solo lectura; el servicio vuelve a validar el contexto académico.
+    var hayAcciones = true;
 }
 
 <div class="container-fluid">
@@ -131,6 +133,11 @@
                                         </a>
                                     }
 
+                                    <a asp-action="Detalle" asp-route-id="@x.Id"
+                                       class="app-btn app-btn-soft-secondary app-btn-sm">
+                                        Historial
+                                    </a>
+
                                     @if (reabrir && x.PuedeReabrirse)
                                     {
                                         <a asp-action="Reabrir" asp-route-id="@x.Id"
@@ -219,6 +226,11 @@
                             Calificar
                         </a>
                     }
+
+                    <a asp-action="Detalle" asp-route-id="@x.Id"
+                       class="app-btn app-btn-soft-secondary w-100 mt-2">
+                        Ver historial de intentos
+                    </a>
 
                     @if (reabrir && x.PuedeReabrirse)
                     {

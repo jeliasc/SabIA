@@ -475,7 +475,8 @@ public sealed class CalificacionServicio(
                 else
                 {
                     nota = entregas
-                        .Where(x => x.TareaId == actividad.TareaId &&
+                        .Where(x => x.Calificacion.HasValue &&
+                            x.TareaId == actividad.TareaId &&
                             x.AlumnoId == alumno.AlumnoId &&
                             (x.InscripcionId == alumno.InscripcionId || !x.InscripcionId.HasValue))
                         .OrderByDescending(x => x.InscripcionId == alumno.InscripcionId)
@@ -1143,7 +1144,8 @@ public sealed class CalificacionServicio(
                 .Select(x => x.Nota)
                 .FirstOrDefaultAsync();
         return await contexto.Entregas.AsNoTracking()
-            .Where(x => x.TareaId == actividad.TareaId && x.AlumnoId == alumnoId &&
+            .Where(x => x.Calificacion.HasValue &&
+                x.TareaId == actividad.TareaId && x.AlumnoId == alumnoId &&
                 (x.InscripcionId == inscripcionId || !x.InscripcionId.HasValue))
             .OrderByDescending(x => x.InscripcionId == inscripcionId)
             .ThenByDescending(x => x.NumeroEnvio)
@@ -1182,7 +1184,8 @@ public sealed class CalificacionServicio(
         }
 
         var entrega = await contexto.Entregas
-            .Where(x => x.TareaId == actividad.TareaId && x.AlumnoId == solicitud.AlumnoId &&
+            .Where(x => x.Calificacion.HasValue &&
+                x.TareaId == actividad.TareaId && x.AlumnoId == solicitud.AlumnoId &&
                 (x.InscripcionId == solicitud.InscripcionId || !x.InscripcionId.HasValue))
             .OrderByDescending(x => x.InscripcionId == solicitud.InscripcionId)
             .ThenByDescending(x => x.NumeroEnvio)

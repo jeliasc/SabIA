@@ -202,15 +202,46 @@ public sealed class TareaServicio(
             .ToListAsync();
     }
 
-    public async Task<ResultadoOperacion> CrearAsync(
+    public async Task<ResultadoOperacion<int>> CrearAsync(
         CrearTarea m,
         CancellationToken ct)
     {
+        if (m.TokenCreacion == Guid.Empty)
+        {
+            return ResultadoOperacion<int>.Validacion(
+                nameof(m.TokenCreacion),
+                "No fue posible identificar esta solicitud. Recargue el formulario e intente nuevamente."
+            );
+        }
+
         var v = await Val(m);
 
         if (v != null)
         {
-            return v;
+            return ConvertirError<int>(v);
+        }
+
+        var uid = acceso.UsuarioId;
+
+        if (uid == null)
+        {
+            return ResultadoOperacion<int>.Error(
+                "No se pudo identificar al usuario."
+            );
+        }
+
+        var tareaExistenteId = await BuscarCreacionExistenteAsync(
+            m.TokenCreacion,
+            uid,
+            m.Tipo,
+            ct);
+
+        if (tareaExistenteId.HasValue)
+        {
+            return ResultadoOperacion<int>.Correcto(
+                tareaExistenteId.Value,
+                MensajeCreacion(m.Tipo)
+            );
         }
 
         ArchivoGuardado? g = null;
@@ -225,7 +256,7 @@ public sealed class TareaServicio(
 
             if (!r.Exitoso || r.Datos == null)
             {
-                return new ResultadoOperacion
+                return new ResultadoOperacion<int>
                 {
                     Exitoso = false,
                     Mensaje = r.Mensaje,
@@ -234,15 +265,6 @@ public sealed class TareaServicio(
             }
 
             g = r.Datos;
-        }
-
-        var uid = acceso.UsuarioId;
-
-        if (uid == null)
-        {
-            return ResultadoOperacion.Error(
-                "No se pudo identificar al usuario."
-            );
         }
 
         await using var tx =
@@ -262,13 +284,23 @@ public sealed class TareaServicio(
                 FechaDisponibilidad = HoraGuatemala.ParaGuardar(m.FechaDisponibilidad),
                 FechaLimite = HoraGuatemala.ParaGuardar(m.FechaLimite),
                 PermitirEntregaTardia = m.PermitirEntregaTardia,
+                MaximoIntentosEntrega = MaximoIntentosEntrega(m),
                 FechaCreacion = DateTime.UtcNow,
                 CreadoPorUsuarioId = uid,
-                GrupoVersionId = Guid.NewGuid(),
+                GrupoVersionId = m.TokenCreacion,
                 NumeroVersion = 1
             };
 
             c.Tareas.Add(t);
+
+            if (m.Tipo == TipoTarea.Cuestionario)
+            {
+                c.Cuestionarios.Add(new Cuestionario
+                {
+                    Tarea = t,
+                    Origen = OrigenCuestionario.Manual
+                });
+            }
 
             await c.SaveChangesAsync(ct);
 
@@ -302,8 +334,9 @@ public sealed class TareaServicio(
 
             await tx.CommitAsync(ct);
 
-            return ResultadoOperacion.Correcto(
-                "La tarea fue guardada como borrador."
+            return ResultadoOperacion<int>.Correcto(
+                t.Id,
+                MensajeCreacion(m.Tipo)
             );
         }
         catch
@@ -315,6 +348,23 @@ public sealed class TareaServicio(
                 await fisico.EliminarAsync(
                     g.ClaveAlmacenamiento,
                     ct
+                );
+            }
+
+            c.ChangeTracker.Clear();
+            await tx.DisposeAsync();
+
+            tareaExistenteId = await BuscarCreacionExistenteAsync(
+                m.TokenCreacion,
+                uid,
+                m.Tipo,
+                ct);
+
+            if (tareaExistenteId.HasValue)
+            {
+                return ResultadoOperacion<int>.Correcto(
+                    tareaExistenteId.Value,
+                    MensajeCreacion(m.Tipo)
                 );
             }
 
@@ -340,6 +390,7 @@ public sealed class TareaServicio(
                 Titulo = x.Titulo,
                 Instrucciones = x.Instrucciones,
                 PunteoMaximo = x.PunteoMaximo,
+                MaximoIntentosEntrega = x.MaximoIntentosEntrega,
                 FechaDisponibilidad = x.FechaDisponibilidad,
                 FechaLimite = x.FechaLimite,
                 PermitirEntregaTardia = x.PermitirEntregaTardia
@@ -427,6 +478,7 @@ public sealed class TareaServicio(
             t.FechaDisponibilidad = HoraGuatemala.ParaGuardar(m.FechaDisponibilidad);
             t.FechaLimite = HoraGuatemala.ParaGuardar(m.FechaLimite);
             t.PermitirEntregaTardia = m.PermitirEntregaTardia;
+            t.MaximoIntentosEntrega = MaximoIntentosEntrega(m);
 
             if (g != null)
             {
@@ -509,14 +561,11 @@ public sealed class TareaServicio(
 
         if (
             t.Tipo == TipoTarea.Cuestionario &&
-            !await c.Cuestionarios.AnyAsync(x =>
-                x.TareaId == id &&
-                x.Preguntas.Any()
-            )
+            !await CuestionarioListoParaPublicarAsync(id)
         )
         {
             return ResultadoOperacion.Error(
-                "Debe configurar el cuestionario y agregar al menos una pregunta antes de publicar la tarea."
+                "Debe completar la configuración del cuestionario y agregar al menos una pregunta válida antes de publicar la tarea."
             );
         }
 
@@ -617,6 +666,31 @@ public sealed class TareaServicio(
     private async Task<ResultadoOperacion?> Val(
         FormularioTarea m)
     {
+        if (!Enum.IsDefined(m.Tipo))
+        {
+            return ResultadoOperacion.Validacion(
+                nameof(m.Tipo),
+                "Seleccione un tipo de tarea válido."
+            );
+        }
+
+        if (m.Tipo == TipoTarea.Cuestionario && m.Archivo != null)
+        {
+            return ResultadoOperacion.Validacion(
+                nameof(m.Archivo),
+                "Los cuestionarios no admiten archivos adjuntos."
+            );
+        }
+
+        if (m.Tipo == TipoTarea.Archivo &&
+            m.MaximoIntentosEntrega is not null and not (1 or 2 or 3))
+        {
+            return ResultadoOperacion.Validacion(
+                nameof(m.MaximoIntentosEntrega),
+                "Seleccione 1, 2, 3 o intentos ilimitados."
+            );
+        }
+
         if (!await Puede(m.AsignacionId))
         {
             return ResultadoOperacion.Validacion(
@@ -656,6 +730,69 @@ public sealed class TareaServicio(
 
     private async Task<bool> Puede(int id)
         => await acceso.PuedeGestionarAsignacionVigenteAsync(id);
+
+    private static int? MaximoIntentosEntrega(FormularioTarea modelo) =>
+        modelo.Tipo == TipoTarea.Archivo
+            ? modelo.MaximoIntentosEntrega
+            : null;
+
+    private async Task<int?> BuscarCreacionExistenteAsync(
+        Guid tokenCreacion,
+        string usuarioId,
+        TipoTarea tipo,
+        CancellationToken ct) =>
+        await c.Tareas
+            .AsNoTracking()
+            .Where(x =>
+                x.GrupoVersionId == tokenCreacion &&
+                x.NumeroVersion == 1 &&
+                x.CreadoPorUsuarioId == usuarioId &&
+                x.Tipo == tipo)
+            .Select(x => (int?)x.Id)
+            .FirstOrDefaultAsync(ct);
+
+    private Task<bool> CuestionarioListoParaPublicarAsync(int tareaId) =>
+        c.Cuestionarios.AnyAsync(cuestionario =>
+            cuestionario.TareaId == tareaId &&
+            cuestionario.MaximoIntentos >= 0 &&
+            (
+                cuestionario.ModalidadTiempo == ModalidadTiempoCuestionario.SinLimite ||
+                cuestionario.ModalidadTiempo == ModalidadTiempoCuestionario.TiempoGeneral &&
+                cuestionario.TiempoGeneralSegundos > 0 ||
+                cuestionario.ModalidadTiempo == ModalidadTiempoCuestionario.TiempoPorPregunta &&
+                cuestionario.TiempoPorPreguntaSegundos > 0
+            ) &&
+            cuestionario.Preguntas.Any() &&
+            cuestionario.Preguntas.All(pregunta =>
+                pregunta.Punteo > 0 &&
+                (
+                    pregunta.Tipo == TipoPregunta.TextoCorto &&
+                    pregunta.RespuestasAceptadas.Any() ||
+                    (
+                        pregunta.Tipo == TipoPregunta.SeleccionUnica ||
+                        pregunta.Tipo == TipoPregunta.SeleccionMultiple ||
+                        pregunta.Tipo == TipoPregunta.VerdaderoFalso
+                    ) &&
+                    pregunta.Opciones.Count >= 2 &&
+                    pregunta.Opciones.Any(opcion => opcion.EsCorrecta) &&
+                    (
+                        pregunta.Tipo == TipoPregunta.SeleccionMultiple ||
+                        pregunta.Opciones.Count(opcion => opcion.EsCorrecta) == 1
+                    )
+                )));
+
+    private static string MensajeCreacion(TipoTarea tipo) =>
+        tipo == TipoTarea.Cuestionario
+            ? "La tarea fue guardada como borrador. Continúe con la configuración del cuestionario."
+            : "La tarea fue guardada como borrador.";
+
+    private static ResultadoOperacion<T> ConvertirError<T>(ResultadoOperacion resultado) =>
+        new()
+        {
+            Exitoso = false,
+            Mensaje = resultado.Mensaje,
+            Errores = resultado.Errores
+        };
 
     private static string? Lim(string? x) =>
         string.IsNullOrWhiteSpace(x)

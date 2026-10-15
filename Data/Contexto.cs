@@ -988,6 +988,11 @@ public class Contexto
             .HasForeignKey(e => e.TareaId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Entity<Tarea>()
+            .ToTable(tabla => tabla.HasCheckConstraint(
+                "CK_Tareas_MaximoIntentosEntrega",
+                "(\"Tipo\" = 1 AND (\"MaximoIntentosEntrega\" IS NULL OR \"MaximoIntentosEntrega\" IN (1, 2, 3))) OR (\"Tipo\" <> 1 AND \"MaximoIntentosEntrega\" IS NULL)"));
+
         builder.Entity<Entrega>()
             .HasOne(e => e.Alumno)
             .WithMany()

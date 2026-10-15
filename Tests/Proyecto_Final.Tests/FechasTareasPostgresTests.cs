@@ -57,6 +57,7 @@ public sealed class FechasTareasPostgresTests
             {
                 AsignacionId = 1,
                 Tipo = TipoTarea.Cuestionario,
+                TokenCreacion = Guid.NewGuid(),
                 Titulo = "Tarea con fechas",
                 PunteoMaximo = 10,
                 FechaDisponibilidad = disponible,
