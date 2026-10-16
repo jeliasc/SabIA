@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
+using Proyecto_Final.Servicios.GestionAsignaciones;
 using Proyecto_Final.Servicios.GestionCuestionarios;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.ViewModels.Cuestionarios;
@@ -427,6 +428,21 @@ public sealed class CuestionarioServicioTests
     }
 
     [Fact]
+    public async Task Revision_DelegacionVigentePermiteConsultarResultadosSinPermitirAjustes()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, _ => { });
+        var delegado = new CuestionarioServicio(
+            contexto,
+            new AccesoDelegadoPrueba(),
+            new DelegacionRevisionPrueba());
+
+        var resultados = await delegado.ObtenerResultadosAsync(CuestionarioId);
+
+        Assert.NotNull(resultados);
+    }
+
+    [Fact]
     public async Task Revision_AceptarYRevertirRespuestaDirectaRecalculaNotas()
     {
         await using var contexto = CrearContexto();
@@ -672,13 +688,36 @@ public sealed class CuestionarioServicioTests
         public bool EsOperadorInstitucional => false;
         public bool TienePermiso(string permiso) => true;
         public Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync() =>
-            Task.FromResult(new ContextoAcademicoUsuario(null, alumnoId));
-        public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult<int?>(null);
+            Task.FromResult(new ContextoAcademicoUsuario(alumnoId.HasValue ? null : 1, alumnoId));
+        public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult<int?>(alumnoId.HasValue ? null : 1);
         public Task<int?> ObtenerAlumnoIdAsync() => Task.FromResult(alumnoId);
-        public Task<bool> EsDocenteDeAsignacionAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> EsDocenteDeAsignacionAsync(int asignacionId) => Task.FromResult(!alumnoId.HasValue);
         public Task<bool> AlumnoPerteneceAsignacionAsync(int asignacionId) => Task.FromResult(alumnoId.HasValue);
         public Task<bool> PuedeConsultarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(true);
         public Task<bool> PuedeConsultarAsignacionHistoricaAsync(int asignacionId) => Task.FromResult(true);
         public Task<bool> PuedeGestionarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(true);
+    }
+
+    private sealed class AccesoDelegadoPrueba : IAccesoAcademicoServicio
+    {
+        public string? UsuarioId => "delegado";
+        public bool EsOperadorInstitucional => false;
+        public bool TienePermiso(string permiso) => true;
+        public Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync() =>
+            Task.FromResult(new ContextoAcademicoUsuario(2, null));
+        public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult<int?>(2);
+        public Task<int?> ObtenerAlumnoIdAsync() => Task.FromResult<int?>(null);
+        public Task<bool> EsDocenteDeAsignacionAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> AlumnoPerteneceAsignacionAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> PuedeConsultarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> PuedeConsultarAsignacionHistoricaAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> PuedeGestionarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(false);
+    }
+
+    private sealed class DelegacionRevisionPrueba : IDelegacionAcademicaServicio
+    {
+        public Task<bool> PuedeActuarAsync(int asignacionId, int docenteId,
+            OperacionDelegacionAcademica operacion) =>
+            Task.FromResult(operacion == OperacionDelegacionAcademica.RevisarCuestionarios);
     }
 }

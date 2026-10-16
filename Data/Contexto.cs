@@ -93,6 +93,9 @@ public class Contexto
 
     public DbSet<Entrega> Entregas => Set<Entrega>();
 
+    public DbSet<VisualizacionActividad> VisualizacionesActividades =>
+        Set<VisualizacionActividad>();
+
     public DbSet<ReaperturaEntrega> ReaperturasEntregas =>
         Set<ReaperturaEntrega>();
 
@@ -938,6 +941,24 @@ public class Contexto
             .HasOne(t => t.TareaAnterior)
             .WithMany()
             .HasForeignKey(t => t.TareaAnteriorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Visualizaciones de actividades. La llave compuesta conserva una
+        // única primera visualización por alumno y tarea incluso con
+        // solicitudes simultáneas.
+        builder.Entity<VisualizacionActividad>()
+            .HasKey(x => new { x.AlumnoId, x.TareaId });
+
+        builder.Entity<VisualizacionActividad>()
+            .HasOne(x => x.Alumno)
+            .WithMany()
+            .HasForeignKey(x => x.AlumnoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<VisualizacionActividad>()
+            .HasOne(x => x.Tarea)
+            .WithMany()
+            .HasForeignKey(x => x.TareaId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Archivos de tareas

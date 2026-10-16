@@ -32,13 +32,17 @@ public sealed class PlanificacionServicio(
         {
             consulta = consulta.Where(_ => false);
         }
-        else
+        else if (acceso.EsOperadorInstitucional)
         {
             consulta = consulta.Where(x => historial
                 ? !x.Asignaciones.Any(a => a.Asignacion.Estado == EstadoRegistro.Activo &&
                     a.Asignacion.Seccion.CicloEscolar.Activo)
                 : x.Asignaciones.Any(a => a.Asignacion.Estado == EstadoRegistro.Activo &&
                     a.Asignacion.Seccion.CicloEscolar.Activo));
+        }
+        else
+        {
+            consulta = consulta.Where(_ => false);
         }
         return consulta;
     }
@@ -79,7 +83,7 @@ public sealed class PlanificacionServicio(
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var docenteId = perfil.DocenteId;
-        if (!docenteId.HasValue && perfil.AlumnoId.HasValue && !acceso.EsOperadorInstitucional)
+        if (!docenteId.HasValue && !acceso.EsOperadorInstitucional)
         {
             modelo.Asignaciones = [];
             modelo.Periodos = [];
@@ -383,8 +387,15 @@ public sealed class PlanificacionServicio(
         }
     }
 
-    public Task<RevisarPlanificacion?> ObtenerRevisionAsync(int id) =>
-        contexto.Planificaciones
+    public async Task<RevisarPlanificacion?> ObtenerRevisionAsync(int id)
+    {
+        if (!acceso.EsOperadorInstitucional ||
+            !acceso.TienePermiso(Seguridad.Permisos.Planificaciones.Revisar))
+        {
+            return null;
+        }
+
+        return await contexto.Planificaciones
             .AsNoTracking()
             .Where(x => x.Id == id &&
                 x.Estado == EstadoPlanificacion.EnRevision &&
@@ -399,9 +410,16 @@ public sealed class PlanificacionServicio(
                 Contenido = x.Detalles.OrderBy(d => d.Orden).Select(d => d.Contenido).FirstOrDefault() ?? string.Empty
             })
             .FirstOrDefaultAsync();
+    }
 
     public async Task<ResultadoOperacion> RevisarAsync(RevisarPlanificacion modelo, string usuarioId)
     {
+        if (!acceso.EsOperadorInstitucional ||
+            !acceso.TienePermiso(Seguridad.Permisos.Planificaciones.Revisar))
+        {
+            return ResultadoOperacion.Error("No tiene autorizaciÃ³n institucional para revisar planificaciones.");
+        }
+
         var planificacion = await contexto.Planificaciones
             .Include(x => x.Asignaciones)
             .FirstOrDefaultAsync(x => x.Id == modelo.Id);
@@ -574,12 +592,9 @@ public sealed class PlanificacionServicio(
             return false;
 
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
-        if (acceso.EsOperadorInstitucional)
-            return true;
-
         if (perfil.DocenteId.HasValue)
             return planificacion.DocenteId == perfil.DocenteId.Value;
 
-        return !perfil.TienePerfilAcademico;
+        return false;
     }
 }

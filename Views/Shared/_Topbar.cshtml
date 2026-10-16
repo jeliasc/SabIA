@@ -1,10 +1,18 @@
 @using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@using Proyecto_Final.Servicios.SeguridadAcademica
+@inject IAuthorizationService Autorizacion
+@inject IAccesoAcademicoServicio AccesoAcademico
 
 @{
     var rolUsuario = User.FindFirst(ClaimTypes.Role)?.Value ?? "Sin rol";
-
-    // Temporal: pendiente de conectar con el servicio de notificaciones.
-    var totalNovedades = 0;
+    var puedeConsultarContexto = (await Autorizacion.AuthorizeAsync(
+        User,
+        Permisos.Alumnos.Ver)).Succeeded;
+    var contextoAcademico = await AccesoAcademico.ObtenerContextoUsuarioAsync();
+    var esDocente = puedeConsultarContexto && contextoAcademico.DocenteId.HasValue;
+    var esAlumno = puedeConsultarContexto && !esDocente && contextoAcademico.AlumnoId.HasValue;
 }
 
 <nav class="app-header navbar navbar-expand bg-body shadow-sm sticky-top">
@@ -22,36 +30,7 @@
         </ul>
 
         <ul class="navbar-nav ms-auto align-items-center">
-            <li class="nav-item dropdown">
-                <a class="nav-link position-relative" data-bs-toggle="dropdown" href="#" aria-expanded="false"
-                   aria-label="Notificaciones">
-                    <i class="bi bi-bell"></i>
-                    @if (totalNovedades > 0)
-                    {
-                        <span class="navbar-badge badge text-bg-warning">
-                            @(totalNovedades > 99 ? "99+" : totalNovedades.ToString())
-                        </span>
-                    }
-                </a>
-                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0">
-                    <span class="dropdown-item dropdown-header">
-                        Notificaciones
-                    </span>
-
-                    <div class="dropdown-divider"></div>
-
-                    <div class="dropdown-item text-center text-body-secondary py-3">
-                        <i class="bi bi-bell-slash me-1"></i>
-                        Sin novedades por mostrar
-                    </div>
-
-                    <div class="dropdown-divider"></div>
-
-                    <a asp-controller="Notificaciones" asp-action="Index" class="dropdown-item dropdown-footer">
-                        Ver todas las notificaciones
-                    </a>
-                </div>
-            </li>
+            @await Component.InvokeAsync("Notificaciones")
 
             <li class="nav-item dropdown user-menu">
                 <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -70,7 +49,19 @@
                         <p class="mb-0">@User.Identity?.Name</p>
                         <small>@rolUsuario</small>
                     </li>
-                    <li class="user-footer d-flex gap-2 justify-content-between">
+                    <li class="user-footer d-flex flex-wrap gap-2 justify-content-between">
+                        @if (esAlumno)
+                        {
+                            <a asp-controller="Alumnos" asp-action="Perfil" class="btn btn-default btn-flat">
+                                Mi perfil
+                            </a>
+                        }
+                        else if (esDocente)
+                        {
+                            <a asp-controller="Docentes" asp-action="Perfil" class="btn btn-default btn-flat">
+                                Mi perfil
+                            </a>
+                        }
                         <a asp-controller="Login" asp-action="CambiarContrasena" class="btn btn-default btn-flat">
                             Cambiar contraseña
                         </a>

@@ -6,6 +6,7 @@ using Proyecto_Final.Data;
 
 namespace Proyecto_Final.Tests;
 
+[Collection("PostgreSQL temporal")]
 public sealed class VersionarAsignacionesPostgresTests
 {
     private const string MigracionAnterior = "20261013034418_ConfigurarResolucionCuestionarios";

@@ -31,6 +31,8 @@ public sealed class ConsultaDetalleAlumno
     public AlumnoDetalle? Institucional { get; init; }
 
     public AlumnoContextual? Contextual { get; init; }
+
+    public PerfilAlumnoPropio? Propio { get; init; }
 }
 
 public sealed class AlumnoContextual
@@ -44,4 +46,18 @@ public sealed class AlumnoContextual
     public string Carrera { get; init; } = string.Empty;
 
     public string Seccion { get; init; } = string.Empty;
+}
+
+public sealed class PerfilAlumnoPropio
+{
+    public string NombreCompleto { get; init; } = string.Empty;
+    public string CodigoPersonal { get; init; } = string.Empty;
+    public string Correo { get; init; } = string.Empty;
+    public string? Telefono { get; init; }
+    public int UnidadesDisponibles { get; init; }
+    public int TareasPublicadas { get; init; }
+    public int EntregasRealizadas { get; init; }
+    public InscripcionAlumnoDetalle? InscripcionVigente { get; init; }
+    public IReadOnlyList<InscripcionAlumnoDetalle> Inscripciones { get; init; } = [];
+    public IReadOnlyList<EncargadoAlumnoDetalle> Encargados { get; init; } = [];
 }

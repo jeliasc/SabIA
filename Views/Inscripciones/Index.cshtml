@@ -21,7 +21,8 @@
         Permisos.Inscripciones.CambiarEstado
     )).Succeeded;
 
-    var hayAcciones = t || ce;
+    var hayAcciones = Model.Any(x =>
+        x.Estado == Proyecto_Final.Models.EstadoInscripcion.Activa && (t || ce));
 }
 
 <div class="container-fluid">

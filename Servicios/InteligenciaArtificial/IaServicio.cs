@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Caching.Memory;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
+using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Archivos;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.SeguridadAcademica;
@@ -32,6 +33,9 @@ public sealed class IaServicio(
         IReadOnlyCollection<string> tipos,
         CancellationToken cancellationToken = default)
     {
+        if (!acceso.TienePermiso(Permisos.ContenidoIA.Generar))
+            return ResultadoOperacion<List<TrabajoIa>>.Error("No tiene autorización para generar contenido.");
+
         var solicitados = tipos
             .Where(TiposValidos.Contains)
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -70,6 +74,9 @@ public sealed class IaServicio(
 
         if (perfil.AlumnoId.HasValue && !perfil.DocenteId.HasValue)
             return ResultadoOperacion<List<TrabajoIa>>.Error("No tiene acceso a esa planificación.");
+
+        if (!perfil.DocenteId.HasValue && !acceso.EsOperadorInstitucional)
+            return ResultadoOperacion<List<TrabajoIa>>.Error("No tiene autorización institucional para esa planificación.");
 
         await using var stream = await archivosFisicos.AbrirLecturaAsync(
             planificacion.Archivo.ClaveAlmacenamiento,

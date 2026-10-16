@@ -16,7 +16,12 @@
         Permisos.Cuestionarios.Resolver
     )).Succeeded;
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
-    var hayAcciones = !soloLectura && (editar || resolver);
+    var hayAcciones = Model.Any(x =>
+        (x.PuedeVerResultados &&
+         x.EstadoTarea != Proyecto_Final.Models.EstadoTarea.Borrador) ||
+        (!soloLectura &&
+         ((editar && x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Borrador) ||
+          (resolver && x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Publicada))));
 }
 
 <div class="container-fluid">
@@ -69,19 +74,18 @@
 
                                 <td>@x.Preguntas</td>
 
-                                @if (hayAcciones)
-                                {
-                                    <td>
-                                        @(x.MaximoIntentos == 0
-                                            ? "Sin límite"
-                                            : x.MaximoIntentos)
-                                    </td>
-                                }
+                                <td>
+                                    @(x.MaximoIntentos == 0
+                                        ? "Sin límite"
+                                        : x.MaximoIntentos)
+                                </td>
 
                                 <td>@x.Origen</td>
 
                                 <td>@x.EstadoTarea</td>
 
+                                @if (hayAcciones)
+                                {
                                 <td>
                                     <div class="app-actions app-actions-table">
                                         @if (editar &&
@@ -112,6 +116,7 @@
                                         }
                                     </div>
                                 </td>
+                                }
                             </tr>
                         }
                     </tbody>

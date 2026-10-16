@@ -4,6 +4,8 @@ using Proyecto_Final.Controllers;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.GestionAlumnos;
+using Proyecto_Final.Servicios.GestionDocentes;
+using Proyecto_Final.Servicios.GestionEncargados;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.ViewModels.Alumnos;
 
@@ -121,7 +123,7 @@ public sealed class AccesoContextualAlumnosTests
     }
 
     [Fact]
-    public async Task DetalleContextual_UsaElMismoAmbito_YOcultaExistenciaAjena()
+    public async Task DetalleContextual_UsaElMismoAmbito_YPermiteElPerfilPropio()
     {
         await using var escenario = await Escenario.CrearAsync();
         var servicio = escenario.CrearServicio(new Acceso(false, null, 1));
@@ -133,12 +135,28 @@ public sealed class AccesoContextualAlumnosTests
         var inexistente = await controlador.Ver(999);
 
         Assert.NotNull(permitido.Contextual);
-        Assert.IsType<NotFoundResult>(propio);
+        var vistaPropia = Assert.IsType<ViewResult>(propio);
+        Assert.Equal("Perfil", vistaPropia.ViewName);
+        Assert.IsType<PerfilAlumnoPropio>(vistaPropia.Model);
         Assert.IsType<NotFoundResult>(ajeno);
         Assert.IsType<NotFoundResult>(inexistente);
         var vista = Assert.IsType<ViewResult>(await controlador.Ver(2));
         Assert.Equal("DetalleContextual", vista.ViewName);
         Assert.IsType<AlumnoContextual>(vista.Model);
+    }
+
+    [Fact]
+    public async Task PerfilPropio_SoloExponeLosEncargadosVinculadosAlAlumnoAutenticado()
+    {
+        await using var escenario = await Escenario.CrearAsync();
+        var servicio = escenario.CrearServicio(new Acceso(false, null, 1));
+
+        var perfil = await servicio.ObtenerPerfilPropioAsync();
+
+        Assert.NotNull(perfil);
+        var encargado = Assert.Single(perfil.Encargados);
+        Assert.Equal("Encargada Propia", encargado.NombreCompleto);
+        Assert.Equal("Madre", encargado.Parentesco);
     }
 
     [Fact]
@@ -151,6 +169,76 @@ public sealed class AccesoContextualAlumnosTests
         Assert.NotNull((await servicio.ObtenerDetalleAutorizadoAsync(3)).Contextual);
         Assert.IsType<NotFoundResult>(await controlador.Ver(7));
         Assert.IsType<NotFoundResult>(await controlador.Ver(8));
+    }
+
+    [Fact]
+    public async Task Docente_DelegadoConContinuidadVeAlumnosDeLaSeccionDelegada()
+    {
+        await using var escenario = await Escenario.CrearAsync();
+        var servicio = escenario.CrearServicio(new Acceso(
+            operador: false,
+            docenteId: 1,
+            alumnoId: null,
+            seccionesDelegadas: new HashSet<int> { 5 }));
+
+        var nombres = (await servicio.ObtenerIndiceAsync()).Contextual!.Alumnos
+            .Select(item => item.NombreCompleto).ToArray();
+
+        Assert.Contains(nombres, nombre => nombre.StartsWith("Secci", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Alumno_SoloRecibeDocentesDeSusAsignacionesVigentesSinCamposSensibles()
+    {
+        await using var escenario = await Escenario.CrearAsync();
+        var servicio = new DocenteServicio(
+            escenario.Contexto,
+            null!,
+            new Acceso(false, null, 1));
+
+        var docentes = await servicio.ObtenerDocentesDelAlumnoAsync();
+
+        var docente = Assert.Single(docentes!);
+        Assert.Equal("Docente Prueba", docente.NombreCompleto);
+        Assert.Equal(2, docente.Asignaciones.Count);
+        Assert.DoesNotContain("Correo", docente.GetType().GetProperties().Select(x => x.Name));
+        Assert.DoesNotContain("Carnet", docente.GetType().GetProperties().Select(x => x.Name));
+        Assert.DoesNotContain("Nit", docente.GetType().GetProperties().Select(x => x.Name));
+    }
+
+    [Fact]
+    public async Task Docente_SoloConsultaSuPerfilYUnDirectorioBasicoDeOtrosDocentes()
+    {
+        await using var escenario = await Escenario.CrearAsync();
+        var servicio = new DocenteServicio(
+            escenario.Contexto,
+            null!,
+            new Acceso(false, 1, null));
+
+        var perfil = await servicio.ObtenerPerfilPropioAsync();
+        var directorio = await servicio.ObtenerDirectorioContextualAsync();
+
+        Assert.NotNull(perfil);
+        Assert.Equal("Docente Prueba", perfil.NombreCompleto);
+        Assert.Equal("DOC-1", perfil.Carnet);
+        var otro = Assert.Single(directorio!);
+        Assert.Equal("Otro Docente", otro.NombreCompleto);
+        Assert.Equal(["Asignaciones", "NombreCompleto"],
+            otro.GetType().GetProperties().Select(x => x.Name).Order().ToArray());
+    }
+
+    [Fact]
+    public async Task CapacidadesContextuales_NoObtienenElModuloAdministrativoDeDocentesNiEncargados()
+    {
+        await using var escenario = await Escenario.CrearAsync();
+        var acceso = new Acceso(false, null, 1);
+        var docentes = new DocenteServicio(escenario.Contexto, null!, acceso);
+        var encargados = new EncargadoServicio(escenario.Contexto, acceso);
+
+        Assert.Empty(await docentes.ObtenerTodosAsync());
+        Assert.Null(await docentes.ObtenerDetalleAsync(1));
+        Assert.Empty(await encargados.ObtenerTodosAsync());
+        Assert.Null(await encargados.ObtenerParaEditarAsync(1));
     }
 
     [Fact]
@@ -226,7 +314,8 @@ public sealed class AccesoContextualAlumnosTests
     private sealed class Acceso(
         bool operador,
         int? docenteId,
-        int? alumnoId) : IAccesoAcademicoServicio
+        int? alumnoId,
+        IReadOnlySet<int>? seccionesDelegadas = null) : IAccesoAcademicoServicio
     {
         public string? UsuarioId => "usuario-prueba";
         public bool EsOperadorInstitucional => operador;
@@ -240,6 +329,8 @@ public sealed class AccesoContextualAlumnosTests
         public Task<bool> PuedeConsultarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(false);
         public Task<bool> PuedeConsultarAsignacionHistoricaAsync(int asignacionId) => Task.FromResult(false);
         public Task<bool> PuedeGestionarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(false);
+        public Task<IReadOnlySet<int>> ObtenerSeccionesDelegadasParaConsultaAsync() =>
+            Task.FromResult(seccionesDelegadas ?? (IReadOnlySet<int>)new HashSet<int>());
     }
 
     private sealed class Escenario : IAsyncDisposable
@@ -317,6 +408,12 @@ public sealed class AccesoContextualAlumnosTests
                 Carnet = "DOC-1",
                 Usuario = Usuario("docente-1", "Docente", "Prueba")
             };
+            var otroDocente = new Docente
+            {
+                Id = 2,
+                Carnet = "DOC-2",
+                Usuario = Usuario("docente-2", "Otro", "Docente")
+            };
             var cursoActivo = new Curso
             {
                 Id = 1, Grado = grado, Nombre = "Matemática",
@@ -336,7 +433,7 @@ public sealed class AccesoContextualAlumnosTests
             contexto.AddRange(cicloActivo, cicloCerrado, grado);
             contexto.Secciones.AddRange(secciones);
             contexto.Alumnos.AddRange(alumnos);
-            contexto.Docentes.Add(docente);
+            contexto.Docentes.AddRange(docente, otroDocente);
             contexto.Cursos.AddRange(cursoActivo, cursoActivoDos, cursoInactivo);
             contexto.Asignaciones.AddRange(
                 Asignacion(1, docente, secciones[0], cursoActivo, grado),
@@ -362,6 +459,22 @@ public sealed class AccesoContextualAlumnosTests
                 Inscripcion(10, alumnos[9], secciones[0], cicloActivo),
                 Inscripcion(11, alumnos[10], secciones[0], cicloActivo,
                     EstadoInscripcion.Finalizada));
+
+            var encargada = new Encargado
+            {
+                Id = 1,
+                Nombres = "Encargada",
+                Apellidos = "Propia",
+                Telefono = "5555-0000",
+                Correo = "encargada@example.test"
+            };
+            contexto.Encargados.Add(encargada);
+            contexto.AlumnoEncargados.Add(new AlumnoEncargado
+            {
+                Alumno = alumnos[0],
+                Encargado = encargada,
+                Parentesco = TipoParentesco.Madre
+            });
 
             await contexto.SaveChangesAsync(
                 TestContext.Current.CancellationToken);

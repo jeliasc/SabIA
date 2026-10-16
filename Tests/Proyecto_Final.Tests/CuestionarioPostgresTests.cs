@@ -12,6 +12,7 @@ namespace Proyecto_Final.Tests;
 // variable de entorno SABIA_PRUEBAS_PG tiene una cadena de conexión con
 // permiso para crear bases de datos, por ejemplo:
 // Host=localhost;Username=postgres;Password=...
+[Collection("PostgreSQL temporal")]
 public sealed class CuestionarioPostgresTests
 {
     private static readonly string? Conexion =

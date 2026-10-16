@@ -48,7 +48,7 @@ public sealed class CalificacionServicio(
 
         return new CalificacionesIndex
         {
-            PuedeConfigurar = puedeConfigurar && !perfil.AlumnoId.HasValue,
+            PuedeConfigurar = puedeConfigurar && perfil.DocenteId.HasValue,
             Configuraciones = await consulta
                 .OrderByDescending(x => x.CicloEscolarId)
                 .ThenBy(x => x.Asignacion.Curso.Nombre)
@@ -429,11 +429,10 @@ public sealed class CalificacionServicio(
                 configuracion.Asignacion.Seccion.CicloEscolar.Activo,
             PuedeCerrar = !cerrado && permisoCerrar &&
                 acceso.TienePermiso(Permisos.Calificaciones.Cerrar) &&
-                ((perfil.DocenteId.HasValue &&
-                  configuracion.Asignacion.DocenteId == perfil.DocenteId.Value) ||
-                 (!perfil.TienePerfilAcademico &&
-                  configuracion.Asignacion.Estado == EstadoRegistro.Activo &&
-                  configuracion.Asignacion.Seccion.CicloEscolar.Activo)),
+                perfil.DocenteId.HasValue &&
+                configuracion.Asignacion.DocenteId == perfil.DocenteId.Value &&
+                configuracion.Asignacion.Estado == EstadoRegistro.Activo &&
+                configuracion.Asignacion.Seccion.CicloEscolar.Activo,
             Actividades = configuracion.Actividades.Select(x => new ColumnaActividadCalificacion
             {
                 Id = x.Id,
@@ -1042,8 +1041,20 @@ public sealed class CalificacionServicio(
     {
         var consulta = contexto.Asignaciones.AsNoTracking().Where(x =>
             x.Estado == EstadoRegistro.Activo && x.Seccion.CicloEscolar.Activo);
-        if (docenteId.HasValue) consulta = consulta.Where(x => x.DocenteId == docenteId.Value);
-        else if (!acceso.TienePermiso(Permisos.Calificaciones.Configurar))
+        if (docenteId.HasValue)
+        {
+            var ahora = DateTime.UtcNow;
+            consulta = consulta.Where(x =>
+                x.DocenteId == docenteId.Value ||
+                contexto.DelegacionesAcademicas.Any(d =>
+                    d.AsignacionId == x.Id &&
+                    d.DocenteId == docenteId.Value &&
+                    d.Activa && d.FechaInicioUtc <= ahora &&
+                    (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= ahora) &&
+                    (d.Operaciones & OperacionDelegacionAcademica.GestionarEvaluaciones) ==
+                        OperacionDelegacionAcademica.GestionarEvaluaciones));
+        }
+        else
             consulta = consulta.Where(_ => false);
         return await consulta.OrderBy(x => x.Curso.Nombre)
             .Select(x => new OpcionSeleccion
@@ -1057,23 +1068,41 @@ public sealed class CalificacionServicio(
     private async Task<bool> PuedeConfigurarAsync(int asignacionId)
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
-        if (perfil.AlumnoId.HasValue && !perfil.DocenteId.HasValue) return false;
-        if (perfil.DocenteId.HasValue) return await acceso.EsDocenteDeAsignacionAsync(asignacionId);
-        return acceso.TienePermiso(Permisos.Calificaciones.Configurar) &&
-            await acceso.PuedeGestionarAsignacionVigenteAsync(asignacionId);
+        if (!perfil.DocenteId.HasValue ||
+            !acceso.TienePermiso(Permisos.Calificaciones.Configurar))
+        {
+            return false;
+        }
+
+        if (await acceso.EsDocenteDeAsignacionAsync(asignacionId))
+            return true;
+
+        return delegaciones != null && await delegaciones.PuedeActuarAsync(
+            asignacionId,
+            perfil.DocenteId.Value,
+            OperacionDelegacionAcademica.GestionarEvaluaciones);
     }
 
     private async Task<bool> PuedeConsultarAsync(ConfiguracionEvaluacion configuracion)
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         if (perfil.DocenteId.HasValue)
-            return configuracion.Asignacion.DocenteId == perfil.DocenteId.Value;
+        {
+            if (configuracion.Asignacion.DocenteId == perfil.DocenteId.Value)
+                return true;
+
+            return delegaciones != null && await delegaciones.PuedeActuarAsync(
+                configuracion.AsignacionId,
+                perfil.DocenteId.Value,
+                OperacionDelegacionAcademica.GestionarEvaluaciones);
+        }
         if (perfil.AlumnoId.HasValue)
             return await contexto.Inscripciones.AsNoTracking().AnyAsync(x =>
                 x.AlumnoId == perfil.AlumnoId.Value &&
                 x.SeccionId == configuracion.SeccionId &&
                 x.CicloEscolarId == configuracion.CicloEscolarId);
-        return acceso.TienePermiso(Permisos.Calificaciones.Ver);
+        return acceso.EsOperadorInstitucional &&
+            acceso.TienePermiso(Permisos.Calificaciones.Ver);
     }
 
     private async Task<bool> EsDocenteResponsableVigenteAsync(ConfiguracionEvaluacion configuracion)
@@ -1084,9 +1113,7 @@ public sealed class CalificacionServicio(
         if (configuracion.Asignacion.DocenteId == docenteId.Value &&
             configuracion.Asignacion.Estado == EstadoRegistro.Activo)
             return true;
-        return delegaciones != null && await delegaciones.PuedeActuarAsync(
-            configuracion.AsignacionId, docenteId.Value,
-            OperacionDelegacionAcademica.GestionarEvaluaciones);
+        return false;
     }
 
     private async Task<bool> EsDocenteResponsableVigenteOHistoricoAsync(

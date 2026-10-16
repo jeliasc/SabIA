@@ -119,7 +119,7 @@ public sealed class MaterialServicio(
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var docenteId = perfil.DocenteId;
-        if (!docenteId.HasValue && perfil.AlumnoId.HasValue && !acceso.EsOperadorInstitucional)
+        if (!docenteId.HasValue && !acceso.EsOperadorInstitucional)
         {
             modelo.Unidades = [];
             return;
@@ -528,7 +528,7 @@ public sealed class MaterialServicio(
         }
 
         if (!perfil.DocenteId.HasValue)
-            return !perfil.TienePerfilAcademico;
+            return false;
 
         return await contexto.UnidadesAsignaciones.AnyAsync(x =>
             x.UnidadId == unidadId &&

@@ -31,7 +31,11 @@
         Permisos.ContenidoIA.Generar
     )).Succeeded;
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
-    var hayAcciones = !soloLectura && (e || enviar || revisar || ia);
+    var hayAcciones = !soloLectura && Model.Any(x =>
+        ((x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Borrador ||
+          x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta) && (e || enviar)) ||
+        (x.Estado == Proyecto_Final.Models.EstadoPlanificacion.EnRevision && revisar) ||
+        ia);
 }
 
 <div class="container-fluid">
@@ -97,19 +101,18 @@
 
                                 <td>@x.Version</td>
 
-                                @if (hayAcciones)
-                                {
-                                    <td>
-                                        <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Aprobada
+                                <td>
+                                    <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Aprobada
                                               ? "app-badge-success"
                                               : x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta
                                                 ? "app-badge-danger"
                                                 : "app-badge-secondary")">
                                             @x.Estado
                                         </span>
-                                    </td>
-                                }
+                                </td>
 
+                                @if (hayAcciones)
+                                {
                                 <td>
                                     <div class="app-actions app-actions-table">
                                         @if (e &&
@@ -157,6 +160,7 @@
                                         }
                                     </div>
                                 </td>
+                                }
                             </tr>
                         }
                     </tbody>

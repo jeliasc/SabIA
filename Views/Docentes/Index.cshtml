@@ -10,6 +10,7 @@
     var puedeCrear = (await Autorizacion.AuthorizeAsync(User, Permisos.Docentes.Crear)).Succeeded;
     var puedeEditar = (await Autorizacion.AuthorizeAsync(User, Permisos.Docentes.Editar)).Succeeded;
     var puedeCambiarEstado = (await Autorizacion.AuthorizeAsync(User, Permisos.Docentes.CambiarEstado)).Succeeded;
+    var hayAcciones = Model.Any() && (puedeVer || puedeEditar || puedeCambiarEstado);
     var hayDocentes = Model.Any();
 }
 
@@ -52,7 +53,7 @@
     <div class="card shadow-sm border border-secondary d-none d-md-block">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table app-table w-100" data-tabla-index data-actions-column="true"
+                <table class="table app-table w-100" data-tabla-index data-actions-column="@(hayAcciones ? "true" : "false")"
                        data-search-placeholder="Carnet, nombre, correo, título, nivel o estado..."
                        data-empty-message="No existen docentes registrados" data-zero-message="No se encontraron docentes">
                     <thead>
@@ -63,7 +64,10 @@
                             <th>Nivel académico</th>
                             <th class="dt-head-left">Asignaciones</th>
                             <th>Estado</th>
-                            <th class="text-end">Acciones</th>
+                            @if (hayAcciones)
+                            {
+                                <th class="text-end">Acciones</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
@@ -86,6 +90,8 @@
                                         @(docente.Activo ? "Activo" : "Inactivo")
                                     </span>
                                 </td>
+                                @if (hayAcciones)
+                                {
                                 <td>
                                     <div class="app-actions app-actions-table">
                                         @if (puedeVer)
@@ -117,6 +123,7 @@
                                         }
                                     </div>
                                 </td>
+                                }
                             </tr>
                         }
                     </tbody>
@@ -163,6 +170,8 @@
                         </div>
                     </div>
 
+                    @if (hayAcciones)
+                    {
                     <div class="d-grid gap-2">
                         @if (puedeVer)
                         {
@@ -191,6 +200,7 @@
                             </form>
                         }
                     </div>
+                    }
                 </div>
             </div>
         }

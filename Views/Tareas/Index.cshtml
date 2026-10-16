@@ -32,7 +32,11 @@
     )).Succeeded;
 
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
-    var hayAcciones = !soloLectura && (e || p || cerrar || cuest);
+    var hayAcciones = !soloLectura && Model.Any(x =>
+        (x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador && (e || p)) ||
+        (x.Tipo == Proyecto_Final.Models.TipoTarea.Cuestionario &&
+         x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador && cuest) ||
+        (x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada && cerrar));
 }
 
 <div class="container-fluid">

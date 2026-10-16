@@ -77,7 +77,7 @@ public class ContenidoIAController(
                     a.Asignacion.Seccion.CicloEscolar.Activo));
         if (perfil.DocenteId.HasValue)
             consulta = consulta.Where(x => x.DocenteId == perfil.DocenteId.Value);
-        else if (perfil.AlumnoId.HasValue)
+        else if (!acceso.EsOperadorInstitucional)
             consulta = consulta.Where(_ => false);
 
         modelo.Planificaciones = await consulta

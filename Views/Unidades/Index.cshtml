@@ -21,7 +21,7 @@
         Permisos.Unidades.Publicar
     )).Succeeded;
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
-    var hayAcciones = !soloLectura && (e || p);
+    var hayAcciones = !soloLectura && Model.Any() && (e || p);
 }
 
 <div class="container-fluid">
@@ -85,17 +85,16 @@
 
                             <td>@x.Materiales</td>
 
-                            @if (hayAcciones)
-                            {
-                                <td>
-                                    <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                            <td>
+                                <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
                                           ? "app-badge-success"
                                           : "app-badge-secondary")">
                                         @x.Estado
                                     </span>
-                                </td>
-                            }
+                            </td>
 
+                            @if (hayAcciones)
+                            {
                             <td>
                                 <div class="app-actions app-actions-table">
                                     @if (e)
@@ -129,6 +128,7 @@
                                     }
                                 </div>
                             </td>
+                            }
                         </tr>
                     }
                 </tbody>

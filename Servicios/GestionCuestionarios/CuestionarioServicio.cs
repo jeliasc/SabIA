@@ -85,13 +85,17 @@ public sealed class CuestionarioServicio(
                     i.Estado == EstadoInscripcion.Activa &&
                     i.Seccion.CicloEscolar.Activo));
         }
-        else
+        else if (acceso.EsOperadorInstitucional)
         {
             consulta = consulta.Where(x => historial
                 ? x.Tarea.Asignacion.Estado != EstadoRegistro.Activo ||
                   !x.Tarea.Asignacion.Seccion.CicloEscolar.Activo
                 : x.Tarea.Asignacion.Estado == EstadoRegistro.Activo &&
                   x.Tarea.Asignacion.Seccion.CicloEscolar.Activo);
+        }
+        else
+        {
+            consulta = consulta.Where(_ => false);
         }
 
         var puedeVerResultados = !alumnoId.HasValue;
@@ -150,6 +154,8 @@ public sealed class CuestionarioServicio(
             MaximoIntentos = cuestionario?.MaximoIntentos ?? 1,
             CriterioCalificacion = cuestionario?.CriterioCalificacion ?? CriterioCalificacionIntentos.MejorNota,
             MostrarResultadosAlFinalizar = cuestionario?.MostrarResultadosAlFinalizar ?? true,
+            // En cuestionarios nuevos las claves permanecen privadas hasta que
+            // el docente las habilite expresamente en la configuración.
             MostrarRespuestasCorrectas = cuestionario?.MostrarRespuestasCorrectas ?? false
         };
     }
@@ -426,6 +432,7 @@ public sealed class CuestionarioServicio(
                 Inicio = new InicioCuestionario
                 {
                     CuestionarioId = x.Id,
+                    TareaId = x.TareaId,
                     Titulo = x.Tarea.Titulo,
                     Instrucciones = x.Tarea.Instrucciones,
                     CantidadPreguntas = x.Preguntas.Count,
@@ -1309,25 +1316,33 @@ public sealed class CuestionarioServicio(
         if (perfil.AlumnoId.HasValue && !perfil.DocenteId.HasValue)
             return false;
 
-        return await acceso.PuedeConsultarAsignacionHistoricaAsync(asignacionId);
+        if (perfil.DocenteId.HasValue)
+        {
+            if (await acceso.PuedeConsultarAsignacionHistoricaAsync(asignacionId))
+                return true;
+
+            return delegaciones != null && await delegaciones.PuedeActuarAsync(
+                asignacionId,
+                perfil.DocenteId.Value,
+                OperacionDelegacionAcademica.RevisarCuestionarios);
+        }
+
+        return acceso.EsOperadorInstitucional &&
+            acceso.TienePermiso(Seguridad.Permisos.Cuestionarios.Ver) &&
+            await acceso.PuedeConsultarAsignacionHistoricaAsync(asignacionId);
     }
 
     // Solo en asignaciones vigentes: los ciclos cerrados quedan de consulta.
     private async Task<bool> PuedeAjustarAsync(int asignacionId)
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
-        if (perfil.AlumnoId.HasValue && !perfil.DocenteId.HasValue)
+        if (!perfil.DocenteId.HasValue)
             return false;
 
         if (!acceso.TienePermiso(Seguridad.Permisos.Entregas.Calificar))
             return false;
-        if (await acceso.PuedeGestionarAsignacionVigenteAsync(asignacionId))
-            return true;
 
-        return perfil.DocenteId.HasValue && delegaciones != null &&
-            await delegaciones.PuedeActuarAsync(
-                asignacionId, perfil.DocenteId.Value,
-                OperacionDelegacionAcademica.RevisarCuestionarios);
+        return await acceso.EsDocenteDeAsignacionAsync(asignacionId);
     }
 
     // =====================================================================

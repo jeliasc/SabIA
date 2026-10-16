@@ -7,6 +7,7 @@
     ViewData["Title"] = "Encargados";
     var puedeCrear = (await Autorizacion.AuthorizeAsync(User, Permisos.Encargados.Crear)).Succeeded;
     var puedeEditar = (await Autorizacion.AuthorizeAsync(User, Permisos.Encargados.Editar)).Succeeded;
+    var hayAcciones = Model.Any() && puedeEditar;
 }
 <div class="container-fluid">
     <partial name="_AlertasResultado" />
@@ -27,18 +28,21 @@
     <div class="card shadow-sm border border-secondary d-none d-md-block">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table app-table w-100" data-tabla-index data-actions-column="true"
+                <table class="table app-table w-100" data-tabla-index data-actions-column="@(hayAcciones ? "true" : "false")"
                        data-search-placeholder="Nombre, DPI, teléfono o correo..."
                        data-empty-message="No existen encargados registrados"
                        data-zero-message="No se encontraron encargados">
                     <thead>
                         <tr>
                             <th>Encargado</th>
-                            <th>DPI</th>
+                            <th class="text-start">DPI</th>
                             <th>Teléfono</th>
                             <th>Correo</th>
-                            <th>Alumnos</th>
-                            <th class="text-end">Acciones</th>
+                            <th class="text-start">Alumnos</th>
+                            @if (hayAcciones)
+                            {
+                                <th class="text-end">Acciones</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
@@ -46,15 +50,18 @@
                         {
                             <tr>
                                 <td class="fw-semibold">@x.NombreCompleto</td>
-                                <td>@(x.Dpi ?? "Sin registrar")</td>
+                                <td class="text-start">@(x.Dpi ?? "Sin registrar")</td>
                                 <td>@x.Telefono</td>
                                 <td>@(x.Correo ?? "Sin registrar")</td>
-                                <td>@x.Alumnos</td>
+                                <td class="text-start">@x.Alumnos</td>
+                                @if (hayAcciones)
+                                {
                                 <td class="app-actions-cell">@if (puedeEditar) {
                                     <a asp-action="Editar" asp-route-id="@x.Id"
                                        class="app-btn app-btn-soft-secondary app-btn-sm">Editar</a>
                                 }
                             </td>
+                            }
                         </tr>
                     }
                 </tbody>
@@ -73,7 +80,7 @@
                 <div class="mb-1"><b>Teléfono:</b> @x.Telefono</div>
                 <div class="mb-1"><b>Correo:</b> @(x.Correo ?? "Sin registrar")</div>
                 <div class="mb-3"><b>Alumnos vinculados:</b> @x.Alumnos</div>
-                @if (puedeEditar)
+                @if (hayAcciones)
                 {
                     <a asp-action="Editar" asp-route-id="@x.Id"
                        class="app-btn app-btn-soft-secondary w-100">Editar</a>

@@ -15,6 +15,7 @@
         User,
         Permisos.Documentos.Descargar
     )).Succeeded;
+    var hayAcciones = Model.Any() && d;
 }
 
 <div class="container-fluid">
@@ -42,14 +43,17 @@
     <div class="card shadow-sm border border-secondary">
         <div class="card-body">
             <table class="table app-table w-100" data-tabla-index
-                   data-actions-column="true">
+                   data-actions-column="@(hayAcciones ? "true" : "false")">
                 <thead>
                     <tr>
                         <th>Documento</th>
                         <th>Subido por</th>
                         <th>Fecha</th>
                         <th>Tamaño</th>
-                        <th>Acción</th>
+                        @if (hayAcciones)
+                        {
+                            <th>Acción</th>
+                        }
                     </tr>
                 </thead>
 
@@ -73,6 +77,8 @@
                                 @Math.Round(x.Tamano / 1024d, 1) KB
                             </td>
 
+                            @if (hayAcciones)
+                            {
                             <td>
                                 @if (d)
                                 {
@@ -82,6 +88,7 @@
                                     </a>
                                 }
                             </td>
+                            }
                         </tr>
                     }
                 </tbody>

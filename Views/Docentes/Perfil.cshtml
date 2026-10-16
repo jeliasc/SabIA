@@ -1,0 +1,41 @@
+@model Proyecto_Final.ViewModels.Docentes.PerfilDocentePropio
+@{
+    ViewData["Title"] = "Mi perfil docente";
+}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-xl-10">
+            <div class="mb-4">
+                <h2 class="fw-bold mb-1">Mi perfil docente</h2>
+                <p class="text-muted mb-0">Información personal y profesional vinculada a mi cuenta.</p>
+            </div>
+            <div class="card shadow-sm border border-secondary mb-4">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">Información profesional</h5>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 text-muted fw-normal">Nombre completo</dt>
+                        <dd class="col-sm-8 fw-semibold">@Model.NombreCompleto</dd>
+                        <dt class="col-sm-4 text-muted fw-normal">Correo electrónico</dt>
+                        <dd class="col-sm-8 text-break">@Model.Correo</dd>
+                        <dt class="col-sm-4 text-muted fw-normal">Carnet</dt>
+                        <dd class="col-sm-8">@Model.Carnet</dd>
+                        <dt class="col-sm-4 text-muted fw-normal">NIT</dt>
+                        <dd class="col-sm-8">@(Model.Nit ?? "Sin registro")</dd>
+                        <dt class="col-sm-4 text-muted fw-normal">Nivel académico</dt>
+                        <dd class="col-sm-8">@(Model.NivelAcademico ?? "Sin registro")</dd>
+                        <dt class="col-sm-4 text-muted fw-normal">Título</dt>
+                        <dd class="col-sm-8">@(Model.Titulo ?? "Sin registro")</dd>
+                        <dt class="col-sm-4 text-muted fw-normal">Institución otorgante</dt>
+                        <dd class="col-sm-8">@(Model.InstitucionOtorgante ?? "Sin registro")</dd>
+                    </dl>
+                </div>
+            </div>
+            <div class="card shadow-sm border border-secondary">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">Asignaciones vigentes</h5>
+                    <partial name="_AsignacionesContextuales" model="Model.Asignaciones" />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

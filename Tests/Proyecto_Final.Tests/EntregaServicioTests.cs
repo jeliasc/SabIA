@@ -167,6 +167,58 @@ public sealed class EntregaServicioTests
         Assert.True(resultado.Exitoso, resultado.Mensaje);
     }
 
+    [Fact]
+    public async Task DescargarArchivoTareaAsync_AlumnoNoPuedeAbrirAdjuntoDeBorrador()
+    {
+        await using var contexto = CrearContexto();
+        await CuestionarioServicioTests.SembrarAsync(contexto, _ => { }, sinCuestionario: true);
+        var tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
+        tarea.Estado = EstadoTarea.Borrador;
+        var archivo = new Archivo
+        {
+            NombreOriginal = "guia-privada.pdf",
+            ClaveAlmacenamiento = "tareas/privada.pdf",
+            TipoMime = "application/pdf",
+            TamanoBytes = 1,
+            HashSha256 = "hash",
+            SubidoPorUsuarioId = "docente",
+            FechaCreacion = DateTime.UtcNow
+        };
+        contexto.Archivos.Add(archivo);
+        contexto.TareasArchivos.Add(new TareaArchivo { Tarea = tarea, Archivo = archivo });
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var servicio = new EntregaServicio(
+            contexto,
+            new ArchivosLecturaPrueba(),
+            new AlumnoAccesoPrueba(pertenece: true));
+
+        Assert.Null(await servicio.DescargarArchivoTareaAsync(archivo.Id));
+    }
+
+    [Fact]
+    public async Task DetalleEntrega_DelegacionSinOperacionDeEntrega_NoConcedeAcceso()
+    {
+        await using var contexto = CrearContexto();
+        var entregaId = await SembrarEntregaAsync(contexto);
+        var servicio = CrearServicio(
+            contexto,
+            responsable: false,
+            delegacion: new DelegacionPrueba(true, OperacionDelegacionAcademica.GestionarEvaluaciones));
+
+        Assert.Null(await servicio.ObtenerDetalleAsync(entregaId));
+    }
+
+    [Fact]
+    public async Task Listado_UsuarioSinPerfilNiAutorizacionInstitucional_NoRecibeEntregas()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarEntregaAsync(contexto);
+        var servicio = new EntregaServicio(contexto, null!, new SinPerfilAccesoPrueba());
+
+        Assert.Empty(await servicio.ObtenerTodasAsync());
+    }
+
     private static EntregaServicio CrearServicio(
         Contexto contexto,
         bool responsable,
@@ -232,7 +284,9 @@ public sealed class EntregaServicioTests
             Task.FromResult(responsable);
     }
 
-    private sealed class DelegacionPrueba(bool autorizada) : IDelegacionAcademicaServicio
+    private sealed class DelegacionPrueba(
+        bool autorizada,
+        OperacionDelegacionAcademica operacionAutorizada = OperacionDelegacionAcademica.CalificarEntregas) : IDelegacionAcademicaServicio
     {
         public Task<bool> PuedeActuarAsync(
             int asignacionId,
@@ -240,7 +294,39 @@ public sealed class EntregaServicioTests
             OperacionDelegacionAcademica operacion) =>
             Task.FromResult(
                 autorizada &&
-                operacion == OperacionDelegacionAcademica.CalificarEntregas);
+                operacion == operacionAutorizada);
+    }
+
+    private sealed class AlumnoAccesoPrueba(bool pertenece) : IAccesoAcademicoServicio
+    {
+        public string? UsuarioId => "alumno";
+        public bool EsOperadorInstitucional => false;
+        public bool TienePermiso(string permiso) => true;
+        public Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync() =>
+            Task.FromResult(new ContextoAcademicoUsuario(null, 1));
+        public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult<int?>(null);
+        public Task<int?> ObtenerAlumnoIdAsync() => Task.FromResult<int?>(1);
+        public Task<bool> EsDocenteDeAsignacionAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> AlumnoPerteneceAsignacionAsync(int asignacionId) => Task.FromResult(pertenece);
+        public Task<bool> PuedeConsultarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(pertenece);
+        public Task<bool> PuedeConsultarAsignacionHistoricaAsync(int asignacionId) => Task.FromResult(pertenece);
+        public Task<bool> PuedeGestionarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(false);
+    }
+
+    private sealed class SinPerfilAccesoPrueba : IAccesoAcademicoServicio
+    {
+        public string? UsuarioId => "externo";
+        public bool EsOperadorInstitucional => false;
+        public bool TienePermiso(string permiso) => true;
+        public Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync() =>
+            Task.FromResult(new ContextoAcademicoUsuario(null, null));
+        public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult<int?>(null);
+        public Task<int?> ObtenerAlumnoIdAsync() => Task.FromResult<int?>(null);
+        public Task<bool> EsDocenteDeAsignacionAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> AlumnoPerteneceAsignacionAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> PuedeConsultarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> PuedeConsultarAsignacionHistoricaAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> PuedeGestionarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(false);
     }
 
     private static IFormFile ArchivoFormulario()
@@ -268,6 +354,17 @@ public sealed class EntregaServicioTests
 
         public Task<Stream?> AbrirLecturaAsync(string claveAlmacenamiento,
             CancellationToken cancellationToken = default) => Task.FromResult<Stream?>(null);
+        public Task EliminarAsync(string claveAlmacenamiento,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private sealed class ArchivosLecturaPrueba : IArchivoFisicoServicio
+    {
+        public Task<ResultadoOperacion<ArchivoGuardado>> GuardarAsync(IFormFile archivo, string categoria,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Stream?> AbrirLecturaAsync(string claveAlmacenamiento,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<Stream?>(new MemoryStream("contenido"u8.ToArray()));
         public Task EliminarAsync(string claveAlmacenamiento,
             CancellationToken cancellationToken = default) => Task.CompletedTask;
     }

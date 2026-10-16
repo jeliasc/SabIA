@@ -45,6 +45,8 @@ public sealed class EntregarTarea
 {
     public int Id { get; set; }
 
+    public int TareaId { get; set; }
+
     public string Tarea { get; set; } = string.Empty;
 
     public string? Instrucciones { get; set; }

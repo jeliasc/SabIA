@@ -10,6 +10,13 @@
     var puedeActivar = (await Autorizacion.AuthorizeAsync(User, Permisos.Ciclos.Activar)).Succeeded;
     var puedeCerrar = (await Autorizacion.AuthorizeAsync(User, Permisos.Ciclos.Cerrar)).Succeeded;
     var puedeReabrir = (await Autorizacion.AuthorizeAsync(User, Permisos.Ciclos.Reabrir)).Succeeded;
+    var puedeVer = (await Autorizacion.AuthorizeAsync(User, Permisos.Ciclos.Ver)).Succeeded;
+    var hayAcciones = Model.Any(ciclo =>
+        puedeVer ||
+        (puedeEditar && ciclo.Estado != EstadoCicloEscolar.Cerrado) ||
+        (puedeActivar && ciclo.Estado == EstadoCicloEscolar.Preparacion) ||
+        (puedeCerrar && ciclo.Estado == EstadoCicloEscolar.Activo) ||
+        (puedeReabrir && ciclo.Estado == EstadoCicloEscolar.Cerrado));
     string ClaseEstado(EstadoCicloEscolar estado) => estado switch
     {
         EstadoCicloEscolar.Activo => "app-badge-success",
@@ -36,7 +43,7 @@
     <div class="card shadow-sm border border-secondary">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table app-table w-100" data-tabla-index data-actions-column="true"
+                <table class="table app-table w-100" data-tabla-index data-actions-column="@(hayAcciones ? "true" : "false")"
                        data-search-placeholder="Buscar por año..."
                        data-empty-message="No existen ciclos escolares registrados"
                        data-zero-message="No se encontraron ciclos escolares">
@@ -48,7 +55,10 @@
                             <th class="text-start">Períodos</th>
                             <th class="text-start">Secciones</th>
                             <th>Estado</th>
-                            <th class="text-end">Acciones</th>
+                            @if (hayAcciones)
+                            {
+                                <th class="text-end">Acciones</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
@@ -62,6 +72,8 @@
                                 <td class="text-start">@ciclo.Secciones</td>
                                 <td><span class="app-badge @ClaseEstado(ciclo.Estado)">@TextoEstado(ciclo.Estado)</span>
                                 </td>
+                                @if (hayAcciones)
+                                {
                                 <td class="app-actions-cell">
                                     <div class="app-actions app-actions-table flex-wrap">
                                         @if (puedeEditar && ciclo.Estado != EstadoCicloEscolar.Cerrado)
@@ -90,10 +102,14 @@
                                             <a asp-action="Reabrir" asp-route-id="@ciclo.Id"
                                                class="app-btn app-btn-soft-warning app-btn-sm">Reabrir</a>
                                         }
-                                        <a asp-action="Historial" asp-route-id="@ciclo.Id"
-                                           class="app-btn app-btn-soft-secondary app-btn-sm">Historial</a>
+                                        @if (puedeVer)
+                                        {
+                                            <a asp-action="Historial" asp-route-id="@ciclo.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">Historial</a>
+                                        }
                                     </div>
                                 </td>
+                                }
                             </tr>
                         }
                     </tbody>

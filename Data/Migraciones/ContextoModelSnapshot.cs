@@ -2563,6 +2563,24 @@ namespace Proyecto_Final.Data.Migraciones
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.VisualizacionActividad", b =>
+                {
+                    b.Property<int>("AlumnoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TareaId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaVisualizacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("AlumnoId", "TareaId");
+
+                    b.HasIndex("TareaId");
+
+                    b.ToTable("VisualizacionesActividades");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Proyecto_Final.Models.Rol", null)
@@ -3656,6 +3674,25 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Periodo");
 
                     b.Navigation("Unidad");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.VisualizacionActividad", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.Alumno", "Alumno")
+                        .WithMany()
+                        .HasForeignKey("AlumnoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Tarea", "Tarea")
+                        .WithMany()
+                        .HasForeignKey("TareaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Alumno");
+
+                    b.Navigation("Tarea");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.ActividadEvaluable", b =>

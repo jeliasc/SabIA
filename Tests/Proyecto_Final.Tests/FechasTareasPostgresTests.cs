@@ -11,6 +11,7 @@ namespace Proyecto_Final.Tests;
 
 // Las fechas de los formularios llegan sin zona horaria (hora de Guatemala).
 // PostgreSQL solo acepta UTC en "timestamp with time zone".
+[Collection("PostgreSQL temporal")]
 public sealed class FechasTareasPostgresTests
 {
     private static readonly string? Conexion =

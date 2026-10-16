@@ -8,6 +8,7 @@ public interface IAlumnoServicio
 {
     Task<ConsultaIndiceAlumnos> ObtenerIndiceAsync();
     Task<ConsultaDetalleAlumno> ObtenerDetalleAutorizadoAsync(int id);
+    Task<PerfilAlumnoPropio?> ObtenerPerfilPropioAsync();
     Task PrepararCreacionAsync(CrearAlumno modelo);
     Task<ResultadoOperacion<ResultadoContrasenaTemporal>> CrearAsync(CrearAlumno modelo);
     Task<EditarAlumno?> ObtenerParaEditarAsync(int id);

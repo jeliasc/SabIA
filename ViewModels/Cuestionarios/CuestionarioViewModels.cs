@@ -94,6 +94,8 @@ public sealed class InicioCuestionario
 {
     public int CuestionarioId { get; set; }
 
+    public int TareaId { get; set; }
+
     public string Titulo { get; set; } = string.Empty;
 
     public string? Instrucciones { get; set; }

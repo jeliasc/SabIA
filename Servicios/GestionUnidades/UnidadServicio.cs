@@ -67,13 +67,17 @@ public sealed class UnidadServicio(
                         i.Estado == EstadoInscripcion.Activa &&
                         i.Seccion.CicloEscolar.Activo));
         }
-        else
+        else if (acceso.EsOperadorInstitucional)
         {
             q = q.Where(x => historial
                 ? x.Asignacion.Estado != EstadoRegistro.Activo ||
                   !x.Asignacion.Seccion.CicloEscolar.Activo
                 : x.Asignacion.Estado == EstadoRegistro.Activo &&
                   x.Asignacion.Seccion.CicloEscolar.Activo);
+        }
+        else
+        {
+            q = q.Where(_ => false);
         }
 
         return q;
@@ -133,7 +137,7 @@ public sealed class UnidadServicio(
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var d = perfil.DocenteId;
 
-        if (!d.HasValue && perfil.AlumnoId.HasValue && !acceso.EsOperadorInstitucional)
+        if (!d.HasValue && !acceso.EsOperadorInstitucional)
         {
             m.Asignaciones = [];
             m.Periodos = [];

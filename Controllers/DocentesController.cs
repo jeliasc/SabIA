@@ -6,7 +6,6 @@ using Proyecto_Final.ViewModels.Docentes;
 
 namespace Proyecto_Final.Controllers;
 
-[Authorize(Policy = Permisos.Docentes.Ver)]
 public class DocentesController : Controller
 {
     private readonly IDocenteServicio docenteServicio;
@@ -17,6 +16,7 @@ public class DocentesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Policy = Permisos.Docentes.Ver)]
     public async Task<IActionResult> Index()
     {
         return View(await docenteServicio.ObtenerTodosAsync());
@@ -31,6 +31,30 @@ public class DocentesController : Controller
         return modelo == null
             ? NotFound()
             : View(modelo);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Permisos.Alumnos.Ver)]
+    public async Task<IActionResult> Perfil()
+    {
+        var modelo = await docenteServicio.ObtenerPerfilPropioAsync();
+        return modelo == null ? Forbid() : View(modelo);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Permisos.Alumnos.Ver)]
+    public async Task<IActionResult> Directorio()
+    {
+        var modelo = await docenteServicio.ObtenerDirectorioContextualAsync();
+        return modelo == null ? Forbid() : View(modelo);
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Permisos.Alumnos.Ver)]
+    public async Task<IActionResult> MisDocentes()
+    {
+        var modelo = await docenteServicio.ObtenerDocentesDelAlumnoAsync();
+        return modelo == null ? Forbid() : View(modelo);
     }
 
     [HttpGet]

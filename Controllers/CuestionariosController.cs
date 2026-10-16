@@ -2,12 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.GestionCuestionarios;
+using Proyecto_Final.Servicios.GestionNotificaciones;
 using Proyecto_Final.ViewModels.Cuestionarios;
 
 namespace Proyecto_Final.Controllers;
 
 [Authorize(Policy = Permisos.Cuestionarios.Ver)]
-public class CuestionariosController(ICuestionarioServicio s) : Controller
+public class CuestionariosController(ICuestionarioServicio s, INotificacionServicio notificaciones) : Controller
 {
     public async Task<IActionResult> Index() =>
         View(await s.ObtenerTodosAsync());
@@ -112,10 +113,9 @@ public class CuestionariosController(ICuestionarioServicio s) : Controller
     public async Task<IActionResult> Resolver(int id)
     {
         var m = await s.ObtenerInicioAsync(id);
-
-        return m == null
-            ? NotFound()
-            : View(m);
+        if (m == null) return NotFound();
+        await notificaciones.RegistrarVisualizacionActividadAsync(m.TareaId);
+        return View(m);
     }
 
     [HttpPost]

@@ -15,6 +15,12 @@
         </p>
     </div>
 
+    @if (!Model.Any())
+    {
+        <div class="card border-0 shadow-sm"><div class="card-body text-center text-body-secondary py-5"><i class="bi bi-bell-slash me-1"></i>Sin novedades por mostrar.</div></div>
+    }
+    else
+    {
     <div class="row g-3">
         @foreach (var x in Model)
         {
@@ -33,6 +39,10 @@
                             <div class="text-muted mb-3">
                                 @x.Mensaje
                             </div>
+                            @if (x.Fecha.HasValue)
+                            {
+                                <div class="small text-body-secondary mb-3"><i class="bi bi-clock me-1"></i>@x.Fecha.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                            }
 
                             @if (x.Controlador != null)
                             {
@@ -47,4 +57,5 @@
             </div>
         }
     </div>
+    }
 </div>

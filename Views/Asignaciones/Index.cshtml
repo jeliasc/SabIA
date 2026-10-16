@@ -23,7 +23,10 @@
 
     var relevar = (await A.AuthorizeAsync(User, Politicas.RelevarAsignacion)).Succeeded;
 
-    var mostrarAcciones = e || ce || relevar;
+    var mostrarAcciones = Model.Any(x =>
+        (e && x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo) ||
+        (relevar && x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo) ||
+        (ce && !x.AsignacionAnteriorId.HasValue && !x.FechaFinVigencia.HasValue));
 }
 
 <div class="container-fluid">

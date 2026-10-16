@@ -2,12 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.GestionEntregas;
+using Proyecto_Final.Servicios.GestionNotificaciones;
 using Proyecto_Final.ViewModels.Entregas;
 
 namespace Proyecto_Final.Controllers;
 
 [Authorize(Policy = Permisos.Entregas.Ver)]
-public class EntregasController(IEntregaServicio s) : Controller
+public class EntregasController(IEntregaServicio s, INotificacionServicio notificaciones) : Controller
 {
     public async Task<IActionResult> Index() =>
         View(await s.ObtenerTodasAsync());
@@ -24,10 +25,9 @@ public class EntregasController(IEntregaServicio s) : Controller
     public async Task<IActionResult> Entregar(int id)
     {
         var m = await s.ObtenerParaEntregarAsync(id);
-
-        return m == null
-            ? NotFound()
-            : View(m);
+        if (m == null) return NotFound();
+        await notificaciones.RegistrarVisualizacionActividadAsync(m.TareaId);
+        return View(m);
     }
 
     [HttpGet]

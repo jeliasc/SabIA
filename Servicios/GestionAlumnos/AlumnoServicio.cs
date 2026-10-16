@@ -130,6 +130,16 @@ public sealed class AlumnoServicio : IAlumnoServicio
             };
         }
 
+        if (ambito.Tipo == TipoAccesoAlumnos.Alumno &&
+            ambito.AlumnoId == id)
+        {
+            return new ConsultaDetalleAlumno
+            {
+                TipoAcceso = TipoAccesoAlumnos.Alumno,
+                Propio = await ObtenerPerfilPropioAsync()
+            };
+        }
+
         var alumno = await AplicarAmbitoContextual(
                 contexto.Inscripciones.AsNoTracking(),
                 ambito)
@@ -160,6 +170,35 @@ public sealed class AlumnoServicio : IAlumnoServicio
         };
     }
 
+    public async Task<PerfilAlumnoPropio?> ObtenerPerfilPropioAsync()
+    {
+        var alumnoId = await acceso.ObtenerAlumnoIdAsync();
+        if (!alumnoId.HasValue)
+        {
+            return null;
+        }
+
+        var detalle = await ObtenerDetalleInstitucionalAsync(alumnoId.Value);
+        if (detalle == null)
+        {
+            return null;
+        }
+
+        return new PerfilAlumnoPropio
+        {
+            NombreCompleto = detalle.NombreCompleto,
+            CodigoPersonal = detalle.CodigoPersonal,
+            Correo = detalle.Correo,
+            Telefono = detalle.Telefono,
+            UnidadesDisponibles = detalle.UnidadesDisponibles,
+            TareasPublicadas = detalle.TareasPublicadas,
+            EntregasRealizadas = detalle.EntregasRealizadas,
+            InscripcionVigente = detalle.InscripcionVigente,
+            Inscripciones = detalle.Inscripciones,
+            Encargados = detalle.Encargados
+        };
+    }
+
     private async Task<AmbitoAlumnos> ObtenerAmbitoAsync()
     {
         if (acceso.EsOperadorInstitucional)
@@ -173,7 +212,8 @@ public sealed class AlumnoServicio : IAlumnoServicio
         {
             return new AmbitoAlumnos(
                 TipoAccesoAlumnos.Docente,
-                DocenteId: perfil.DocenteId.Value);
+                DocenteId: perfil.DocenteId.Value,
+                SeccionesDelegadas: await acceso.ObtenerSeccionesDelegadasParaConsultaAsync());
         }
 
         if (!perfil.AlumnoId.HasValue)
@@ -219,7 +259,9 @@ public sealed class AlumnoServicio : IAlumnoServicio
             ambito.DocenteId.HasValue)
         {
             var docenteId = ambito.DocenteId.Value;
+            var seccionesDelegadas = ambito.SeccionesDelegadas?.ToArray() ?? [];
             return consulta.Where(inscripcion =>
+                seccionesDelegadas.Contains(inscripcion.SeccionId) ||
                 contexto.Asignaciones.Any(asignacion =>
                     asignacion.DocenteId == docenteId &&
                     asignacion.SeccionId == inscripcion.SeccionId &&
@@ -250,7 +292,8 @@ public sealed class AlumnoServicio : IAlumnoServicio
         int? DocenteId = null,
         int? AlumnoId = null,
         int? SeccionId = null,
-        int? CicloEscolarId = null);
+        int? CicloEscolarId = null,
+        IReadOnlySet<int>? SeccionesDelegadas = null);
 
     private sealed class FilaAlumnoContextual
     {
