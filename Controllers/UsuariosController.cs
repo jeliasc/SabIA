@@ -30,6 +30,9 @@ public class UsuariosController : Controller
         var usuarios =
             await usuarioServicio.ObtenerTodosAsync();
 
+        ViewBag.RolesPorUsuario =
+            await usuarioServicio.ObtenerRolesParaListadoAsync();
+
         return View(usuarios);
     }
 

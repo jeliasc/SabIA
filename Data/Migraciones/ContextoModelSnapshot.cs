@@ -295,6 +295,9 @@ namespace Proyecto_Final.Data.Migraciones
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("AsignacionAnteriorId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("CursoId")
                         .HasColumnType("integer");
 
@@ -304,6 +307,12 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Property<int>("Estado")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("FechaFinVigencia")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaInicioVigencia")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("GradoId")
                         .HasColumnType("integer");
 
@@ -312,16 +321,31 @@ namespace Proyecto_Final.Data.Migraciones
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AsignacionAnteriorId")
+                        .IsUnique()
+                        .HasFilter("\"AsignacionAnteriorId\" IS NOT NULL");
+
                     b.HasIndex("DocenteId");
 
                     b.HasIndex("CursoId", "GradoId");
 
                     b.HasIndex("SeccionId", "CursoId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_Asignaciones_SeccionId_CursoId_Activa")
+                        .HasFilter("\"Estado\" = 1");
 
                     b.HasIndex("SeccionId", "GradoId");
 
-                    b.ToTable("Asignaciones");
+                    b.ToTable("Asignaciones", t =>
+                        {
+                            t.HasCheckConstraint("CK_Asignaciones_ActivaSinFin", "\"Estado\" <> 1 OR \"FechaFinVigencia\" IS NULL");
+
+                            t.HasCheckConstraint("CK_Asignaciones_SinAutorreferencia", "\"AsignacionAnteriorId\" IS NULL OR \"AsignacionAnteriorId\" <> \"Id\"");
+
+                            t.HasCheckConstraint("CK_Asignaciones_VersionConInicio", "\"AsignacionAnteriorId\" IS NULL OR \"FechaInicioVigencia\" IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_Asignaciones_Vigencia", "\"FechaFinVigencia\" IS NULL OR \"FechaInicioVigencia\" IS NULL OR \"FechaInicioVigencia\" <= \"FechaFinVigencia\"");
+                        });
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.CalificacionManual", b =>
@@ -605,13 +629,22 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Property<bool>("MostrarResultadosAlFinalizar")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("OrdenAleatorio")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Origen")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("PermitirNavegacion")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("TareaId")
                         .HasColumnType("integer");
 
                     b.Property<int?>("TiempoGeneralSegundos")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TiempoPorPreguntaSegundos")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -652,6 +685,67 @@ namespace Proyecto_Final.Data.Migraciones
                         .IsUnique();
 
                     b.ToTable("Cursos");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.DelegacionAcademica", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activa")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("AsignacionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CreadaPorUsuarioId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("DocenteId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaCreacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaFinUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaInicioUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Operaciones")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RelevoAsignacionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreadaPorUsuarioId");
+
+                    b.HasIndex("DocenteId");
+
+                    b.HasIndex("RelevoAsignacionId");
+
+                    b.HasIndex("AsignacionId", "DocenteId", "Activa");
+
+                    b.HasIndex("RelevoAsignacionId", "AsignacionId", "DocenteId", "Operaciones")
+                        .IsUnique()
+                        .HasDatabaseName("UX_DelegacionesAcademicas_Relevo_Operacion_Activa")
+                        .HasFilter("\"Activa\" = TRUE");
+
+                    b.ToTable("DelegacionesAcademicas", t =>
+                        {
+                            t.HasCheckConstraint("CK_DelegacionesAcademicas_ActivaSinFin", "\"Activa\" = FALSE OR \"FechaFinUtc\" IS NULL");
+
+                            t.HasCheckConstraint("CK_DelegacionesAcademicas_Operaciones", "\"Operaciones\" > 0 AND \"Operaciones\" <= 63");
+
+                            t.HasCheckConstraint("CK_DelegacionesAcademicas_Vigencia", "\"FechaFinUtc\" IS NULL OR \"FechaInicioUtc\" <= \"FechaFinUtc\"");
+                        });
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.Docente", b =>
@@ -1049,15 +1143,31 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Property<DateTime>("FechaInicio")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("FechaLimite")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int?>("InscripcionId")
                         .HasColumnType("integer");
 
                     b.Property<int>("NumeroIntento")
                         .HasColumnType("integer");
 
+                    b.Property<string>("OrdenPreguntas")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<int>("PreguntaActual")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AlumnoId");
+
+                    b.HasIndex("CuestionarioId", "InscripcionId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_IntentosCuestionarios_IntentoEnCurso")
+                        .HasFilter("\"Estado\" = 1");
 
                     b.HasIndex("InscripcionId", "AlumnoId");
 
@@ -1594,6 +1704,10 @@ namespace Proyecto_Final.Data.Migraciones
                         .HasPrecision(9, 2)
                         .HasColumnType("numeric(9,2)");
 
+                    b.Property<string>("Retroalimentacion")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<int?>("TiempoLimiteSegundos")
                         .HasColumnType("integer");
 
@@ -1736,6 +1850,74 @@ namespace Proyecto_Final.Data.Migraciones
                     b.HasIndex("UsuarioId", "FechaUtc");
 
                     b.ToTable("RegistrosAuditoria");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.RelevoAsignacion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AsignacionAnteriorId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("AsignacionNuevaId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("ConsecuenciasConfirmadas")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("DocenteAnteriorId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DocenteSustitutoId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaEfectivaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaRegistroUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("ObligacionesPendientesJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UsuarioResponsableId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Id", "AsignacionAnteriorId", "DocenteSustitutoId")
+                        .HasName("AK_RelevosAsignaciones_Delegacion");
+
+                    b.HasIndex("AsignacionAnteriorId")
+                        .IsUnique();
+
+                    b.HasIndex("AsignacionNuevaId")
+                        .IsUnique();
+
+                    b.HasIndex("DocenteAnteriorId");
+
+                    b.HasIndex("DocenteSustitutoId");
+
+                    b.HasIndex("UsuarioResponsableId");
+
+                    b.ToTable("RelevosAsignaciones", t =>
+                        {
+                            t.HasCheckConstraint("CK_RelevosAsignaciones_DocentesDistintos", "\"DocenteAnteriorId\" <> \"DocenteSustitutoId\"");
+                        });
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.RespuestaAceptada", b =>
@@ -2118,6 +2300,9 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Property<string>("Instrucciones")
                         .HasColumnType("text");
 
+                    b.Property<int?>("MaximoIntentosEntrega")
+                        .HasColumnType("integer");
+
                     b.Property<int>("NumeroVersion")
                         .HasColumnType("integer");
 
@@ -2158,6 +2343,8 @@ namespace Proyecto_Final.Data.Migraciones
                     b.ToTable("Tareas", t =>
                         {
                             t.HasCheckConstraint("CK_Tareas_Fechas", "\"FechaDisponibilidad\" IS NULL OR \"FechaLimite\" IS NULL OR \"FechaDisponibilidad\" <= \"FechaLimite\"");
+
+                            t.HasCheckConstraint("CK_Tareas_MaximoIntentosEntrega", "(\"Tipo\" = 1 AND (\"MaximoIntentosEntrega\" IS NULL OR \"MaximoIntentosEntrega\" IN (1, 2, 3))) OR (\"Tipo\" <> 1 AND \"MaximoIntentosEntrega\" IS NULL)");
 
                             t.HasCheckConstraint("CK_Tareas_NumeroVersion", "\"NumeroVersion\" >= 1");
 
@@ -2376,6 +2563,24 @@ namespace Proyecto_Final.Data.Migraciones
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.VisualizacionActividad", b =>
+                {
+                    b.Property<int>("AlumnoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TareaId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaVisualizacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("AlumnoId", "TareaId");
+
+                    b.HasIndex("TareaId");
+
+                    b.ToTable("VisualizacionesActividades");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Proyecto_Final.Models.Rol", null)
@@ -2498,6 +2703,11 @@ namespace Proyecto_Final.Data.Migraciones
 
             modelBuilder.Entity("Proyecto_Final.Models.Asignacion", b =>
                 {
+                    b.HasOne("Proyecto_Final.Models.Asignacion", "AsignacionAnterior")
+                        .WithMany()
+                        .HasForeignKey("AsignacionAnteriorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Proyecto_Final.Models.Docente", "Docente")
                         .WithMany()
                         .HasForeignKey("DocenteId")
@@ -2517,6 +2727,8 @@ namespace Proyecto_Final.Data.Migraciones
                         .HasPrincipalKey("Id", "GradoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("AsignacionAnterior");
 
                     b.Navigation("Curso");
 
@@ -2663,6 +2875,42 @@ namespace Proyecto_Final.Data.Migraciones
                         .IsRequired();
 
                     b.Navigation("Grado");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.DelegacionAcademica", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.Asignacion", "Asignacion")
+                        .WithMany()
+                        .HasForeignKey("AsignacionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Usuario", "CreadaPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("CreadaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Docente", "Docente")
+                        .WithMany()
+                        .HasForeignKey("DocenteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.RelevoAsignacion", "RelevoAsignacion")
+                        .WithMany("Delegaciones")
+                        .HasForeignKey("RelevoAsignacionId", "AsignacionId", "DocenteId")
+                        .HasPrincipalKey("Id", "AsignacionAnteriorId", "DocenteSustitutoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Asignacion");
+
+                    b.Navigation("CreadaPorUsuario");
+
+                    b.Navigation("Docente");
+
+                    b.Navigation("RelevoAsignacion");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.Docente", b =>
@@ -3098,6 +3346,49 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.RelevoAsignacion", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.Asignacion", "AsignacionAnterior")
+                        .WithMany()
+                        .HasForeignKey("AsignacionAnteriorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Asignacion", "AsignacionNueva")
+                        .WithMany()
+                        .HasForeignKey("AsignacionNuevaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Docente", "DocenteAnterior")
+                        .WithMany()
+                        .HasForeignKey("DocenteAnteriorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Docente", "DocenteSustituto")
+                        .WithMany()
+                        .HasForeignKey("DocenteSustitutoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Usuario", "UsuarioResponsable")
+                        .WithMany()
+                        .HasForeignKey("UsuarioResponsableId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AsignacionAnterior");
+
+                    b.Navigation("AsignacionNueva");
+
+                    b.Navigation("DocenteAnterior");
+
+                    b.Navigation("DocenteSustituto");
+
+                    b.Navigation("UsuarioResponsable");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.RespuestaAceptada", b =>
                 {
                     b.HasOne("Proyecto_Final.Models.Pregunta", "Pregunta")
@@ -3385,6 +3676,25 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Unidad");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.VisualizacionActividad", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.Alumno", "Alumno")
+                        .WithMany()
+                        .HasForeignKey("AlumnoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Tarea", "Tarea")
+                        .WithMany()
+                        .HasForeignKey("TareaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Alumno");
+
+                    b.Navigation("Tarea");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.ActividadEvaluable", b =>
                 {
                     b.Navigation("CalificacionesManuales");
@@ -3473,6 +3783,11 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Opciones");
 
                     b.Navigation("RespuestasAceptadas");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.RelevoAsignacion", b =>
+                {
+                    b.Navigation("Delegaciones");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.RespuestaAlumno", b =>

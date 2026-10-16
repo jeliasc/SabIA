@@ -42,7 +42,8 @@
                 </div>
                 <div class="col-12 col-md-3">
                     <label asp-for="Filtro.Resultado" class="form-label"></label>
-                    <select asp-for="Filtro.Resultado" name="Resultado" asp-items="Html.GetEnumSelectList<ResultadoAuditoria>()" class="form-select">
+                    <select asp-for="Filtro.Resultado" name="Resultado"
+                            asp-items="Html.GetEnumSelectList<ResultadoAuditoria>()" class="form-select">
                         <option value="">Todos</option>
                     </select>
                 </div>
@@ -86,59 +87,58 @@
                     <tbody>
                         @if (Model.Registros.Count == 0)
                         {
-                            <tr><td colspan="7" class="text-center text-muted py-4">No hay eventos que coincidan con los filtros.</td></tr>
-                        }
-                        else
-                        {
-                            @foreach (var registro in Model.Registros)
-                            {
-                                <tr>
-                                    <td class="text-nowrap">@registro.FechaHoraGuatemala.ToString("dd/MM/yyyy HH:mm:ss")</td>
-                                    <td>@registro.Responsable</td>
-                                    <td>@registro.Modulo</td>
-                                    <td>@registro.Accion</td>
-                                    <td><span class="badge @ClaseResultado(registro.Resultado)">@registro.Resultado</span></td>
-                                    <td><code>@(registro.DireccionIp ?? "—")</code></td>
-                                    <td class="text-end">
-                                        <a asp-action="Detalle" asp-route-id="@registro.Id" class="btn btn-sm btn-outline-primary">Ver detalle</a>
-                                    </td>
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">No hay eventos que coincidan con los
+                                    filtros.</td>
                                 </tr>
                             }
-                        }
-                    </tbody>
-                </table>
-            </div>
+                        else
+                            {
+                                @foreach (var registro in Model.Registros)
+                                {
+                                    <tr>
+                                        <td class="text-nowrap">@registro.FechaHoraGuatemala.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                        <td>@registro.Responsable</td>
+                                        <td>@registro.Modulo</td>
+                                        <td>@registro.Accion</td>
+                                        <td><span class="badge @ClaseResultado(registro.Resultado)">@registro.Resultado</span></td>
+                                        <td><code>@(registro.DireccionIp ?? "—")</code></td>
+                                        <td class="text-end">
+                                            <a asp-action="Detalle" asp-route-id="@registro.Id"
+                                               class="btn btn-sm btn-outline-primary">Ver detalle</a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
 
-            @if (Model.TotalPaginas > 1)
-            {
-                <nav aria-label="Paginación de auditoría">
-                    <ul class="pagination justify-content-end mb-0">
-                        <li class="page-item @(Model.Pagina == 1 ? "disabled" : null)">
-                            <a class="page-link" asp-action="Index"
-                               asp-route-pagina="@(Model.Pagina - 1)"
-                               asp-route-fechaDesde="@Model.Filtro.FechaDesde"
-                               asp-route-fechaHasta="@Model.Filtro.FechaHasta"
-                               asp-route-responsable="@Model.Filtro.Responsable"
-                               asp-route-modulo="@Model.Filtro.Modulo"
-                               asp-route-accion="@Model.Filtro.Accion"
-                               asp-route-resultado="@Model.Filtro.Resultado"
-                               asp-route-direccionIp="@Model.Filtro.DireccionIp">Anterior</a>
-                        </li>
-                        <li class="page-item disabled"><span class="page-link">@Model.Pagina / @Model.TotalPaginas</span></li>
-                        <li class="page-item @(Model.Pagina == Model.TotalPaginas ? "disabled" : null)">
-                            <a class="page-link" asp-action="Index"
-                               asp-route-pagina="@(Model.Pagina + 1)"
-                               asp-route-fechaDesde="@Model.Filtro.FechaDesde"
-                               asp-route-fechaHasta="@Model.Filtro.FechaHasta"
-                               asp-route-responsable="@Model.Filtro.Responsable"
-                               asp-route-modulo="@Model.Filtro.Modulo"
-                               asp-route-accion="@Model.Filtro.Accion"
-                               asp-route-resultado="@Model.Filtro.Resultado"
-                               asp-route-direccionIp="@Model.Filtro.DireccionIp">Siguiente</a>
-                        </li>
-                    </ul>
-                </nav>
-            }
+                @if (Model.TotalPaginas > 1)
+                {
+                    <nav aria-label="Paginación de auditoría">
+                        <ul class="pagination justify-content-end mb-0">
+                            <li class="page-item @(Model.Pagina == 1 ? "disabled" : null)">
+                                <a class="page-link" asp-action="Index" asp-route-pagina="@(Model.Pagina - 1)"
+                                   asp-route-fechaDesde="@Model.Filtro.FechaDesde"
+                                   asp-route-fechaHasta="@Model.Filtro.FechaHasta"
+                                   asp-route-responsable="@Model.Filtro.Responsable" asp-route-modulo="@Model.Filtro.Modulo"
+                                   asp-route-accion="@Model.Filtro.Accion" asp-route-resultado="@Model.Filtro.Resultado"
+                                   asp-route-direccionIp="@Model.Filtro.DireccionIp">Anterior</a>
+                            </li>
+                            <li class="page-item disabled"><span class="page-link">@Model.Pagina / @Model.TotalPaginas</span>
+                            </li>
+                            <li class="page-item @(Model.Pagina == Model.TotalPaginas ? "disabled" : null)">
+                                <a class="page-link" asp-action="Index" asp-route-pagina="@(Model.Pagina + 1)"
+                                   asp-route-fechaDesde="@Model.Filtro.FechaDesde"
+                                   asp-route-fechaHasta="@Model.Filtro.FechaHasta"
+                                   asp-route-responsable="@Model.Filtro.Responsable" asp-route-modulo="@Model.Filtro.Modulo"
+                                   asp-route-accion="@Model.Filtro.Accion" asp-route-resultado="@Model.Filtro.Resultado"
+                                   asp-route-direccionIp="@Model.Filtro.DireccionIp">Siguiente</a>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+            </div>
         </div>
     </div>
-</div>

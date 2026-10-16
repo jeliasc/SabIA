@@ -10,7 +10,7 @@
     var puedePublicar = (await A.AuthorizeAsync(User, Permisos.Materiales.Publicar)).Succeeded;
     var puedeDescargar = (await A.AuthorizeAsync(User, Permisos.Materiales.Descargar)).Succeeded;
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
-    var hayAcciones = !soloLectura && (puedeEditar || puedePublicar);
+    var hayAcciones = !soloLectura && Model.Any() && (puedeEditar || puedePublicar);
 }
 <div class="container-fluid">
     <partial name="_AlertasResultado" />

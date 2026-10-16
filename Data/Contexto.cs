@@ -47,6 +47,12 @@ public class Contexto
     public DbSet<Asignacion> Asignaciones =>
         Set<Asignacion>();
 
+    public DbSet<RelevoAsignacion> RelevosAsignaciones =>
+        Set<RelevoAsignacion>();
+
+    public DbSet<DelegacionAcademica> DelegacionesAcademicas =>
+        Set<DelegacionAcademica>();
+
     public DbSet<Inscripcion> Inscripciones =>
         Set<Inscripcion>();
 
@@ -86,6 +92,9 @@ public class Contexto
         Set<TareaArchivo>();
 
     public DbSet<Entrega> Entregas => Set<Entrega>();
+
+    public DbSet<VisualizacionActividad> VisualizacionesActividades =>
+        Set<VisualizacionActividad>();
 
     public DbSet<ReaperturaEntrega> ReaperturasEntregas =>
         Set<ReaperturaEntrega>();
@@ -348,7 +357,37 @@ public class Contexto
                 asignacion.SeccionId,
                 asignacion.CursoId
             })
+            .HasDatabaseName("IX_Asignaciones_SeccionId_CursoId_Activa")
+            .HasFilter($"\"Estado\" = {(int)EstadoRegistro.Activo}")
             .IsUnique();
+
+        builder.Entity<Asignacion>()
+            .HasIndex(asignacion => asignacion.AsignacionAnteriorId)
+            .IsUnique()
+            .HasFilter("\"AsignacionAnteriorId\" IS NOT NULL");
+
+        builder.Entity<Asignacion>()
+            .HasOne(asignacion => asignacion.AsignacionAnterior)
+            .WithMany()
+            .HasForeignKey(asignacion => asignacion.AsignacionAnteriorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Asignacion>()
+            .ToTable(tabla =>
+            {
+                tabla.HasCheckConstraint(
+                    "CK_Asignaciones_Vigencia",
+                    "\"FechaFinVigencia\" IS NULL OR \"FechaInicioVigencia\" IS NULL OR \"FechaInicioVigencia\" <= \"FechaFinVigencia\"");
+                tabla.HasCheckConstraint(
+                    "CK_Asignaciones_SinAutorreferencia",
+                    "\"AsignacionAnteriorId\" IS NULL OR \"AsignacionAnteriorId\" <> \"Id\"");
+                tabla.HasCheckConstraint(
+                    "CK_Asignaciones_VersionConInicio",
+                    "\"AsignacionAnteriorId\" IS NULL OR \"FechaInicioVigencia\" IS NOT NULL");
+                tabla.HasCheckConstraint(
+                    "CK_Asignaciones_ActivaSinFin",
+                    "\"Estado\" <> 1 OR \"FechaFinVigencia\" IS NULL");
+            });
 
         builder.Entity<Asignacion>()
             .HasOne(asignacion => asignacion.Seccion)
@@ -388,6 +427,93 @@ public class Contexto
 
         builder.Entity<Asignacion>()
             .HasIndex(asignacion => asignacion.DocenteId);
+
+        builder.Entity<RelevoAsignacion>()
+            .HasIndex(x => x.AsignacionAnteriorId)
+            .IsUnique();
+        builder.Entity<RelevoAsignacion>()
+            .HasAlternateKey(x => new
+            {
+                x.Id,
+                x.AsignacionAnteriorId,
+                x.DocenteSustitutoId
+            })
+            .HasName("AK_RelevosAsignaciones_Delegacion");
+        builder.Entity<RelevoAsignacion>()
+            .HasIndex(x => x.AsignacionNuevaId)
+            .IsUnique();
+        builder.Entity<RelevoAsignacion>()
+            .HasOne(x => x.AsignacionAnterior).WithMany()
+            .HasForeignKey(x => x.AsignacionAnteriorId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<RelevoAsignacion>()
+            .HasOne(x => x.AsignacionNueva).WithMany()
+            .HasForeignKey(x => x.AsignacionNuevaId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<RelevoAsignacion>()
+            .HasOne(x => x.DocenteAnterior).WithMany()
+            .HasForeignKey(x => x.DocenteAnteriorId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<RelevoAsignacion>()
+            .HasOne(x => x.DocenteSustituto).WithMany()
+            .HasForeignKey(x => x.DocenteSustitutoId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<RelevoAsignacion>()
+            .HasOne(x => x.UsuarioResponsable).WithMany()
+            .HasForeignKey(x => x.UsuarioResponsableId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<RelevoAsignacion>()
+            .ToTable(tabla => tabla.HasCheckConstraint(
+                "CK_RelevosAsignaciones_DocentesDistintos",
+                "\"DocenteAnteriorId\" <> \"DocenteSustitutoId\""));
+
+        builder.Entity<DelegacionAcademica>()
+            .HasIndex(x => x.RelevoAsignacionId);
+        builder.Entity<DelegacionAcademica>()
+            .HasIndex(x => new { x.AsignacionId, x.DocenteId, x.Activa });
+        builder.Entity<DelegacionAcademica>()
+            .HasIndex(x => new
+            {
+                x.RelevoAsignacionId,
+                x.AsignacionId,
+                x.DocenteId,
+                x.Operaciones
+            })
+            .HasDatabaseName("UX_DelegacionesAcademicas_Relevo_Operacion_Activa")
+            .IsUnique()
+            .HasFilter("\"Activa\" = TRUE");
+        builder.Entity<DelegacionAcademica>()
+            .HasOne(x => x.RelevoAsignacion).WithMany(x => x.Delegaciones)
+            .HasForeignKey(x => new
+            {
+                x.RelevoAsignacionId,
+                x.AsignacionId,
+                x.DocenteId
+            })
+            .HasPrincipalKey(x => new
+            {
+                x.Id,
+                x.AsignacionAnteriorId,
+                x.DocenteSustitutoId
+            })
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<DelegacionAcademica>()
+            .HasOne(x => x.Asignacion).WithMany()
+            .HasForeignKey(x => x.AsignacionId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<DelegacionAcademica>()
+            .HasOne(x => x.Docente).WithMany()
+            .HasForeignKey(x => x.DocenteId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<DelegacionAcademica>()
+            .HasOne(x => x.CreadaPorUsuario).WithMany()
+            .HasForeignKey(x => x.CreadaPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<DelegacionAcademica>()
+            .ToTable(tabla =>
+            {
+                tabla.HasCheckConstraint(
+                    "CK_DelegacionesAcademicas_Vigencia",
+                    "\"FechaFinUtc\" IS NULL OR \"FechaInicioUtc\" <= \"FechaFinUtc\"");
+                tabla.HasCheckConstraint(
+                    "CK_DelegacionesAcademicas_Operaciones",
+                    "\"Operaciones\" > 0 AND \"Operaciones\" <= 63");
+                tabla.HasCheckConstraint(
+                    "CK_DelegacionesAcademicas_ActivaSinFin",
+                    "\"Activa\" = FALSE OR \"FechaFinUtc\" IS NULL");
+            });
 
         // Inscripciones
 
@@ -817,6 +943,24 @@ public class Contexto
             .HasForeignKey(t => t.TareaAnteriorId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Visualizaciones de actividades. La llave compuesta conserva una
+        // única primera visualización por alumno y tarea incluso con
+        // solicitudes simultáneas.
+        builder.Entity<VisualizacionActividad>()
+            .HasKey(x => new { x.AlumnoId, x.TareaId });
+
+        builder.Entity<VisualizacionActividad>()
+            .HasOne(x => x.Alumno)
+            .WithMany()
+            .HasForeignKey(x => x.AlumnoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<VisualizacionActividad>()
+            .HasOne(x => x.Tarea)
+            .WithMany()
+            .HasForeignKey(x => x.TareaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Archivos de tareas
 
         builder.Entity<TareaArchivo>()
@@ -864,6 +1008,11 @@ public class Contexto
             .WithMany(t => t.Entregas)
             .HasForeignKey(e => e.TareaId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Tarea>()
+            .ToTable(tabla => tabla.HasCheckConstraint(
+                "CK_Tareas_MaximoIntentosEntrega",
+                "(\"Tipo\" = 1 AND (\"MaximoIntentosEntrega\" IS NULL OR \"MaximoIntentosEntrega\" IN (1, 2, 3))) OR (\"Tipo\" <> 1 AND \"MaximoIntentosEntrega\" IS NULL)"));
 
         builder.Entity<Entrega>()
             .HasOne(e => e.Alumno)
@@ -1008,6 +1157,18 @@ public class Contexto
                 i.NumeroIntento
             })
             .IsUnique();
+
+        // Un alumno solo puede tener un intento en curso por cuestionario
+        // e inscripción. Evita que dos pestañas inicien intentos paralelos.
+        builder.Entity<IntentoCuestionario>()
+            .HasIndex(i => new
+            {
+                i.CuestionarioId,
+                i.InscripcionId
+            })
+            .IsUnique()
+            .HasFilter("\"Estado\" = 1")
+            .HasDatabaseName("IX_IntentosCuestionarios_IntentoEnCurso");
 
         builder.Entity<IntentoCuestionario>()
             .HasOne(i => i.Cuestionario)

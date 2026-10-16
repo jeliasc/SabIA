@@ -1,6 +1,8 @@
 @using Microsoft.AspNetCore.Authorization
 @using Proyecto_Final.Seguridad
+@using Proyecto_Final.Servicios.SeguridadAcademica
 @inject IAuthorizationService Autorizacion
+@inject IAccesoAcademicoServicio AccesoAcademico
 
 @{
     var controlador =
@@ -146,6 +148,16 @@
         User,
         Permisos.Notificaciones.Ver
     )).Succeeded;
+
+    var contextoAcademico = await AccesoAcademico.ObtenerContextoUsuarioAsync();
+    var esDocenteContextual = alumnos && !AccesoAcademico.EsOperadorInstitucional &&
+        contextoAcademico.DocenteId.HasValue;
+    var esAlumnoContextual = alumnos && !AccesoAcademico.EsOperadorInstitucional &&
+        !esDocenteContextual && contextoAcademico.AlumnoId.HasValue;
+    var comunidadAcademica = esDocenteContextual || esAlumnoContextual;
+    var docentesAdministrativos = docentes && AccesoAcademico.EsOperadorInstitucional;
+    var alumnosAdministrativos = alumnos && AccesoAcademico.EsOperadorInstitucional;
+    var encargadosAdministrativos = encargados && AccesoAcademico.EsOperadorInstitucional;
 }
 
 <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
@@ -174,10 +186,6 @@
 
                 @if (usuarios || roles || permisos || auditoria)
                 {
-                    <li class="nav-header">
-                        ADMINISTRACIÓN
-                    </li>
-
                     <li class="nav-item @Abierto("Usuarios", "Roles", "PermisosSistema", "Auditoria")">
                         <a href="#" class="nav-link @Activo("Usuarios", "Roles", "PermisosSistema", "Auditoria")">
                             <i class="nav-icon bi bi-shield-lock"></i>
@@ -188,10 +196,10 @@
                             </p>
                         </a>
 
-                        <ul class="nav nav-treeview">
+                        <ul class="nav nav-treeview ps-4">
                             @if (usuarios)
                             {
-                                <li class="nav-item">
+                                <li class="nav-item ">
                                     <a asp-controller="Usuarios" asp-action="Index" class="nav-link @Activo("Usuarios")">
                                         <i class="nav-icon bi bi-people"></i>
                                         <p>Usuarios</p>
@@ -233,11 +241,8 @@
                     </li>
                 }
 
-                @if (docentes || alumnos || encargados)
+                @if (docentesAdministrativos || alumnosAdministrativos || encargadosAdministrativos)
                 {
-                    <li class="nav-header">
-                        PERSONAS
-                    </li>
 
                     <li class="nav-item @Abierto("Docentes", "Alumnos", "Encargados")">
                         <a href="#" class="nav-link @Activo("Docentes", "Alumnos", "Encargados")">
@@ -249,8 +254,8 @@
                             </p>
                         </a>
 
-                        <ul class="nav nav-treeview">
-                            @if (docentes)
+                        <ul class="nav nav-treeview ps-4">
+                            @if (docentesAdministrativos)
                             {
                                 <li class="nav-item">
                                     <a asp-controller="Docentes" asp-action="Index" class="nav-link @Activo("Docentes")">
@@ -260,7 +265,7 @@
                                 </li>
                             }
 
-                            @if (alumnos)
+                            @if (alumnosAdministrativos)
                             {
                                 <li class="nav-item">
                                     <a asp-controller="Alumnos" asp-action="Index" class="nav-link @Activo("Alumnos")">
@@ -270,7 +275,7 @@
                                 </li>
                             }
 
-                            @if (encargados)
+                            @if (encargadosAdministrativos)
                             {
                                 <li class="nav-item">
                                     <a asp-controller="Encargados" asp-action="Index" class="nav-link @Activo("Encargados")">
@@ -283,12 +288,54 @@
                     </li>
                 }
 
+                @if (comunidadAcademica)
+                {
+                    <li class="nav-item @Abierto("Alumnos", "Docentes")">
+                        <a href="#" class="nav-link @Activo("Alumnos", "Docentes")">
+                            <i class="nav-icon bi bi-mortarboard-fill"></i>
+                            <p>
+                                Comunidad acadÃ©mica
+                                <i class="nav-arrow bi bi-chevron-right"></i>
+                            </p>
+                        </a>
+
+                        <ul class="nav nav-treeview ps-4">
+                            @if (esAlumnoContextual)
+                            {
+                                <li class="nav-item">
+                                    <a asp-controller="Alumnos" asp-action="Index" class="nav-link @Activo("Alumnos")">
+                                        <i class="nav-icon bi bi-people"></i>
+                                        <p>Mis compaÃ±eros</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a asp-controller="Docentes" asp-action="MisDocentes" class="nav-link @Activo("Docentes")">
+                                        <i class="nav-icon bi bi-person-video3"></i>
+                                        <p>Mis docentes</p>
+                                    </a>
+                                </li>
+                            }
+                            else if (esDocenteContextual)
+                            {
+                                <li class="nav-item">
+                                    <a asp-controller="Alumnos" asp-action="Index" class="nav-link @Activo("Alumnos")">
+                                        <i class="nav-icon bi bi-mortarboard"></i>
+                                        <p>Mis alumnos</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a asp-controller="Docentes" asp-action="Directorio" class="nav-link @Activo("Docentes")">
+                                        <i class="nav-icon bi bi-people"></i>
+                                        <p>Directorio docente</p>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </li>
+                }
+
                 @if (ciclos || periodos || grados || secciones || cursos)
                 {
-                    <li class="nav-header">
-                        ESTRUCTURA ACADÉMICA
-                    </li>
-
                     <li class="nav-item @Abierto("Ciclos", "Periodos", "Grados", "Secciones", "Cursos")">
                         <a href="#" class="nav-link @Activo("Ciclos", "Periodos", "Grados", "Secciones", "Cursos")">
                             <i class="nav-icon bi bi-diagram-3"></i>
@@ -299,7 +346,7 @@
                             </p>
                         </a>
 
-                        <ul class="nav nav-treeview">
+                        <ul class="nav nav-treeview ps-4">
                             @if (ciclos)
                             {
                                 <li class="nav-item">
@@ -355,10 +402,6 @@
 
                 @if (asignaciones || inscripciones)
                 {
-                    <li class="nav-header">
-                        GESTIÓN ACADÉMICA
-                    </li>
-
                     <li class="nav-item @Abierto("Asignaciones", "Inscripciones")">
                         <a href="#" class="nav-link @Activo("Asignaciones", "Inscripciones")">
                             <i class="nav-icon bi bi-person-workspace"></i>
@@ -369,7 +412,7 @@
                             </p>
                         </a>
 
-                        <ul class="nav nav-treeview">
+                        <ul class="nav nav-treeview ps-4">
                             @if (asignaciones)
                             {
                                 <li class="nav-item">
@@ -397,10 +440,6 @@
 
                 @if (unidades || materiales || planificaciones || documentos)
                 {
-                    <li class="nav-header">
-                        CONTENIDO Y DOCENCIA
-                    </li>
-
                     <li class="nav-item @Abierto("Unidades", "Materiales", "Planificaciones", "Documentos")">
                         <a href="#" class="nav-link @Activo("Unidades", "Materiales", "Planificaciones", "Documentos")">
                             <i class="nav-icon bi bi-journal-richtext"></i>
@@ -411,7 +450,7 @@
                             </p>
                         </a>
 
-                        <ul class="nav nav-treeview">
+                        <ul class="nav nav-treeview ps-4">
                             @if (unidades)
                             {
                                 <li class="nav-item">
@@ -458,10 +497,6 @@
 
                 @if (tareas || entregas || cuestionarios || calificaciones || ia)
                 {
-                    <li class="nav-header">
-                        EVALUACIÓN Y APOYO
-                    </li>
-
                     <li class="nav-item @Abierto("Tareas", "Entregas", "Cuestionarios", "Calificaciones", "ContenidoIA")">
                         <a href="#" class="nav-link @Activo("Tareas", "Entregas", "Cuestionarios", "Calificaciones", "ContenidoIA")">
                             <i class="nav-icon bi bi-list-check"></i>
@@ -472,7 +507,7 @@
                             </p>
                         </a>
 
-                        <ul class="nav nav-treeview">
+                        <ul class="nav nav-treeview ps-4">
                             @if (tareas)
                             {
                                 <li class="nav-item">
@@ -530,10 +565,6 @@
 
                 @if (notificaciones)
                 {
-                    <li class="nav-header">
-                        SEGUIMIENTO
-                    </li>
-
                     <li class="nav-item">
                         <a asp-controller="Notificaciones" asp-action="Index" class="nav-link @Activo("Notificaciones")">
                             <i class="nav-icon bi bi-bell"></i>

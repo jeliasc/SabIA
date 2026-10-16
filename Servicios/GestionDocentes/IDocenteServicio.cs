@@ -10,6 +10,12 @@ public interface IDocenteServicio
 
     Task<DetalleDocente?> ObtenerDetalleAsync(int id);
 
+    Task<PerfilDocentePropio?> ObtenerPerfilPropioAsync();
+
+    Task<IReadOnlyList<DocenteContextual>?> ObtenerDirectorioContextualAsync();
+
+    Task<IReadOnlyList<DocenteContextual>?> ObtenerDocentesDelAlumnoAsync();
+
     Task<ResultadoOperacion<ResultadoContrasenaTemporal>> CrearAsync(
         CrearDocente modelo);
 

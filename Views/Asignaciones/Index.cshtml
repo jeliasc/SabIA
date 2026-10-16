@@ -21,7 +21,12 @@
         Permisos.Asignaciones.CambiarEstado
     )).Succeeded;
 
-    var mostrarAcciones = e || ce;
+    var relevar = (await A.AuthorizeAsync(User, Politicas.RelevarAsignacion)).Succeeded;
+
+    var mostrarAcciones = Model.Any(x =>
+        (e && x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo) ||
+        (relevar && x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo) ||
+        (ce && !x.AsignacionAnteriorId.HasValue && !x.FechaFinVigencia.HasValue));
 }
 
 <div class="container-fluid">
@@ -63,6 +68,7 @@
                                 <th>Sección</th>
                                 <th>Curso</th>
                                 <th>Docente</th>
+                                <th>Vigencia</th>
                                 <th>Estado</th>
                                 @if (mostrarAcciones)
                                 {
@@ -90,6 +96,19 @@
                                     <td>@x.Docente</td>
 
                                     <td>
+                                        @if (x.FechaInicioVigencia.HasValue)
+                                        {
+                                            <span>@x.FechaInicioVigencia.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Origen no reconstruible</span>
+                                        }
+                                        <span> – </span>
+                                        @(x.FechaFinVigencia?.ToString("dd/MM/yyyy HH:mm") ?? "Actual")
+                                    </td>
+
+                                    <td>
                                         <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
                                               ? "app-badge-success"
                                               : "app-badge-danger")">
@@ -101,7 +120,7 @@
                                     {
                                         <td class="app-actions-cell">
                                             <div class="app-actions app-actions-table">
-                                                @if (e)
+                                                @if (e && x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo)
                                                 {
                                                     <a asp-action="Editar" asp-route-id="@x.Id"
                                                        class="app-btn app-btn-soft-secondary app-btn-sm">
@@ -109,7 +128,15 @@
                                                     </a>
                                                 }
 
-                                                @if (ce)
+                                                @if (relevar && x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo)
+                                                {
+                                                    <a asp-action="ReemplazarDocente" asp-route-id="@x.Id"
+                                                       class="app-btn app-btn-soft-warning app-btn-sm">
+                                                        Reemplazar docente
+                                                    </a>
+                                                }
+
+                                                @if (ce && !x.AsignacionAnteriorId.HasValue && !x.FechaFinVigencia.HasValue)
                                                 {
                                                     <form asp-action="@(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
                                                           ? "Desactivar"

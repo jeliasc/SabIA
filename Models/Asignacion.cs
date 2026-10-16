@@ -20,4 +20,12 @@ public class Asignacion
     public Docente Docente { get; set; } = null!;
 
     public EstadoRegistro Estado { get; set; } = EstadoRegistro.Activo;
+
+    public int? AsignacionAnteriorId { get; set; }
+
+    public Asignacion? AsignacionAnterior { get; set; }
+
+    public DateTime? FechaInicioVigencia { get; set; }
+
+    public DateTime? FechaFinVigencia { get; set; }
 }

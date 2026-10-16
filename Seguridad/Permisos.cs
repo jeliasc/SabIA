@@ -102,6 +102,8 @@ public static class Permisos
         public const string Crear = "Asignaciones.Crear";
         public const string Editar = "Asignaciones.Editar";
         public const string CambiarEstado = "Asignaciones.CambiarEstado";
+        public const string Relevar = "Asignaciones.Relevar";
+        public const string RelevarExcepcional = "Asignaciones.RelevarExcepcional";
     }
 
     public static class Inscripciones
@@ -257,6 +259,8 @@ public static class Permisos
             Asignaciones.Crear,
             Asignaciones.Editar,
             Asignaciones.CambiarEstado,
+            Asignaciones.Relevar,
+            Asignaciones.RelevarExcepcional,
 
             Inscripciones.Ver,
             Inscripciones.Crear,

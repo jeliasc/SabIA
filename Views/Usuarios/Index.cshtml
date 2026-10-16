@@ -42,6 +42,10 @@
             User,
             Permisos.Usuarios.RestablecerContrasena
         )).Succeeded;
+
+    var rolesPorUsuario =
+        ViewBag.RolesPorUsuario as Dictionary<string, string>
+        ?? new Dictionary<string, string>();
 }
 
 <div class="container-fluid">
@@ -93,7 +97,7 @@
 
         <div class="mt-2 d-none" data-contenedor-busqueda-usuarios>
 
-            <input type="search" class="form-control" placeholder="Buscar por usuario, nombre o correo..."
+            <input type="search" class="form-control" placeholder="Buscar por usuario, nombre, correo o rol..."
                    autocomplete="off" data-busqueda-usuarios />
 
         </div>
@@ -109,7 +113,7 @@
             <div class="table-responsive">
 
                 <table id="tablaUsuarios" class="table app-table w-100" data-tabla-index data-actions-column="true"
-                       data-search-placeholder="Usuario, nombre o correo..."
+                       data-search-placeholder="Usuario, nombre, correo o rol..."
                        data-empty-message="No existen usuarios registrados" data-zero-message="No se encontraron usuarios">
 
                     <thead>
@@ -126,6 +130,9 @@
 
                             <th>
                                 Correo
+                            </th>
+                            <th>
+                                Rol
                             </th>
 
                             <th>
@@ -174,6 +181,21 @@
 
                                 <td>
                                     @usuario.Email
+                                </td>
+
+                                <td>
+                                    @{
+                                        var rol = rolesPorUsuario.TryGetValue(
+                                            usuario.Id,
+                                            out var nombreRol
+                                        ) && !string.IsNullOrWhiteSpace(nombreRol)
+                                            ? nombreRol
+                                            : "Sin rol";
+                                    }
+
+                                    <span class="app-badge @(rol == "Sin rol" ? "app-badge-warning" : "app-badge-info")">
+                                        @rol
+                                    </span>
                                 </td>
 
                                 <td>
@@ -269,7 +291,7 @@
                                         }
 
                                         @if (permisoUsuariosRestablecerContrasena &&
-     usuario.Activo)
+                                            usuario.Activo)
                                         {
                                             <div class="app-actions">
 
@@ -346,8 +368,15 @@
                     !string.IsNullOrWhiteSpace(nombre))
             );
 
+            var rolBusqueda = rolesPorUsuario.TryGetValue(
+                usuario.Id,
+                out var rolUsuario
+            )
+                ? rolUsuario
+                : string.Empty;
+
             var textoBusqueda =
-                $"{usuario.UserName} {nombreCompleto} {usuario.Email}";
+                $"{usuario.UserName} {nombreCompleto} {usuario.Email} {rolBusqueda}";
 
             <div class="card shadow-sm border-0 mb-3" data-usuario data-texto-busqueda="@textoBusqueda">
 
@@ -386,7 +415,6 @@
 
                     </div>
 
-
                     <div class="small text-muted mb-1">
                         Correo electrónico
                     </div>
@@ -395,6 +423,24 @@
                         @usuario.Email
                     </div>
 
+                    <div class="small text-muted mb-1">
+                        Rol
+                    </div>
+
+                    <div class="mb-3">
+                        @{
+                            var rolMovil = rolesPorUsuario.TryGetValue(
+                                usuario.Id,
+                                out var nombreRolMovil
+                            ) && !string.IsNullOrWhiteSpace(nombreRolMovil)
+                                ? nombreRolMovil
+                                : "Sin rol";
+                        }
+
+                        <span class="app-badge @(rolMovil == "Sin rol" ? "app-badge-warning" : "app-badge-info")">
+                            @rolMovil
+                        </span>
+                    </div>
 
                     <div class="d-flex align-items-center gap-2 mb-4">
 

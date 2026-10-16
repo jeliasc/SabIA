@@ -1,4 +1,6 @@
+using System.Data;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
@@ -12,9 +14,7 @@ public sealed class UnidadServicio(
     Contexto c,
     IAccesoAcademicoServicio acceso) : IUnidadServicio
 {
-    private const string IdZonaHorariaIana = "America/Guatemala";
-    private const string IdZonaHorariaWindows = "Central America Standard Time";
-    private static readonly Lazy<TimeZoneInfo> ZonaHoraria = new(ObtenerZonaHoraria);
+    private const int MaximoIntentosOrden = 3;
 
     private async Task<IQueryable<UnidadAsignacion>> Q(bool historial = false)
     {
@@ -67,13 +67,17 @@ public sealed class UnidadServicio(
                         i.Estado == EstadoInscripcion.Activa &&
                         i.Seccion.CicloEscolar.Activo));
         }
-        else
+        else if (acceso.EsOperadorInstitucional)
         {
             q = q.Where(x => historial
                 ? x.Asignacion.Estado != EstadoRegistro.Activo ||
                   !x.Asignacion.Seccion.CicloEscolar.Activo
                 : x.Asignacion.Estado == EstadoRegistro.Activo &&
                   x.Asignacion.Seccion.CicloEscolar.Activo);
+        }
+        else
+        {
+            q = q.Where(_ => false);
         }
 
         return q;
@@ -83,6 +87,10 @@ public sealed class UnidadServicio(
         await (await Q())
             .OrderByDescending(x => x.Asignacion.Seccion.CicloEscolar.Anio)
             .ThenBy(x => x.Asignacion.Curso.Nombre)
+            .ThenBy(x => x.Asignacion.Seccion.Grado.Nombre)
+            .ThenBy(x => x.Asignacion.Seccion.Nombre)
+            .ThenBy(x => x.Asignacion.DocenteId)
+            .ThenBy(x => x.AsignacionId)
             .ThenBy(x => x.Orden)
             .Select(x => new UnidadLista
             {
@@ -105,6 +113,10 @@ public sealed class UnidadServicio(
         await (await Q(historial: true))
             .OrderByDescending(x => x.Asignacion.Seccion.CicloEscolar.Anio)
             .ThenBy(x => x.Asignacion.Curso.Nombre)
+            .ThenBy(x => x.Asignacion.Seccion.Grado.Nombre)
+            .ThenBy(x => x.Asignacion.Seccion.Nombre)
+            .ThenBy(x => x.Asignacion.DocenteId)
+            .ThenBy(x => x.AsignacionId)
             .ThenBy(x => x.Orden)
             .Select(x => new UnidadLista
             {
@@ -125,7 +137,7 @@ public sealed class UnidadServicio(
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var d = perfil.DocenteId;
 
-        if (!d.HasValue && perfil.AlumnoId.HasValue && !acceso.EsOperadorInstitucional)
+        if (!d.HasValue && !acceso.EsOperadorInstitucional)
         {
             m.Asignaciones = [];
             m.Periodos = [];
@@ -196,8 +208,8 @@ public sealed class UnidadServicio(
             );
         }
 
-        var fechaDisponibilidadUtc = ConvertirAUtc(m.FechaDisponibilidad);
-        var fechaCierreAccesoUtc = ConvertirAUtc(m.FechaCierreAcceso);
+        var fechaDisponibilidadUtc = HoraGuatemala.ParaGuardar(m.FechaDisponibilidad);
+        var fechaCierreAccesoUtc = HoraGuatemala.ParaGuardar(m.FechaCierreAcceso);
 
         if (
             fechaDisponibilidadUtc.HasValue &&
@@ -208,16 +220,6 @@ public sealed class UnidadServicio(
             return ResultadoOperacion.Validacion(
                 nameof(m.FechaCierreAcceso),
                 "La fecha de cierre debe ser posterior a la disponibilidad."
-            );
-        }
-
-        if (await c.UnidadesAsignaciones.AnyAsync(x =>
-            x.AsignacionId == m.AsignacionId &&
-            x.Orden == m.Orden))
-        {
-            return ResultadoOperacion.Validacion(
-                nameof(m.Orden),
-                "Ya existe una unidad con ese orden en la asignación."
             );
         }
 
@@ -238,49 +240,64 @@ public sealed class UnidadServicio(
             );
         }
 
-        await using var tx =
-            await c.Database.BeginTransactionAsync();
-
-        try
+        for (var intento = 1; intento <= MaximoIntentosOrden; intento++)
         {
-            var u = new Unidad
+            await using var tx = await c.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
+
+            try
             {
-                Titulo = m.Titulo.Trim(),
-                Descripcion = Lim(m.Descripcion),
-                CreadoPorUsuarioId = uid,
-                FechaCreacion = DateTime.UtcNow
-            };
+                var ultimoOrden = await c.UnidadesAsignaciones
+                    .Where(x => x.AsignacionId == m.AsignacionId)
+                    .MaxAsync(x => (int?)x.Orden) ?? 0;
 
-            c.Unidades.Add(u);
-
-            await c.SaveChangesAsync();
-
-            c.UnidadesAsignaciones.Add(
-                new UnidadAsignacion
+                var unidad = new Unidad
                 {
-                    UnidadId = u.Id,
+                    Titulo = m.Titulo.Trim(),
+                    Descripcion = Lim(m.Descripcion),
+                    CreadoPorUsuarioId = uid,
+                    FechaCreacion = DateTime.UtcNow
+                };
+
+                c.UnidadesAsignaciones.Add(new UnidadAsignacion
+                {
+                    Unidad = unidad,
                     AsignacionId = m.AsignacionId,
                     PeriodoId = m.PeriodoId,
-                    Orden = m.Orden,
+                    Orden = checked(ultimoOrden + 1),
                     Estado = EstadoPublicacionUnidad.Borrador,
                     FechaDisponibilidad = fechaDisponibilidadUtc,
                     FechaCierreAcceso = fechaCierreAccesoUtc,
                     AsignadoPorUsuarioId = uid
+                });
+
+                await c.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return ResultadoOperacion.Correcto(
+                    "La unidad fue creada correctamente."
+                );
+            }
+            catch (Exception excepcion) when (EsConflictoOrden(excepcion))
+            {
+                await tx.RollbackAsync();
+                c.ChangeTracker.Clear();
+
+                if (intento == MaximoIntentosOrden)
+                {
+                    return ResultadoOperacion.Error(
+                        "No fue posible asignar el orden de la unidad debido a otra operación simultánea. Intente nuevamente.");
                 }
-            );
-
-            await c.SaveChangesAsync();
-            await tx.CommitAsync();
-
-            return ResultadoOperacion.Correcto(
-                "La unidad fue creada correctamente."
-            );
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                c.ChangeTracker.Clear();
+                throw;
+            }
         }
-        catch
-        {
-            await tx.RollbackAsync();
-            throw;
-        }
+
+        return ResultadoOperacion.Error("No fue posible crear la unidad.");
     }
 
     public async Task<EditarUnidad?> ObtenerEditarAsync(int id)
@@ -305,8 +322,8 @@ public sealed class UnidadServicio(
 
         if (m != null)
         {
-            m.FechaDisponibilidad = ConvertirAHoraGuatemala(m.FechaDisponibilidad);
-            m.FechaCierreAcceso = ConvertirAHoraGuatemala(m.FechaCierreAcceso);
+            m.FechaDisponibilidad = HoraGuatemala.ParaFormulario(m.FechaDisponibilidad);
+            m.FechaCierreAcceso = HoraGuatemala.ParaFormulario(m.FechaCierreAcceso);
             await PrepararAsync(m);
         }
 
@@ -324,7 +341,7 @@ public sealed class UnidadServicio(
         }
 
         var ua = await c.UnidadesAsignaciones
-            .Include(x => x.Unidad)
+            .AsNoTracking()
             .FirstOrDefaultAsync(x =>
                 x.Id == m.UnidadAsignacionId &&
                 x.UnidadId == m.Id
@@ -343,8 +360,8 @@ public sealed class UnidadServicio(
                 "No tiene acceso a la unidad original.");
         }
 
-        var fechaDisponibilidadUtc = ConvertirAUtc(m.FechaDisponibilidad);
-        var fechaCierreAccesoUtc = ConvertirAUtc(m.FechaCierreAcceso);
+        var fechaDisponibilidadUtc = HoraGuatemala.ParaGuardar(m.FechaDisponibilidad);
+        var fechaCierreAccesoUtc = HoraGuatemala.ParaGuardar(m.FechaCierreAcceso);
 
         if (fechaDisponibilidadUtc.HasValue &&
             fechaCierreAccesoUtc.HasValue &&
@@ -363,42 +380,70 @@ public sealed class UnidadServicio(
                 "El período no pertenece al ciclo de la asignación.");
         }
 
-        if (await c.UnidadesAsignaciones.AnyAsync(x =>
-            x.Id != ua.Id &&
-            x.AsignacionId == m.AsignacionId &&
-            x.Orden == m.Orden))
+        for (var intento = 1; intento <= MaximoIntentosOrden; intento++)
         {
-            return ResultadoOperacion.Validacion(
-                nameof(m.Orden),
-                "Ya existe una unidad con ese orden."
-            );
+            await using var tx = await c.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
+
+            try
+            {
+                var unidadAsignacion = await c.UnidadesAsignaciones
+                    .Include(x => x.Unidad)
+                    .FirstOrDefaultAsync(x =>
+                        x.Id == m.UnidadAsignacionId &&
+                        x.UnidadId == m.Id);
+
+                if (unidadAsignacion is null)
+                {
+                    await tx.RollbackAsync();
+                    return ResultadoOperacion.Error("La unidad ya no existe.");
+                }
+
+                var cambiaAsignacion = unidadAsignacion.AsignacionId != m.AsignacionId;
+                var orden = unidadAsignacion.Orden;
+                if (cambiaAsignacion)
+                {
+                    var ultimoOrden = await c.UnidadesAsignaciones
+                        .Where(x => x.AsignacionId == m.AsignacionId)
+                        .MaxAsync(x => (int?)x.Orden) ?? 0;
+                    orden = checked(ultimoOrden + 1);
+                }
+
+                unidadAsignacion.Unidad.Titulo = m.Titulo.Trim();
+                unidadAsignacion.Unidad.Descripcion = Lim(m.Descripcion);
+                unidadAsignacion.AsignacionId = m.AsignacionId;
+                unidadAsignacion.PeriodoId = m.PeriodoId;
+                unidadAsignacion.Orden = orden;
+                unidadAsignacion.FechaDisponibilidad = fechaDisponibilidadUtc;
+                unidadAsignacion.FechaCierreAcceso = fechaCierreAccesoUtc;
+
+                await c.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return ResultadoOperacion.Correcto(
+                    "La unidad fue actualizada correctamente."
+                );
+            }
+            catch (Exception excepcion) when (EsConflictoOrden(excepcion))
+            {
+                await tx.RollbackAsync();
+                c.ChangeTracker.Clear();
+
+                if (intento == MaximoIntentosOrden)
+                {
+                    return ResultadoOperacion.Error(
+                        "No fue posible asignar el orden en la asignación de destino debido a otra operación simultánea. Intente nuevamente.");
+                }
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                c.ChangeTracker.Clear();
+                throw;
+            }
         }
 
-        await using var tx =
-            await c.Database.BeginTransactionAsync();
-
-        try
-        {
-            ua.Unidad.Titulo = m.Titulo.Trim();
-            ua.Unidad.Descripcion = Lim(m.Descripcion);
-            ua.AsignacionId = m.AsignacionId;
-            ua.PeriodoId = m.PeriodoId;
-            ua.Orden = m.Orden;
-            ua.FechaDisponibilidad = fechaDisponibilidadUtc;
-            ua.FechaCierreAcceso = fechaCierreAccesoUtc;
-
-            await c.SaveChangesAsync();
-            await tx.CommitAsync();
-
-            return ResultadoOperacion.Correcto(
-                "La unidad fue actualizada correctamente."
-            );
-        }
-        catch
-        {
-            await tx.RollbackAsync();
-            throw;
-        }
+        return ResultadoOperacion.Error("No fue posible actualizar la unidad.");
     }
 
     public async Task<ResultadoOperacion> PublicarAsync(int id) =>
@@ -482,51 +527,34 @@ public sealed class UnidadServicio(
             ? null
             : x.Trim();
 
-    private static DateTime? ConvertirAUtc(DateTime? fecha)
+    private static bool EsConflictoOrden(Exception excepcion)
     {
-        if (!fecha.HasValue)
+        for (var actual = excepcion; actual is not null; actual = actual.InnerException!)
         {
-            return null;
+            if (actual is PostgresException postgres &&
+                (postgres.SqlState == PostgresErrorCodes.SerializationFailure ||
+                 postgres.SqlState == PostgresErrorCodes.DeadlockDetected ||
+                 postgres.SqlState == PostgresErrorCodes.UniqueViolation &&
+                 string.Equals(
+                     postgres.ConstraintName,
+                     "IX_UnidadesAsignaciones_AsignacionId_Orden",
+                     StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            if (actual.Message.Contains(
+                    "IX_UnidadesAsignaciones_AsignacionId_Orden",
+                    StringComparison.OrdinalIgnoreCase) ||
+                actual.Message.Contains(
+                    "UnidadesAsignaciones.AsignacionId, UnidadesAsignaciones.Orden",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
         }
 
-        return fecha.Value.Kind switch
-        {
-            DateTimeKind.Utc => fecha.Value,
-            DateTimeKind.Local => fecha.Value.ToUniversalTime(),
-            _ => TimeZoneInfo.ConvertTimeToUtc(fecha.Value, ZonaHoraria.Value)
-        };
+        return false;
     }
 
-    private static DateTime? ConvertirAHoraGuatemala(DateTime? fechaUtc)
-    {
-        if (!fechaUtc.HasValue)
-        {
-            return null;
-        }
-
-        var utc = fechaUtc.Value.Kind switch
-        {
-            DateTimeKind.Utc => fechaUtc.Value,
-            DateTimeKind.Local => fechaUtc.Value.ToUniversalTime(),
-            _ => DateTime.SpecifyKind(fechaUtc.Value, DateTimeKind.Utc)
-        };
-
-        return TimeZoneInfo.ConvertTimeFromUtc(utc, ZonaHoraria.Value);
-    }
-
-    private static TimeZoneInfo ObtenerZonaHoraria()
-    {
-        if (TimeZoneInfo.TryFindSystemTimeZoneById(IdZonaHorariaIana, out var zonaIana))
-        {
-            return zonaIana;
-        }
-
-        if (TimeZoneInfo.TryFindSystemTimeZoneById(IdZonaHorariaWindows, out var zonaWindows))
-        {
-            return zonaWindows;
-        }
-
-        throw new TimeZoneNotFoundException(
-            $"No se encontró la zona horaria {IdZonaHorariaIana} ni su equivalente de Windows.");
-    }
 }

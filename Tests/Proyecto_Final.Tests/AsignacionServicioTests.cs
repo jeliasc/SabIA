@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.Sqlite;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.GestionAsignaciones;
@@ -9,6 +10,172 @@ namespace Proyecto_Final.Tests;
 
 public sealed class AsignacionServicioTests
 {
+    [Fact]
+    public async Task RelevoOrdinario_CreaVersionYSinMoverRelacionesHistoricas()
+    {
+        await using var conexion = new SqliteConnection("Data Source=:memory:");
+        await conexion.OpenAsync(TestContext.Current.CancellationToken);
+        await using var contexto = await CrearContextoRelevoAsync(conexion);
+        contexto.Unidades.Add(new Unidad { Id = 1, Titulo = "Histórica", CreadoPorUsuarioId = "operador" });
+        contexto.UnidadesAsignaciones.Add(new UnidadAsignacion
+        {
+            Id = 1, UnidadId = 1, AsignacionId = 1, PeriodoId = 1, Orden = 1,
+            AsignadoPorUsuarioId = "operador"
+        });
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var resultado = await new AsignacionServicio(contexto, new AccesoOperador())
+            .ReemplazarDocenteAsync(new ReemplazarDocenteAsignacion
+            {
+                AsignacionId = 1,
+                DocenteSustitutoId = 2,
+                Tipo = TipoRelevoAsignacion.Ordinario,
+                FechaEfectiva = new DateTime(2026, 1, 1, 8, 0, 0),
+                Motivo = "Cambio planificado al inicio del ciclo"
+            });
+
+        Assert.True(resultado.Exitoso, resultado.Mensaje);
+        var anterior = await contexto.Asignaciones.SingleAsync(x => x.Id == 1,
+            TestContext.Current.CancellationToken);
+        var nueva = await contexto.Asignaciones.SingleAsync(x => x.AsignacionAnteriorId == 1,
+            TestContext.Current.CancellationToken);
+        Assert.Equal(EstadoRegistro.Inactivo, anterior.Estado);
+        Assert.Equal(EstadoRegistro.Activo, nueva.Estado);
+        Assert.Equal(2, nueva.DocenteId);
+        Assert.Equal(1, await contexto.UnidadesAsignaciones
+            .Where(x => x.AsignacionId == anterior.Id)
+            .CountAsync(TestContext.Current.CancellationToken));
+        Assert.False(await contexto.UnidadesAsignaciones
+            .AnyAsync(x => x.AsignacionId == nueva.Id, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task RelevoOrdinario_RechazaObligacionesPendientes()
+    {
+        await using var conexion = new SqliteConnection("Data Source=:memory:");
+        await conexion.OpenAsync(TestContext.Current.CancellationToken);
+        await using var contexto = await CrearContextoRelevoAsync(conexion);
+        contexto.Tareas.Add(new Tarea
+        {
+            Id = 1, AsignacionId = 1, Titulo = "Pendiente", Estado = EstadoTarea.Publicada,
+            PunteoMaximo = 10, FechaCreacion = DateTime.UtcNow,
+            CreadoPorUsuarioId = "docente-1", GrupoVersionId = Guid.NewGuid()
+        });
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var resultado = await new AsignacionServicio(contexto, new AccesoOperador())
+            .ReemplazarDocenteAsync(new ReemplazarDocenteAsignacion
+            {
+                AsignacionId = 1, DocenteSustitutoId = 2,
+                Tipo = TipoRelevoAsignacion.Ordinario,
+                FechaEfectiva = new DateTime(2026, 1, 1, 8, 0, 0),
+                Motivo = "Cambio planificado con tarea pendiente"
+            });
+
+        Assert.False(resultado.Exitoso);
+        Assert.Contains("pendientes", resultado.Mensaje);
+        Assert.Single(contexto.Asignaciones);
+    }
+
+    [Fact]
+    public async Task RelevoExcepcional_ConservaAutorYRegistraDelegacionLimitada()
+    {
+        await using var conexion = new SqliteConnection("Data Source=:memory:");
+        await conexion.OpenAsync(TestContext.Current.CancellationToken);
+        await using var contexto = await CrearContextoRelevoAsync(conexion);
+        contexto.Tareas.Add(new Tarea
+        {
+            Id = 1, AsignacionId = 1, Titulo = "Pendiente", Estado = EstadoTarea.Publicada,
+            PunteoMaximo = 10, FechaCreacion = DateTime.UtcNow,
+            CreadoPorUsuarioId = "docente-1", GrupoVersionId = Guid.NewGuid()
+        });
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var resultado = await new AsignacionServicio(contexto, new AccesoOperador())
+            .ReemplazarDocenteAsync(new ReemplazarDocenteAsignacion
+            {
+                AsignacionId = 1, DocenteSustitutoId = 2,
+                Tipo = TipoRelevoAsignacion.Excepcional,
+                FechaEfectiva = new DateTime(2026, 6, 15, 9, 0, 0),
+                Motivo = "Ausencia definitiva durante el período",
+                ConfirmarConsecuencias = true,
+                OperacionesDelegadas = OperacionDelegacionAcademica.CalificarEntregas
+            });
+
+        Assert.True(resultado.Exitoso, resultado.Mensaje);
+        var tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(1, tarea.AsignacionId);
+        Assert.Equal("docente-1", tarea.CreadoPorUsuarioId);
+        var delegacion = await contexto.DelegacionesAcademicas.SingleAsync(
+            TestContext.Current.CancellationToken);
+        Assert.Equal(1, delegacion.AsignacionId);
+        Assert.Equal(2, delegacion.DocenteId);
+        Assert.Equal(OperacionDelegacionAcademica.CalificarEntregas, delegacion.Operaciones);
+
+        contexto.DelegacionesAcademicas.Add(new DelegacionAcademica
+        {
+            RelevoAsignacionId = delegacion.RelevoAsignacionId,
+            AsignacionId = delegacion.AsignacionId,
+            DocenteId = delegacion.DocenteId,
+            Operaciones = OperacionDelegacionAcademica.RevisarCuestionarios,
+            FechaInicioUtc = delegacion.FechaInicioUtc,
+            CreadaPorUsuarioId = "operador",
+            FechaCreacionUtc = DateTime.UtcNow,
+            Activa = true
+        });
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(2, await contexto.DelegacionesAcademicas.CountAsync(
+            TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task RelevoExcepcional_SinPermiso_NoModificaAsignaciones()
+    {
+        await using var conexion = new SqliteConnection("Data Source=:memory:");
+        await conexion.OpenAsync(TestContext.Current.CancellationToken);
+        await using var contexto = await CrearContextoRelevoAsync(conexion);
+
+        var resultado = await new AsignacionServicio(contexto, new AccesoOperador(false))
+            .ReemplazarDocenteAsync(new ReemplazarDocenteAsignacion
+            {
+                AsignacionId = 1, DocenteSustitutoId = 2,
+                Tipo = TipoRelevoAsignacion.Excepcional,
+                FechaEfectiva = new DateTime(2026, 6, 15, 9, 0, 0),
+                Motivo = "Intento sin autorización suficiente",
+                ConfirmarConsecuencias = true
+            });
+
+        Assert.False(resultado.Exitoso);
+        Assert.Single(contexto.Asignaciones);
+        Assert.Empty(contexto.RelevosAsignaciones);
+    }
+
+    [Fact]
+    public async Task IndiceParcial_PermiteHistoricoPeroImpideDosActivas()
+    {
+        await using var conexion = new SqliteConnection("Data Source=:memory:");
+        await conexion.OpenAsync(TestContext.Current.CancellationToken);
+        await using var contexto = await CrearContextoRelevoAsync(conexion);
+        var anterior = await contexto.Asignaciones.SingleAsync(TestContext.Current.CancellationToken);
+        anterior.Estado = EstadoRegistro.Inactivo;
+        contexto.Asignaciones.Add(new Asignacion
+        {
+            Id = 2, SeccionId = 1, CursoId = 1, GradoId = 1, DocenteId = 2,
+            AsignacionAnteriorId = 1, Estado = EstadoRegistro.Activo,
+            FechaInicioVigencia = DateTime.UtcNow
+        });
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        contexto.Asignaciones.Add(new Asignacion
+        {
+            Id = 3, SeccionId = 1, CursoId = 1, GradoId = 1, DocenteId = 1,
+            Estado = EstadoRegistro.Activo, FechaInicioVigencia = DateTime.UtcNow
+        });
+
+        await Assert.ThrowsAsync<DbUpdateException>(() =>
+            contexto.SaveChangesAsync(TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public async Task Preparar_IncluyeElGradoDeLasOpcionesAcademicas()
     {
@@ -160,11 +327,11 @@ public sealed class AsignacionServicioTests
             });
     }
 
-    private sealed class AccesoOperador : IAccesoAcademicoServicio
+    private sealed class AccesoOperador(bool tienePermisos = true) : IAccesoAcademicoServicio
     {
         public string? UsuarioId => "operador";
         public bool EsOperadorInstitucional => true;
-        public bool TienePermiso(string permiso) => true;
+        public bool TienePermiso(string permiso) => tienePermisos;
         public Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync() =>
             Task.FromResult(new ContextoAcademicoUsuario(null, null));
         public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult<int?>(null);
@@ -174,5 +341,63 @@ public sealed class AsignacionServicioTests
         public Task<bool> PuedeConsultarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(true);
         public Task<bool> PuedeConsultarAsignacionHistoricaAsync(int asignacionId) => Task.FromResult(true);
         public Task<bool> PuedeGestionarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(true);
+    }
+
+    private static async Task<Contexto> CrearContextoRelevoAsync(SqliteConnection conexion)
+    {
+        var contexto = new Contexto(new DbContextOptionsBuilder<Contexto>()
+            .UseSqlite(conexion).Options);
+        await contexto.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+
+        var operador = new Usuario
+        {
+            Id = "operador", UserName = "operador", PrimerNombre = "Operador",
+            PrimerApellido = "Prueba", Activo = true
+        };
+        var usuarioUno = new Usuario
+        {
+            Id = "docente-1", UserName = "docente-1", PrimerNombre = "Ana",
+            PrimerApellido = "Original", Activo = true
+        };
+        var usuarioDos = new Usuario
+        {
+            Id = "docente-2", UserName = "docente-2", PrimerNombre = "Luis",
+            PrimerApellido = "Sustituto", Activo = true
+        };
+        var ciclo = new CicloEscolar
+        {
+            Id = 1, Anio = 2026, FechaInicio = new DateOnly(2026, 1, 1),
+            FechaFin = new DateOnly(2026, 11, 30), Estado = EstadoCicloEscolar.Activo, Activo = true
+        };
+        var grado = new Grado
+        {
+            Id = 1, Nombre = "Primero", Carrera = "General",
+            Nivel = NivelEducativo.Diversificado, Orden = 1
+        };
+        contexto.Users.AddRange(operador, usuarioUno, usuarioDos);
+        contexto.Docentes.AddRange(
+            new Docente { Id = 1, Carnet = "D-1", Usuario = usuarioUno },
+            new Docente { Id = 2, Carnet = "D-2", Usuario = usuarioDos });
+        contexto.Secciones.Add(new Seccion
+        {
+            Id = 1, Nombre = "A", Grado = grado, CicloEscolar = ciclo,
+            Estado = EstadoRegistro.Activo
+        });
+        contexto.Cursos.Add(new Curso
+        {
+            Id = 1, Nombre = "Matemáticas", Grado = grado, Estado = EstadoRegistro.Activo
+        });
+        contexto.Periodos.Add(new Periodo
+        {
+            Id = 1, CicloEscolar = ciclo, Numero = 1, Nombre = "Primer período",
+            FechaInicio = new DateOnly(2026, 2, 1), FechaFin = new DateOnly(2026, 3, 31)
+        });
+        contexto.Asignaciones.Add(new Asignacion
+        {
+            Id = 1, SeccionId = 1, CursoId = 1, GradoId = 1,
+            DocenteId = 1, Estado = EstadoRegistro.Activo
+        });
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return contexto;
     }
 }

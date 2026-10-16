@@ -29,6 +29,8 @@ public class FormularioTarea
 
     public bool PermitirEntregaTardia { get; set; }
 
+    public int? MaximoIntentosEntrega { get; set; } = 1;
+
     public IFormFile? Archivo { get; set; }
 
     public List<OpcionSeleccion> Asignaciones { get; set; } = [];
@@ -38,6 +40,7 @@ public class FormularioTarea
 
 public sealed class CrearTarea : FormularioTarea
 {
+    public Guid TokenCreacion { get; set; }
 }
 
 public sealed class EditarTarea : FormularioTarea

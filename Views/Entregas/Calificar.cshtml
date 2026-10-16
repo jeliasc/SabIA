@@ -13,6 +13,27 @@
         @Model.Alumno · @Model.Tarea
     </p>
 
+    <div class="mb-3">
+        <a asp-action="Detalle" asp-route-id="@Model.Id" class="app-btn app-btn-soft-secondary app-btn-sm">
+            Ver y seleccionar otro intento
+        </a>
+    </div>
+
+    @if (Model.Intentos.Count > 1)
+    {
+        <div class="mb-3">
+            <label class="form-label" for="selector-intento-calificar">Seleccionar intento</label>
+            <select id="selector-intento-calificar" class="form-select" onchange="location.href = '@Url.Action("Calificar", "Entregas")/' + this.value">
+                @foreach (var intento in Model.Intentos)
+                {
+                    <option value="@intento.Id" selected="@(intento.Id == Model.Id)">
+                        Intento @intento.NumeroEnvio — @(intento.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Pendiente")
+                    </option>
+                }
+            </select>
+        </div>
+    }
+
     <div class="app-alert app-alert-info mb-4">
         Esta calificación es de apoyo y no sustituye el sistema oficial de notas de la institución.
     </div>

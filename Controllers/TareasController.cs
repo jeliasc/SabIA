@@ -1,3 +1,4 @@
+using Proyecto_Final.Servicios.Comunes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Proyecto_Final.Seguridad;
@@ -7,7 +8,9 @@ using Proyecto_Final.ViewModels.Tareas;
 namespace Proyecto_Final.Controllers;
 
 [Authorize(Policy = Permisos.Tareas.Ver)]
-public class TareasController(ITareaServicio s) : Controller
+public class TareasController(
+    ITareaServicio s,
+    IAuthorizationService autorizacion) : Controller
 {
     public async Task<IActionResult> Index() =>
         View(await s.ObtenerTodosAsync());
@@ -25,11 +28,13 @@ public class TareasController(ITareaServicio s) : Controller
     {
         var m = new CrearTarea
         {
-            FechaDisponibilidad = DateTime.Now,
-            FechaLimite = DateTime.Now.AddDays(7)
+            FechaDisponibilidad = HoraGuatemala.Ahora(),
+            FechaLimite = HoraGuatemala.Ahora().AddDays(7),
+            TokenCreacion = Guid.NewGuid()
         };
 
         await s.PrepararAsync(m);
+        await PrepararPermisosCreacionAsync();
 
         return View(m);
     }
@@ -41,13 +46,28 @@ public class TareasController(ITareaServicio s) : Controller
         CrearTarea m,
         CancellationToken ct)
     {
+        if (m.Tipo == Models.TipoTarea.Cuestionario &&
+            !await PuedeCrearCuestionariosAsync())
+        {
+            return Forbid();
+        }
+
         if (ModelState.IsValid)
         {
             var r = await s.CrearAsync(m, ct);
 
-            if (r.Exitoso)
+            if (r.Exitoso && r.Datos > 0)
             {
                 TempData["Exito"] = r.Mensaje;
+
+                if (m.Tipo == Models.TipoTarea.Cuestionario)
+                {
+                    return RedirectToAction(
+                        nameof(CuestionariosController.Configurar),
+                        "Cuestionarios",
+                        new { tareaId = r.Datos });
+                }
+
                 return RedirectToAction(nameof(Index));
             }
 
@@ -55,6 +75,7 @@ public class TareasController(ITareaServicio s) : Controller
         }
 
         await s.PrepararAsync(m);
+        await PrepararPermisosCreacionAsync();
 
         return View(m);
     }
@@ -133,4 +154,12 @@ public class TareasController(ITareaServicio s) : Controller
             }
         }
     }
+
+    private async Task PrepararPermisosCreacionAsync() =>
+        ViewData["PuedeCrearCuestionario"] = await PuedeCrearCuestionariosAsync();
+
+    private async Task<bool> PuedeCrearCuestionariosAsync() =>
+        (await autorizacion.AuthorizeAsync(
+            User,
+            Permisos.Cuestionarios.Crear)).Succeeded;
 }

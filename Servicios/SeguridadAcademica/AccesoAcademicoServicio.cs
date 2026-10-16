@@ -50,7 +50,13 @@ public sealed class AccesoAcademicoServicio(
 
         return await contexto.Asignaciones.AnyAsync(a =>
             a.Id == asignacionId &&
-            a.Estado == EstadoRegistro.Activo &&
+            (a.Estado == EstadoRegistro.Activo ||
+             contexto.DelegacionesAcademicas.Any(d =>
+                d.AsignacionId == a.Id && d.Activa &&
+                d.FechaInicioUtc <= DateTime.UtcNow &&
+                (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= DateTime.UtcNow) &&
+                (d.Operaciones & OperacionDelegacionAcademica.ContinuarActividadesAlumnos) ==
+                    OperacionDelegacionAcademica.ContinuarActividadesAlumnos)) &&
             a.Seccion.CicloEscolar.Activo &&
             contexto.Inscripciones.Any(i =>
                 i.AlumnoId == alumnoId.Value &&
@@ -63,6 +69,14 @@ public sealed class AccesoAcademicoServicio(
     public async Task<bool> PuedeConsultarAsignacionVigenteAsync(int asignacionId)
     {
         var perfil = await ObtenerContextoUsuarioAsync();
+
+        if (EsOperadorInstitucional)
+        {
+            return await contexto.Asignaciones.AsNoTracking().AnyAsync(x =>
+                x.Id == asignacionId &&
+                x.Estado == EstadoRegistro.Activo &&
+                x.Seccion.CicloEscolar.Activo);
+        }
 
         if (perfil.DocenteId.HasValue)
         {
@@ -77,7 +91,13 @@ public sealed class AccesoAcademicoServicio(
         {
             return await contexto.Asignaciones.AsNoTracking().AnyAsync(x =>
                 x.Id == asignacionId &&
-                x.Estado == EstadoRegistro.Activo &&
+                (x.Estado == EstadoRegistro.Activo ||
+                 contexto.DelegacionesAcademicas.Any(d =>
+                    d.AsignacionId == x.Id && d.Activa &&
+                    d.FechaInicioUtc <= DateTime.UtcNow &&
+                    (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= DateTime.UtcNow) &&
+                    (d.Operaciones & OperacionDelegacionAcademica.ContinuarActividadesAlumnos) ==
+                        OperacionDelegacionAcademica.ContinuarActividadesAlumnos)) &&
                 x.Seccion.CicloEscolar.Activo &&
                 contexto.Inscripciones.Any(i =>
                     i.AlumnoId == perfil.AlumnoId.Value &&
@@ -87,18 +107,29 @@ public sealed class AccesoAcademicoServicio(
                     i.Seccion.CicloEscolar.Activo));
         }
 
-        return true;
+        return false;
     }
 
     public async Task<bool> PuedeConsultarAsignacionHistoricaAsync(int asignacionId)
     {
         var perfil = await ObtenerContextoUsuarioAsync();
 
+        if (EsOperadorInstitucional)
+        {
+            return await contexto.Asignaciones.AsNoTracking()
+                .AnyAsync(x => x.Id == asignacionId);
+        }
+
         if (perfil.DocenteId.HasValue)
         {
             return await contexto.Asignaciones.AsNoTracking().AnyAsync(x =>
                 x.Id == asignacionId &&
-                x.DocenteId == perfil.DocenteId.Value);
+                (x.DocenteId == perfil.DocenteId.Value ||
+                 contexto.Asignaciones.Any(actual =>
+                    actual.DocenteId == perfil.DocenteId.Value &&
+                    actual.Estado == EstadoRegistro.Activo &&
+                    actual.SeccionId == x.SeccionId &&
+                    actual.CursoId == x.CursoId)));
         }
 
         if (perfil.AlumnoId.HasValue)
@@ -111,7 +142,7 @@ public sealed class AccesoAcademicoServicio(
                     i.CicloEscolarId == x.Seccion.CicloEscolarId));
         }
 
-        return true;
+        return false;
     }
 
     public async Task<bool> PuedeGestionarAsignacionVigenteAsync(int asignacionId)
@@ -131,7 +162,37 @@ public sealed class AccesoAcademicoServicio(
             return await EsDocenteDeAsignacionAsync(asignacionId);
         }
 
-        return !perfil.TienePerfilAcademico;
+        return false;
+    }
+
+    public async Task<IReadOnlySet<int>> ObtenerSeccionesDelegadasParaConsultaAsync()
+    {
+        var docenteId = await ObtenerDocenteIdAsync();
+        if (!docenteId.HasValue)
+        {
+            return new HashSet<int>();
+        }
+
+        var ahora = DateTime.UtcNow;
+        var secciones = await contexto.DelegacionesAcademicas.AsNoTracking()
+            .Where(delegacion =>
+                delegacion.DocenteId == docenteId.Value &&
+                delegacion.Activa &&
+                delegacion.FechaInicioUtc <= ahora &&
+                (!delegacion.FechaFinUtc.HasValue || delegacion.FechaFinUtc >= ahora) &&
+                (delegacion.Operaciones &
+                    OperacionDelegacionAcademica.ContinuarActividadesAlumnos) ==
+                    OperacionDelegacionAcademica.ContinuarActividadesAlumnos &&
+                delegacion.Asignacion.Curso.Estado == EstadoRegistro.Activo &&
+                delegacion.Asignacion.Seccion.Estado == EstadoRegistro.Activo &&
+                delegacion.Asignacion.Seccion.CicloEscolar.Activo &&
+                delegacion.Asignacion.Seccion.CicloEscolar.Estado ==
+                    EstadoCicloEscolar.Activo)
+            .Select(delegacion => delegacion.Asignacion.SeccionId)
+            .Distinct()
+            .ToListAsync();
+
+        return secciones.ToHashSet();
     }
 
     private async Task<ContextoAcademicoUsuario> ConsultarContextoUsuarioAsync()

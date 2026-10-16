@@ -119,7 +119,7 @@ public sealed class MaterialServicio(
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var docenteId = perfil.DocenteId;
-        if (!docenteId.HasValue && perfil.AlumnoId.HasValue && !acceso.EsOperadorInstitucional)
+        if (!docenteId.HasValue && !acceso.EsOperadorInstitucional)
         {
             modelo.Unidades = [];
             return;
@@ -471,20 +471,24 @@ public sealed class MaterialServicio(
             permitido = material.Estado == EstadoPublicacionMaterial.Publicado &&
                 await contexto.UnidadesAsignaciones.AnyAsync(unidadAsignacion =>
                     unidadAsignacion.UnidadId == material.UnidadId &&
-                    unidadAsignacion.Asignacion.Estado == EstadoRegistro.Activo &&
-                    unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo &&
                     unidadAsignacion.Estado == EstadoPublicacionUnidad.Publicada &&
-                    (!unidadAsignacion.FechaDisponibilidad.HasValue ||
-                        unidadAsignacion.FechaDisponibilidad <= ahora) &&
-                    (!unidadAsignacion.FechaCierreAcceso.HasValue ||
-                        unidadAsignacion.FechaCierreAcceso >= ahora) &&
-                    contexto.Inscripciones.Any(inscripcion =>
-                        inscripcion.AlumnoId == perfil.AlumnoId.Value &&
-                        inscripcion.SeccionId == unidadAsignacion.Asignacion.SeccionId &&
-                        inscripcion.CicloEscolarId ==
-                            unidadAsignacion.Asignacion.Seccion.CicloEscolarId &&
-                        inscripcion.Estado == EstadoInscripcion.Activa &&
-                        inscripcion.Seccion.CicloEscolar.Activo),
+                    ((unidadAsignacion.Asignacion.Estado == EstadoRegistro.Activo &&
+                      unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo &&
+                      (!unidadAsignacion.FechaDisponibilidad.HasValue ||
+                          unidadAsignacion.FechaDisponibilidad <= ahora) &&
+                      (!unidadAsignacion.FechaCierreAcceso.HasValue ||
+                          unidadAsignacion.FechaCierreAcceso >= ahora) &&
+                      contexto.Inscripciones.Any(inscripcion =>
+                          inscripcion.AlumnoId == perfil.AlumnoId.Value &&
+                          inscripcion.SeccionId == unidadAsignacion.Asignacion.SeccionId &&
+                          inscripcion.CicloEscolarId == unidadAsignacion.Asignacion.Seccion.CicloEscolarId &&
+                          inscripcion.Estado == EstadoInscripcion.Activa &&
+                          inscripcion.Seccion.CicloEscolar.Activo)) ||
+                     (unidadAsignacion.Asignacion.Estado == EstadoRegistro.Inactivo &&
+                      contexto.Inscripciones.Any(inscripcion =>
+                          inscripcion.AlumnoId == perfil.AlumnoId.Value &&
+                          inscripcion.SeccionId == unidadAsignacion.Asignacion.SeccionId &&
+                          inscripcion.CicloEscolarId == unidadAsignacion.Asignacion.Seccion.CicloEscolarId))),
                     ct);
             puedeDescargar = permitido && material.Descargable;
         }
@@ -524,7 +528,7 @@ public sealed class MaterialServicio(
         }
 
         if (!perfil.DocenteId.HasValue)
-            return !perfil.TienePerfilAcademico;
+            return false;
 
         return await contexto.UnidadesAsignaciones.AnyAsync(x =>
             x.UnidadId == unidadId &&

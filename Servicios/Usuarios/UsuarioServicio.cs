@@ -93,6 +93,34 @@ public class UsuarioServicio : IUsuarioServicio
             .ToListAsync();
     }
 
+    public async Task<Dictionary<string, string>>
+    ObtenerRolesParaListadoAsync()
+    {
+        var asignaciones = await (
+            from usuarioRol in contexto.UserRoles.AsNoTracking()
+            join rol in administradorRoles.Roles.AsNoTracking()
+                on usuarioRol.RoleId equals rol.Id
+            select new
+            {
+                usuarioRol.UserId,
+                NombreRol = rol.Name
+            }
+        ).ToListAsync();
+
+        return asignaciones
+            .GroupBy(x => x.UserId)
+            .ToDictionary(
+                grupo => grupo.Key,
+                grupo => string.Join(
+                    ", ",
+                    grupo
+                        .Select(x => x.NombreRol)
+                        .Where(nombre => !string.IsNullOrWhiteSpace(nombre))
+                        .OrderBy(nombre => nombre)
+                )
+            );
+    }
+
     // OBTENER DETALLE DE USUARIO
     public async Task<ResultadoUsuario<DetalleUsuario>>
         ObtenerDetalleAsync(string id)

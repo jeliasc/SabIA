@@ -44,11 +44,21 @@ public class AlumnosController : Controller
             TipoAccesoAlumnos.Denegado => Forbid(),
             TipoAccesoAlumnos.Institucional when consulta.Institucional != null =>
                 View("Ver", consulta.Institucional),
+            TipoAccesoAlumnos.Alumno when consulta.Propio != null =>
+                View("Perfil", consulta.Propio),
             TipoAccesoAlumnos.Docente or TipoAccesoAlumnos.Alumno
                 when consulta.Contextual != null =>
                 View("DetalleContextual", consulta.Contextual),
             _ => NotFound()
         };
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Permisos.Alumnos.Ver)]
+    public async Task<IActionResult> Perfil()
+    {
+        var perfil = await alumnoServicio.ObtenerPerfilPropioAsync();
+        return perfil == null ? Forbid() : View(perfil);
     }
 
     [HttpGet]

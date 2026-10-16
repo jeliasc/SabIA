@@ -17,9 +17,6 @@ public class FormularioUnidad
 
     public int? PeriodoId { get; set; }
 
-    [Range(1, int.MaxValue)]
-    public int Orden { get; set; } = 1;
-
     public DateTime? FechaDisponibilidad { get; set; }
 
     public DateTime? FechaCierreAcceso { get; set; }
@@ -38,6 +35,8 @@ public sealed class EditarUnidad : FormularioUnidad
     public int Id { get; set; }
 
     public int UnidadAsignacionId { get; set; }
+
+    public int Orden { get; set; }
 }
 
 public sealed class UnidadLista

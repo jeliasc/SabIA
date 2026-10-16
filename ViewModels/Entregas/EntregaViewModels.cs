@@ -33,11 +33,19 @@ public sealed class EntregaLista
     public bool PuedeCalificarse { get; set; }
 
     public bool PuedeEntregarse { get; set; }
+
+    public bool TieneIntentoPendienteEvaluacion { get; set; }
+
+    // Si la tarea es un cuestionario: el alumno lo resuelve en lugar de
+    // subir un archivo y el docente puede ver sus respuestas.
+    public int? CuestionarioId { get; set; }
 }
 
 public sealed class EntregarTarea
 {
     public int Id { get; set; }
+
+    public int TareaId { get; set; }
 
     public string Tarea { get; set; } = string.Empty;
 
@@ -58,6 +66,38 @@ public sealed class ArchivoTareaApoyo
     public int Id { get; set; }
 
     public string Nombre { get; set; } = string.Empty;
+}
+
+public sealed class DetalleEntrega
+{
+    public int EntregaSeleccionadaId { get; set; }
+    public string Alumno { get; set; } = string.Empty;
+    public string Tarea { get; set; } = string.Empty;
+    public decimal PunteoMaximo { get; set; }
+    public decimal? CalificacionEfectiva { get; set; }
+    public bool TieneIntentoPendienteEvaluacion { get; set; }
+    public List<IntentoEntregaDetalle> Intentos { get; set; } = [];
+}
+
+public sealed class IntentoEntregaDetalle
+{
+    public int Id { get; set; }
+    public int NumeroEnvio { get; set; }
+    public EstadoEntrega Estado { get; set; }
+    public DateTime? FechaEntrega { get; set; }
+    public decimal? Calificacion { get; set; }
+    public string? ComentarioAlumno { get; set; }
+    public string? Retroalimentacion { get; set; }
+    public string? MotivoReapertura { get; set; }
+    public List<ArchivoEntregaDetalle> Archivos { get; set; } = [];
+}
+
+public sealed class ArchivoEntregaDetalle
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public string Mime { get; set; } = string.Empty;
+    public bool PuedeVisualizar { get; set; }
 }
 
 public sealed class CalificarEntrega
@@ -81,6 +121,20 @@ public sealed class CalificarEntrega
     public string? Retroalimentacion { get; set; }
 
     public bool Devolver { get; set; }
+
+    public List<IntentoSeleccionCalificar> Intentos { get; set; } = [];
+
+    public int TareaId { get; set; }
+    public int AlumnoId { get; set; }
+    public int? InscripcionId { get; set; }
+}
+
+public sealed class IntentoSeleccionCalificar
+{
+    public int Id { get; set; }
+    public int NumeroEnvio { get; set; }
+    public DateTime? FechaEntrega { get; set; }
+    public EstadoEntrega Estado { get; set; }
 }
 
 public sealed class ReabrirEntrega

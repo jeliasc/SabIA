@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
 using Proyecto_Final.Seguridad;
+using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.InteligenciaArtificial;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.ViewModels.Comunes;
@@ -21,7 +22,7 @@ public class ContenidoIAController(
     [HttpGet]
     public async Task<IActionResult> Generar(int? planificacionId)
     {
-        var modelo = new GenerarContenidoIa { PlanificacionId = planificacionId ?? 0 };
+        var modelo = new GenerarContenidoIa { PlanificacionId = planificacionId };
         return View(await PrepararAsync(modelo));
     }
 
@@ -29,28 +30,86 @@ public class ContenidoIAController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Generar(GenerarContenidoIa modelo, CancellationToken cancellationToken)
     {
+        var hayPlanificacion = modelo.PlanificacionId.HasValue && modelo.PlanificacionId.Value > 0;
+        var hayDocumento = modelo.Documento != null;
+        if (modelo.OrigenDocumento == OrigenDocumentoIa.Planificacion && (!hayPlanificacion || hayDocumento))
+            ModelState.AddModelError(string.Empty, "Seleccione exclusivamente una planificación autorizada.");
+        else if (modelo.OrigenDocumento == OrigenDocumentoIa.ArchivoLocal && (hayPlanificacion || !hayDocumento))
+            ModelState.AddModelError(string.Empty, "Seleccione exclusivamente un archivo PDF local.");
+        else if (modelo.OrigenDocumento is not OrigenDocumentoIa.Planificacion and not OrigenDocumentoIa.ArchivoLocal)
+            ModelState.AddModelError(string.Empty, "Seleccione un origen válido para el documento.");
+
         if (!ModelState.IsValid)
             return View(await PrepararAsync(modelo));
 
-        var tipos = new List<string>();
-        if (modelo.Cuestionario) tipos.Add("cuestionario");
-        if (modelo.Resumen) tipos.Add("resumen");
-        if (modelo.HojaTrabajo) tipos.Add("hoja_trabajo");
-        if (modelo.Glosario) tipos.Add("glosario");
+        var solicitudes = new List<SolicitudContenidoIa>();
+        if (modelo.Cuestionario) solicitudes.Add(new("cuestionario", modelo.InstruccionesCuestionario ?? string.Empty));
+        if (modelo.Resumen) solicitudes.Add(new("resumen", modelo.InstruccionesResumen ?? string.Empty));
+        if (modelo.HojaTrabajo) solicitudes.Add(new("hoja_trabajo", modelo.InstruccionesHojaTrabajo ?? string.Empty));
+        if (modelo.Glosario) solicitudes.Add(new("glosario", modelo.InstruccionesGlosario ?? string.Empty));
 
-        var resultado = await iaServicio.GenerarAsync(modelo.PlanificacionId, tipos, cancellationToken);
+        ResultadoOperacion<List<TrabajoIa>> resultado;
+        if (modelo.OrigenDocumento == OrigenDocumentoIa.Planificacion)
+        {
+            resultado = await iaServicio.GenerarDesdeDocumentoAsync(
+                modelo.PlanificacionId!.Value,
+                solicitudes,
+                cancellationToken: cancellationToken);
+        }
+        else
+        {
+            await using var documento = modelo.Documento!.OpenReadStream();
+            resultado = await iaServicio.GenerarDesdeArchivoLocalAsync(
+                solicitudes,
+                documento,
+                modelo.Documento.FileName,
+                modelo.Documento.ContentType,
+                modelo.Documento.Length,
+                cancellationToken);
+        }
         if (!resultado.Exitoso || resultado.Datos == null)
         {
             ModelState.AddModelError(string.Empty, resultado.Mensaje);
             return View(await PrepararAsync(modelo));
         }
 
-        var nombre = await contexto.Planificaciones.AsNoTracking()
-            .Where(x => x.Id == modelo.PlanificacionId)
-            .Select(x => x.Titulo)
-            .FirstOrDefaultAsync(cancellationToken) ?? "Planificación";
+        var nombre = modelo.OrigenDocumento == OrigenDocumentoIa.Planificacion
+            ? await contexto.Planificaciones.AsNoTracking()
+                .Where(x => x.Id == modelo.PlanificacionId)
+                .Select(x => x.Titulo)
+                .FirstOrDefaultAsync(cancellationToken) ?? "Planificación"
+            : "Archivo local: " + modelo.Documento!.FileName;
 
         return View("Trabajos", new TrabajosContenidoIa { Planificacion = nombre, Trabajos = resultado.Datos });
+    }
+
+    [HttpGet]
+    public IActionResult GenerarDirecto() => View(new GenerarContenidoDirectoIa());
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GenerarDirecto(
+        GenerarContenidoDirectoIa modelo,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+            return View(modelo);
+
+        var resultado = await iaServicio.GenerarDirectoAsync(
+            modelo.Prompt,
+            modelo.MaxTokens,
+            cancellationToken);
+        if (!resultado.Exitoso || resultado.Datos == null)
+        {
+            ModelState.AddModelError(string.Empty, resultado.Mensaje);
+            return View(modelo);
+        }
+
+        return View("Trabajos", new TrabajosContenidoIa
+        {
+            Planificacion = "Generación directa",
+            Trabajos = resultado.Datos
+        });
     }
 
     [HttpGet]
@@ -71,13 +130,12 @@ public class ContenidoIAController(
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var consulta = contexto.Planificaciones.AsNoTracking()
             .Where(x =>
-                x.Archivos.Any(a => a.Archivo.TipoMime == "application/pdf") &&
                 x.Asignaciones.Any(a =>
                     a.Asignacion.Estado == Proyecto_Final.Models.EstadoRegistro.Activo &&
                     a.Asignacion.Seccion.CicloEscolar.Activo));
         if (perfil.DocenteId.HasValue)
             consulta = consulta.Where(x => x.DocenteId == perfil.DocenteId.Value);
-        else if (perfil.AlumnoId.HasValue)
+        else if (!acceso.EsOperadorInstitucional)
             consulta = consulta.Where(_ => false);
 
         modelo.Planificaciones = await consulta

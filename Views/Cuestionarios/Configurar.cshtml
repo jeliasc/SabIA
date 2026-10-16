@@ -1,4 +1,5 @@
 @model Proyecto_Final.ViewModels.Cuestionarios.ConfigurarCuestionario
+@using Proyecto_Final.Models
 
 @{
     ViewData["Title"] = "Configurar cuestionario";
@@ -15,7 +16,7 @@
 
     <div class="card shadow-sm border-0">
         <div class="card-body p-4">
-            <form method="post">
+            <form method="post" data-config-cuestionario>
                 @Html.AntiForgeryToken()
 
                 <input asp-for="TareaId" type="hidden" />
@@ -24,7 +25,9 @@
                 <div asp-validation-summary="ModelOnly" class="text-danger">
                 </div>
 
-                <div class="row g-3">
+                <h5 class="fw-semibold mb-3">Intentos y calificación</h5>
+
+                <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <label asp-for="MaximoIntentos" class="form-label">
                             Máximo de intentos
@@ -43,28 +46,88 @@
                         </label>
 
                         <select asp-for="CriterioCalificacion"
-                                asp-items="Html.GetEnumSelectList<Proyecto_Final.Models.CriterioCalificacionIntentos>()"
+                                asp-items="Html.GetEnumSelectList<CriterioCalificacionIntentos>()"
                                 class="form-select">
                         </select>
                     </div>
+                </div>
 
+                <h5 class="fw-semibold mb-3">Tiempo</h5>
+
+                <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <label asp-for="ModalidadTiempo" class="form-label">
-                            Tiempo
+                            Límite de tiempo
                         </label>
 
-                        <select asp-for="ModalidadTiempo"
-                                asp-items="Html.GetEnumSelectList<Proyecto_Final.Models.ModalidadTiempoCuestionario>()"
-                                class="form-select">
+                        <select asp-for="ModalidadTiempo" class="form-select" data-modalidad-tiempo>
+                            <option value="@((int)ModalidadTiempoCuestionario.SinLimite)">Sin límite</option>
+                            <option value="@((int)ModalidadTiempoCuestionario.TiempoGeneral)">Tiempo total del cuestionario</option>
+                            <option value="@((int)ModalidadTiempoCuestionario.TiempoPorPregunta)">Tiempo por pregunta</option>
                         </select>
                     </div>
 
+                    <div class="col-md-4" data-tiempo-general>
+                        <label asp-for="TiempoGeneralMinutos" class="form-label">
+                            Tiempo total (minutos)
+                        </label>
+
+                        <input asp-for="TiempoGeneralMinutos" class="form-control" min="1" max="300" />
+                        <span asp-validation-for="TiempoGeneralMinutos" class="text-danger small"></span>
+
+                        <div class="form-text">
+                            El alumno distribuye el tiempo entre las preguntas.
+                        </div>
+                    </div>
+
+                    <div class="col-md-4" data-tiempo-pregunta>
+                        <label asp-for="TiempoPorPreguntaSegundos" class="form-label">
+                            Tiempo por pregunta (segundos)
+                        </label>
+
+                        <input asp-for="TiempoPorPreguntaSegundos" class="form-control" min="10" max="3600" />
+                        <span asp-validation-for="TiempoPorPreguntaSegundos" class="text-danger small"></span>
+
+                        <div class="form-text">
+                            Se aplica a todas las preguntas. Puede cambiarlo en cada pregunta.
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="fw-semibold mb-3">Presentación</h5>
+
+                <div class="row g-3">
                     <div class="col-12">
-                        <div class="form-check">
+                        <div class="form-check mb-2">
+                            <input asp-for="PermitirNavegacion" class="form-check-input" data-permitir-navegacion />
+
+                            <label asp-for="PermitirNavegacion" class="form-check-label">
+                                Permitir avanzar y regresar entre preguntas
+                            </label>
+
+                            <div class="form-text" data-aviso-navegacion>
+                                Si no se marca, el alumno responde una pregunta a la vez y no puede regresar.
+                                Con tiempo por pregunta la navegación libre no está disponible.
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-2">
+                            <input asp-for="OrdenAleatorio" class="form-check-input" />
+
+                            <label asp-for="OrdenAleatorio" class="form-check-label">
+                                Presentar las preguntas en orden aleatorio
+                            </label>
+
+                            <div class="form-text">
+                                Cada alumno y cada intento reciben un orden distinto.
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-2">
                             <input asp-for="MostrarResultadosAlFinalizar" class="form-check-input" />
 
                             <label asp-for="MostrarResultadosAlFinalizar" class="form-check-label">
-                                Mostrar resultado al finalizar
+                                Mostrar la nota al finalizar
                             </label>
                         </div>
 
@@ -72,7 +135,7 @@
                             <input asp-for="MostrarRespuestasCorrectas" class="form-check-input" />
 
                             <label asp-for="MostrarRespuestasCorrectas" class="form-check-label">
-                                Mostrar respuestas correctas
+                                Mostrar retroalimentación: qué respondió bien o mal y la respuesta correcta
                             </label>
                         </div>
                     </div>
@@ -91,3 +154,7 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/cuestionarios.js" asp-append-version="true"></script>
+}

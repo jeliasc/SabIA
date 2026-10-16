@@ -1,0 +1,40 @@
+@model Proyecto_Final.ViewModels.Alumnos.PerfilAlumnoPropio
+@using Proyecto_Final.Models
+
+@{
+    ViewData["Title"] = "Mi perfil académico";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-xl-10">
+            <div class="mb-4">
+                <h2 class="fw-bold mb-1">Mi perfil académico</h2>
+                <p class="text-muted mb-0">Información personal y académica vinculada a mi cuenta.</p>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-lg-4"><div class="app-card h-100"><div class="app-card-body"><div class="text-muted small">Unidades disponibles</div><div class="fs-3 fw-bold">@Model.UnidadesDisponibles</div></div></div></div>
+                <div class="col-6 col-lg-4"><div class="app-card h-100"><div class="app-card-body"><div class="text-muted small">Tareas publicadas</div><div class="fs-3 fw-bold">@Model.TareasPublicadas</div></div></div></div>
+                <div class="col-6 col-lg-4"><div class="app-card h-100"><div class="app-card-body"><div class="text-muted small">Entregas realizadas</div><div class="fs-3 fw-bold">@Model.EntregasRealizadas</div></div></div></div>
+            </div>
+
+            <div class="card shadow-sm border border-secondary mb-4"><div class="card-body p-4">
+                <h5 class="fw-bold mb-3">Información personal</h5>
+                <dl class="row mb-0"><dt class="col-sm-4 text-muted fw-normal">Nombre completo</dt><dd class="col-sm-8 fw-semibold">@Model.NombreCompleto</dd><dt class="col-sm-4 text-muted fw-normal">Código personal MINEDUC</dt><dd class="col-sm-8">@Model.CodigoPersonal</dd><dt class="col-sm-4 text-muted fw-normal">Correo electrónico</dt><dd class="col-sm-8 text-break">@Model.Correo</dd><dt class="col-sm-4 text-muted fw-normal">Teléfono</dt><dd class="col-sm-8">@(Model.Telefono ?? "Sin registro")</dd></dl>
+            </div></div>
+
+            <div class="card shadow-sm border border-secondary mb-4"><div class="card-body p-4">
+                <h5 class="fw-bold mb-3">Inscripción vigente</h5>
+                @if (Model.InscripcionVigente == null) { <div class="app-alert app-alert-info mb-0">No tienes una inscripción vigente en el ciclo escolar activo.</div> }
+                else { <dl class="row mb-0"><dt class="col-sm-4 text-muted fw-normal">Ciclo escolar</dt><dd class="col-sm-8">@Model.InscripcionVigente.Ciclo</dd><dt class="col-sm-4 text-muted fw-normal">Grado y sección</dt><dd class="col-sm-8">@Model.InscripcionVigente.Grado @Model.InscripcionVigente.Seccion</dd><dt class="col-sm-4 text-muted fw-normal">Carrera</dt><dd class="col-sm-8">@Model.InscripcionVigente.Carrera</dd></dl> }
+            </div></div>
+
+            <div class="card shadow-sm border border-secondary"><div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-3"><h5 class="fw-bold mb-0">Encargados vinculados</h5><span class="text-muted small">@Model.Encargados.Count encargado(s)</span></div>
+                @if (Model.Encargados.Count == 0) { <div class="app-alert app-alert-info mb-0">No tienes encargados registrados.</div> }
+                else { <div class="row g-3">@foreach (var encargado in Model.Encargados) { <div class="col-12 col-md-6"><div class="card border-0 bg-light h-100"><div class="card-body"><div class="fw-semibold">@encargado.NombreCompleto</div><div class="text-muted small mb-2">@encargado.Parentesco</div><div><span class="text-muted small">Teléfono:</span> @encargado.Telefono</div>@if (!string.IsNullOrWhiteSpace(encargado.TelefonoAlterno)) { <div><span class="text-muted small">Alterno:</span> @encargado.TelefonoAlterno</div> }@if (!string.IsNullOrWhiteSpace(encargado.Correo)) { <div class="text-break"><span class="text-muted small">Correo:</span> @encargado.Correo</div> }</div></div></div> }</div> }
+            </div></div>
+        </div>
+    </div>
+</div>

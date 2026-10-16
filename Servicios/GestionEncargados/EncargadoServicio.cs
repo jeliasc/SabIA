@@ -2,13 +2,23 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
+using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.ViewModels.Encargados;
 
 namespace Proyecto_Final.Servicios.GestionEncargados;
 
-public sealed class EncargadoServicio(Contexto contexto) : IEncargadoServicio
+public sealed class EncargadoServicio(
+    Contexto contexto,
+    IAccesoAcademicoServicio acceso) : IEncargadoServicio
 {
-    public Task<List<EncargadoLista>> ObtenerTodosAsync() =>
+    public Task<List<EncargadoLista>> ObtenerTodosAsync()
+    {
+        if (!acceso.EsOperadorInstitucional)
+        {
+            return Task.FromResult(new List<EncargadoLista>());
+        }
+
+        return
         contexto.Encargados.AsNoTracking()
             .OrderBy(x => x.Nombres).ThenBy(x => x.Apellidos)
             .Select(x => new EncargadoLista
@@ -20,9 +30,15 @@ public sealed class EncargadoServicio(Contexto contexto) : IEncargadoServicio
                 Correo = x.Correo,
                 Alumnos = x.AlumnoEncargados.Count
             }).ToListAsync();
+    }
 
     public async Task<ResultadoOperacion> CrearAsync(CrearEncargado modelo)
     {
+        if (!acceso.EsOperadorInstitucional)
+        {
+            return ResultadoOperacion.Error("No tiene autorización institucional para administrar encargados.");
+        }
+
         Normalizar(modelo);
         var validacion = await ValidarAsync(modelo, null);
         if (validacion != null) return validacion;
@@ -52,7 +68,14 @@ public sealed class EncargadoServicio(Contexto contexto) : IEncargadoServicio
         }
     }
 
-    public Task<EditarEncargado?> ObtenerParaEditarAsync(int id) =>
+    public Task<EditarEncargado?> ObtenerParaEditarAsync(int id)
+    {
+        if (!acceso.EsOperadorInstitucional)
+        {
+            return Task.FromResult<EditarEncargado?>(null);
+        }
+
+        return
         contexto.Encargados.AsNoTracking()
             .Where(x => x.Id == id)
             .Select(x => new EditarEncargado
@@ -66,9 +89,15 @@ public sealed class EncargadoServicio(Contexto contexto) : IEncargadoServicio
                 Correo = x.Correo,
                 Direccion = x.Direccion
             }).FirstOrDefaultAsync();
+    }
 
     public async Task<ResultadoOperacion> EditarAsync(EditarEncargado modelo)
     {
+        if (!acceso.EsOperadorInstitucional)
+        {
+            return ResultadoOperacion.Error("No tiene autorización institucional para administrar encargados.");
+        }
+
         Normalizar(modelo);
         var validacion = await ValidarAsync(modelo, modelo.Id);
         if (validacion != null) return validacion;

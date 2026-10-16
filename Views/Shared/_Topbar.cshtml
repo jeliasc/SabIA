@@ -1,3 +1,20 @@
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@using Proyecto_Final.Servicios.SeguridadAcademica
+@inject IAuthorizationService Autorizacion
+@inject IAccesoAcademicoServicio AccesoAcademico
+
+@{
+    var rolUsuario = User.FindFirst(ClaimTypes.Role)?.Value ?? "Sin rol";
+    var puedeConsultarContexto = (await Autorizacion.AuthorizeAsync(
+        User,
+        Permisos.Alumnos.Ver)).Succeeded;
+    var contextoAcademico = await AccesoAcademico.ObtenerContextoUsuarioAsync();
+    var esDocente = puedeConsultarContexto && contextoAcademico.DocenteId.HasValue;
+    var esAlumno = puedeConsultarContexto && !esDocente && contextoAcademico.AlumnoId.HasValue;
+}
+
 <nav class="app-header navbar navbar-expand bg-body shadow-sm sticky-top">
     <div class="container-fluid">
         <ul class="navbar-nav">
@@ -13,58 +30,48 @@
         </ul>
 
         <ul class="navbar-nav ms-auto align-items-center">
-            <li class="nav-item dropdown">
-                <a class="nav-link position-relative" data-bs-toggle="dropdown" href="#" aria-expanded="false"
-                   aria-label="Notificaciones">
-                    <i class="bi bi-bell"></i>
-                    <span class="navbar-badge badge text-bg-warning">3</span>
-                </a>
-                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0">
-                    <span class="dropdown-item dropdown-header">3 notificaciones de demostración</span>
-                    <div class="dropdown-divider"></div>
-                    <a asp-controller="Notificaciones" asp-action="Index" class="dropdown-item">
-                        <i class="bi bi-inbox me-2"></i> Nueva entrega pendiente
-                        <span class="float-end text-body-secondary fs-7">32 min</span>
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a asp-controller="Notificaciones" asp-action="Index" class="dropdown-item">
-                        <i class="bi bi-exclamation-triangle me-2"></i> Baja frecuencia de acceso
-                        <span class="float-end text-body-secondary fs-7">2 h</span>
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a asp-controller="Notificaciones" asp-action="Index" class="dropdown-item dropdown-footer">Ver
-                        todas</a>
-                    </div>
-                </li>
+            @await Component.InvokeAsync("Notificaciones")
 
-                <li class="nav-item dropdown user-menu">
-                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                        <span
-                            class="user-image rounded-circle shadow-sm bg-primary text-white d-inline-flex align-items-center justify-content-center">
-                            <i class="bi bi-person-fill"></i>
-                        </span>
-                        <span class="d-none d-md-inline">@User.Identity?.Name</span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
-                        <li class="user-header text-bg-primary">
-                            <div
-                                class="user-avatar-large rounded-circle bg-white text-primary mx-auto mb-2 d-flex align-items-center justify-content-center">
-                                <i class="bi bi-person-fill fs-2"></i>
-                            </div>
-                            <p class="mb-0">@User.Identity?.Name</p>
-                            <small>Usuario autenticado</small>
-                        </li>
-                        <li class="user-footer d-flex gap-2 justify-content-between">
-                            <a asp-controller="Login" asp-action="CambiarContrasena" class="btn btn-default btn-flat">
-                                Cambiar contraseña
+            <li class="nav-item dropdown user-menu">
+                <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span
+                        class="user-image rounded-circle shadow-sm bg-primary text-white d-inline-flex align-items-center justify-content-center">
+                        <i class="bi bi-person-fill"></i>
+                    </span>
+                    <span class="d-none d-md-inline">@User.Identity?.Name</span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
+                    <li class="user-header text-bg-primary">
+                        <div
+                            class="user-avatar-large rounded-circle bg-white text-primary mx-auto mb-2 d-flex align-items-center justify-content-center">
+                            <i class="bi bi-person-fill fs-2"></i>
+                        </div>
+                        <p class="mb-0">@User.Identity?.Name</p>
+                        <small>@rolUsuario</small>
+                    </li>
+                    <li class="user-footer d-flex flex-wrap gap-2 justify-content-between">
+                        @if (esAlumno)
+                        {
+                            <a asp-controller="Alumnos" asp-action="Perfil" class="btn btn-default btn-flat">
+                                Mi perfil
                             </a>
-                            <form asp-controller="Login" asp-action="CerrarSesion" method="post" class="m-0">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-default btn-flat">Cerrar sesión</button>
-                            </form>
-                        </li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-    </nav>
+                        }
+                        else if (esDocente)
+                        {
+                            <a asp-controller="Docentes" asp-action="Perfil" class="btn btn-default btn-flat">
+                                Mi perfil
+                            </a>
+                        }
+                        <a asp-controller="Login" asp-action="CambiarContrasena" class="btn btn-default btn-flat">
+                            Cambiar contraseña
+                        </a>
+                        <form asp-controller="Login" asp-action="CerrarSesion" method="post" class="m-0">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-default btn-flat">Cerrar sesión</button>
+                        </form>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</nav>

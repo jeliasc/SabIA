@@ -11,6 +11,18 @@ public interface ICuestionarioServicio
     Task<ResultadoOperacion<int>> GuardarConfiguracionAsync(ConfigurarCuestionario m);
     Task<CrearPregunta?> PrepararPreguntaAsync(int cuestionarioId);
     Task<ResultadoOperacion> AgregarPreguntaAsync(CrearPregunta m);
-    Task<ResolverCuestionario?> ObtenerParaResolverAsync(int id);
-    Task<ResultadoOperacion<ResultadoIntento>> ResolverAsync(ResolverCuestionario m);
+
+    Task<InicioCuestionario?> ObtenerInicioAsync(int id);
+    Task<ResultadoOperacion<int>> IniciarAsync(int id);
+    Task<VistaIntento> ObtenerIntentoAsync(int intentoId);
+    Task<ResultadoOperacion<bool>> GuardarRespuestaAsync(int intentoId, RespuestaCuestionario respuesta);
+    Task<ResultadoOperacion<bool>> ResponderAsync(ResponderPregunta m);
+    Task<ResultadoOperacion<int>> FinalizarAsync(FinalizarIntento m);
+    Task<ResultadoIntento?> ObtenerResultadoAsync(int intentoId);
+    Task<int> FinalizarVencidosAsync(DateTime ahora, CancellationToken cancellationToken = default);
+
+    Task<ResultadosCuestionario?> ObtenerResultadosAsync(int id);
+    Task<RevisionIntento?> ObtenerRevisionIntentoAsync(int intentoId);
+    Task<ResultadoOperacion<int>> AjustarRespuestaDirectaAsync(int respuestaId, bool aceptar);
+    Task<(int? IntentoId, int? CuestionarioId)> ObtenerIntentoDeEntregaAsync(int entregaId);
 }

@@ -6,6 +6,7 @@ using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.GestionCalificaciones;
+using Proyecto_Final.Servicios.GestionAsignaciones;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.ViewModels.Calificaciones;
 
@@ -124,6 +125,46 @@ public sealed class FlujoCalificacionesTests
         Assert.Single(contexto.HistorialesCalificaciones);
     }
 
+    [Fact]
+    public async Task Coordinacion_NoPuedeCerrarPeriodoAunqueAcumulePermisoTecnico()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarLibroCompletoAsync(contexto);
+        var coordinacion = CrearServicio(
+            contexto,
+            "coordinacion",
+            Permisos.Dashboard.CoordinacionVer,
+            Permisos.Calificaciones.Ver,
+            Permisos.Calificaciones.Cerrar);
+
+        var resultado = await coordinacion.CerrarAsync(1);
+
+        Assert.False(resultado.Exitoso);
+        Assert.Empty(await contexto.CierresCalificaciones.ToListAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task DelegadoGestionEvaluaciones_PuedeConsultarLibroPeroNoRegistrarNotas()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarLibroCompletoAsync(contexto);
+        var servicio = new CalificacionServicio(
+            contexto,
+            new AccesoDelegadoPrueba(),
+            new DelegacionGestionEvaluacionesPrueba());
+
+        Assert.NotNull(await servicio.ObtenerLibroAsync(1, permisoRegistrar: true, permisoCerrar: true));
+        var resultado = await servicio.GuardarLibroAsync(new GuardarLibroCalificaciones
+        {
+            ConfiguracionId = 1,
+            Notas =
+            [
+                new NotaLibroCalificacion { ActividadId = 1, InscripcionId = 1, Nota = 5 }
+            ]
+        });
+        Assert.False(resultado.Exitoso);
+    }
+
     private static Contexto CrearContexto() => new(
         new DbContextOptionsBuilder<Contexto>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -156,6 +197,29 @@ public sealed class FlujoCalificacionesTests
         return new CalificacionServicio(
             contexto,
             new AccesoAcademicoServicio(contexto, accesor));
+    }
+
+    private sealed class AccesoDelegadoPrueba : IAccesoAcademicoServicio
+    {
+        public string? UsuarioId => "delegado";
+        public bool EsOperadorInstitucional => false;
+        public bool TienePermiso(string permiso) => true;
+        public Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync() =>
+            Task.FromResult(new ContextoAcademicoUsuario(2, null));
+        public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult<int?>(2);
+        public Task<int?> ObtenerAlumnoIdAsync() => Task.FromResult<int?>(null);
+        public Task<bool> EsDocenteDeAsignacionAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> AlumnoPerteneceAsignacionAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> PuedeConsultarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> PuedeConsultarAsignacionHistoricaAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> PuedeGestionarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(false);
+    }
+
+    private sealed class DelegacionGestionEvaluacionesPrueba : IDelegacionAcademicaServicio
+    {
+        public Task<bool> PuedeActuarAsync(int asignacionId, int docenteId,
+            OperacionDelegacionAcademica operacion) =>
+            Task.FromResult(operacion == OperacionDelegacionAcademica.GestionarEvaluaciones);
     }
 
     private static async Task SembrarLibroCompletoAsync(Contexto contexto)

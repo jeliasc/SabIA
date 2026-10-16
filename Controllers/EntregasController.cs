@@ -2,12 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.GestionEntregas;
+using Proyecto_Final.Servicios.GestionNotificaciones;
 using Proyecto_Final.ViewModels.Entregas;
 
 namespace Proyecto_Final.Controllers;
 
 [Authorize(Policy = Permisos.Entregas.Ver)]
-public class EntregasController(IEntregaServicio s) : Controller
+public class EntregasController(IEntregaServicio s, INotificacionServicio notificaciones) : Controller
 {
     public async Task<IActionResult> Index() =>
         View(await s.ObtenerTodasAsync());
@@ -24,10 +25,16 @@ public class EntregasController(IEntregaServicio s) : Controller
     public async Task<IActionResult> Entregar(int id)
     {
         var m = await s.ObtenerParaEntregarAsync(id);
+        if (m == null) return NotFound();
+        await notificaciones.RegistrarVisualizacionActividadAsync(m.TareaId);
+        return View(m);
+    }
 
-        return m == null
-            ? NotFound()
-            : View(m);
+    [HttpGet]
+    public async Task<IActionResult> Detalle(int id)
+    {
+        var modelo = await s.ObtenerDetalleAsync(id);
+        return modelo == null ? NotFound() : View(modelo);
     }
 
     [HttpPost]
@@ -158,6 +165,20 @@ public class EntregasController(IEntregaServicio s) : Controller
         return a == null
             ? NotFound()
             : File(a.Value.Stream, a.Value.Mime, a.Value.Nombre);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> VisualizarArchivo(int id)
+    {
+        var a = await s.VisualizarArchivoAsync(id);
+        if (a == null)
+        {
+            return NotFound();
+        }
+
+        Response.Headers.ContentDisposition =
+            $"inline; filename*=UTF-8''{Uri.EscapeDataString(a.Value.Nombre)}";
+        return File(a.Value.Stream, a.Value.Mime, enableRangeProcessing: true);
     }
 
     private void Err(Servicios.Comunes.ResultadoOperacion r)

@@ -57,4 +57,52 @@ public sealed class AsignacionLista
     public string Docente { get; set; } = string.Empty;
 
     public EstadoRegistro Estado { get; set; }
+
+    public DateTime? FechaInicioVigencia { get; set; }
+
+    public DateTime? FechaFinVigencia { get; set; }
+
+    public int? AsignacionAnteriorId { get; set; }
+}
+
+public sealed class ObligacionesRelevoAsignacion
+{
+    public int TareasAbiertas { get; set; }
+    public int EntregasPendientesCalificacion { get; set; }
+    public int CuestionariosEnCurso { get; set; }
+    public int CorreccionesPendientes { get; set; }
+    public int EvaluacionesSinCerrar { get; set; }
+    public int PlanificacionesPendientes { get; set; }
+
+    public bool TienePendientes =>
+        TareasAbiertas + EntregasPendientesCalificacion + CuestionariosEnCurso +
+        CorreccionesPendientes + EvaluacionesSinCerrar + PlanificacionesPendientes > 0;
+}
+
+public sealed class ReemplazarDocenteAsignacion
+{
+    public int AsignacionId { get; set; }
+
+    public string ContextoAcademico { get; set; } = string.Empty;
+
+    public string DocenteAnterior { get; set; } = string.Empty;
+
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione el docente sustituto.")]
+    public int DocenteSustitutoId { get; set; }
+
+    [Required, StringLength(1000, MinimumLength = 10)]
+    public string Motivo { get; set; } = string.Empty;
+
+    public TipoRelevoAsignacion Tipo { get; set; } = TipoRelevoAsignacion.Ordinario;
+
+    [Required]
+    public DateTime FechaEfectiva { get; set; }
+
+    public bool ConfirmarConsecuencias { get; set; }
+
+    public OperacionDelegacionAcademica OperacionesDelegadas { get; set; }
+
+    public ObligacionesRelevoAsignacion Obligaciones { get; set; } = new();
+
+    public List<OpcionSeleccion> Docentes { get; set; } = [];
 }
