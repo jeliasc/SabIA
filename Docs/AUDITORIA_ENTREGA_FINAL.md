@@ -80,3 +80,14 @@ Se añadió `DocenteHttpTests` para validar el perfil con un usuario ficticio cr
 No se detectó un defecto comprobado que justificara cambios en módulos académicos. No se modificaron Usuarios, Roles, permisos, Identity, cookies, sesiones, políticas, migraciones ni reglas de calificaciones.
 
 Quedan pendientes, por falta de automatización de navegador disponible, la comprobación visual manual en escritorio y móvil, incluyendo selects con búsqueda, SweetAlert2, tablas/tarjetas responsive, confirmaciones y la validación cliente de formularios. Las pruebas HTTP y de servicio no se presentan como sustituto de dicha revisión.
+
+## Validación funcional: perfil Alumno
+
+Se añadió `AlumnoHttpTests` siguiendo la infraestructura HTTP temporal de los perfiles anteriores. Cada caso usa un usuario ficticio creado mediante `UserManager`, el rol real `Alumno` y claims recuperados desde `RoleManager`; la base PostgreSQL aleatoria recibe únicamente datos sintéticos de ciclo, grado, secciones, asignaciones, inscripciones, unidad, tareas, entregas y cuestionarios.
+
+- Se confirmó que el rol Alumno recibe `Entregas.Entregar` y `Cuestionarios.Resolver`, pero no `Tareas.Crear` ni `Calificaciones.Configurar`.
+- El dashboard mostró únicamente `Curso alumno HTTP`. Se validaron perfil propio, unidades, tareas, entregas, formulario de entrega pendiente, detalle de entrega, cuestionario propio, calificaciones de consulta y notificaciones.
+- El perfil ajeno, entrega ajena y cuestionario ajeno devolvieron 404. Las pantallas de crear tarea/unidad/planificación y configurar calificaciones devolvieron 403. Un POST para iniciar cuestionario sin antiforgery devolvió 400.
+- `AlumnoHttpTests` aprobó 2 de 2 contra PostgreSQL temporal; la batería de servicios de acceso contextual, entregas, cuestionarios, notificaciones y regresión de Login aprobó 69 de 69; las pruebas PostgreSQL de tareas/cuestionarios aprobaron 5 de 5.
+
+No se detectó un defecto probado ni se modificó lógica académica de producción. No se cambiaron Usuarios, Roles, permisos, autenticación, cookies, sesiones, políticas, migraciones ni reglas de calificaciones. La revisión visual real de navegador —escritorio, móvil, validaciones cliente y botones condicionales— permanece pendiente y no se sustituye con estas pruebas HTTP.

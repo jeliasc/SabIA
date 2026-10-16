@@ -70,6 +70,29 @@ Comandos ejecutados durante esta fase:
 
 No se ejecutó una prueba E2E de navegador; queda pendiente antes de demostración la revisión manual responsive de dashboard, formularios, selects con búsqueda, mensajes de validación, SweetAlert2 y visibilidad de acciones según permisos.
 
+## Validación funcional: perfil Alumno
+
+`AlumnoHttpTests` reutiliza el patrón de host de prueba y PostgreSQL temporal de los perfiles anteriores. El manejador de autenticación de pruebas obtiene roles y claims desde Identity; no codifica permisos manuales ni afecta configuración de producción. Los usuarios, datos académicos, claves de Data Protection y bases generadas son descartables.
+
+| Módulo | Operación evaluada | Perfil y permisos | Resultado | Evidencia | Estado |
+| --- | --- | --- | --- | --- | --- |
+| Rol efectivo | Cargar claims del rol `Alumno` sembrado | `Entregas.Entregar`, `Cuestionarios.Resolver`; sin creación docente ni configuración de calificaciones | Se confirman permisos concedidos y ausentes | `AlumnoHttpTests` durante la preparación del escenario | Aprobado |
+| Dashboard y perfil | Abrir contexto `alumno`, perfil e inscripción vigente | Alumno activo con inscripción y `Alumnos.Ver` | 200; muestra únicamente el curso propio | `Alumno_ConRolSembrado_VisualizaSoloSuActividadVigente` | Aprobado |
+| Actividad académica | Consultar unidad, tareas, entregas, entrega pendiente, detalle, calificaciones y notificaciones | Permisos de consulta del rol Alumno | 200; recursos vinculados a la inscripción vigente | Misma prueba HTTP; `EntregaServicioTests`, `TareasControllerTests`, `NotificacionServicioTests` | Aprobado |
+| Cuestionarios | Abrir cuestionario propio; intentos, respuestas, vencimiento y duplicados | `Cuestionarios.Ver`, `Cuestionarios.Resolver` | 200 en HTTP; flujos y restricciones en servicios | Misma prueba HTTP; `CuestionarioServicioTests`, `CuestionarioPostgresTests` | Aprobado |
+| Seguridad contextual | Cambiar ID de alumno, entrega y cuestionario por recursos ajenos | Rol Alumno sin pertenencia académica | 404; no expone recurso ajeno | `Alumno_NoAccedeARecursosAjenosNiOperacionesDocentes_YLosPostExigenAntiforgery`; `AccesoAcademicoServicioTests`, `AccesoContextualAlumnosTests` | Aprobado |
+| Acciones docentes | Abrir creación de tarea/unidad/planificación y configuración de calificaciones | Sin `Tareas.Crear`, `Unidades.Crear`, `Planificaciones.Ver`, `Calificaciones.Configurar` | 403 | Misma prueba HTTP | Aprobado |
+| Antiforgery | POST para iniciar cuestionario sin token | `Cuestionarios.Resolver`, sin token | 400 antes de iniciar el intento | Misma prueba HTTP | Aprobado |
+| Persistencia PostgreSQL | Fechas, cuestionarios, intentos únicos y vencimiento | Datos temporales aislados | 5 de 5 | `FechasTareasPostgresTests`, `CuestionarioPostgresTests` | Aprobado |
+
+Comandos ejecutados durante esta fase:
+
+- `dotnet vstest ... /TestCaseFilter:"FullyQualifiedName~AlumnoHttpTests"`: 2 aprobadas de 2, PostgreSQL temporal.
+- `dotnet vstest ... /TestCaseFilter:"...AccesoAcademicoServicioTests|...AccesoContextualAlumnosTests|...EntregaServicioTests|...CuestionarioServicioTests|...TareasControllerTests|...NotificacionServicioTests|...SeguridadAcademicaCalificacionesTests|...PresentacionYValidacionTests"`: 69 aprobadas de 69.
+- `dotnet vstest ... /TestCaseFilter:"FullyQualifiedName~CuestionarioPostgresTests|...FechasTareasPostgresTests"`: 5 aprobadas de 5, PostgreSQL temporal.
+
+No se ejecutó una prueba E2E de navegador. Antes de demostración queda pendiente validar manualmente el dashboard, perfil, tablas/tarjetas responsive, selects, mensajes de validación, botones condicionales y confirmaciones en escritorio y móvil.
+
 ## Pruebas no ejecutadas y motivo
 
 - No se hicieron llamadas reales a IA ni a correo. Las pruebas de IA usan dobles de `HttpMessageHandler` y datos de prueba.

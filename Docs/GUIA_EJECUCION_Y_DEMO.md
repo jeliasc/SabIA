@@ -40,6 +40,16 @@ Prepare un docente ficticio activo con una asignación vigente, alumnos inscrito
 5. Configure un cuestionario manual y una pregunta de cada tipo. Para importación IA, utilice solo texto ficticio o la simulación local: revise y edite la vista previa antes de confirmar; no exponga ni use una clave externa durante la demostración.
 6. Como control negativo, intente abrir por URL un alumno, entrega o configuración de calificaciones de otra asignación. Debe recibir acceso no encontrado/denegado y los POST deben exigir antiforgery.
 
+### Perfil Alumno
+
+Prepare un alumno ficticio activo, con inscripción vigente, un curso asignado, una unidad publicada, una tarea disponible, una entrega pendiente y un cuestionario de prueba. No asigne permisos docentes o administrativos a su rol.
+
+1. Inicie sesión con la cuenta ficticia y abra `Inicio > Mi espacio académico`. Compruebe curso, sección, unidades disponibles, tareas, entregas y resultados que correspondan solo a su inscripción vigente.
+2. Abra `Mi perfil`, `Mis compañeros`, tareas, entregas y notificaciones. No utilice ni exponga información de otros alumnos en la demostración.
+3. Abra una tarea publicada dentro de su período de disponibilidad, realice una entrega desechable y consulte su detalle e historial. Pruebe una tarea vencida y una reapertura individual únicamente con datos de prueba.
+4. Resuelva un cuestionario ficticio con preguntas de selección única, verdadero/falso y respuesta directa. Revise límite de intentos, tiempo y resultado según su configuración; no invoque IA externa.
+5. Como control negativo, cambie en la URL los identificadores de alumno, entrega o cuestionario por los de otra sección. Compruebe que no se muestre información ajena. Intente crear una tarea o configurar calificaciones: debe recibir acceso denegado.
+
 ## Verificaciones de interfaz
 
 - Repetir los pasos principales en ancho móvil y de escritorio.
