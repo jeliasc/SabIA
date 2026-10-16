@@ -46,7 +46,7 @@ public class AutenticacionServicio : IAutenticacionServicio
             await RegistrarRechazoInicioSesionAsync("Cuenta inactiva.", usuario.Id);
             return ResultadoAutenticacion
                 .CuentaInactiva(
-                    "Su cuenta se encuentra inactiva. Comuníquese con el administrador."
+                    "El usuario o la contraseña son incorrectos."
                 );
         }
 

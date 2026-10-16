@@ -206,6 +206,18 @@ public sealed class CuestionarioPostgresTests
         public static async Task<BasePrueba> CrearAsync(string conexionAdministrador)
         {
             var baseDatos = new BasePrueba(conexionAdministrador, "sabia_prueba_" + Guid.NewGuid().ToString("N")[..12]);
+
+            // Crear explícitamente la base descartable evita que la primera
+            // conexión de MigrateAsync dependa del manejo del proveedor para
+            // una base todavía inexistente.
+            await using (var conexionAdmin = new NpgsqlConnection(conexionAdministrador))
+            {
+                await conexionAdmin.OpenAsync();
+                await using var comando = new NpgsqlCommand(
+                    $"CREATE DATABASE \"{baseDatos.nombre}\"", conexionAdmin);
+                await comando.ExecuteNonQueryAsync();
+            }
+
             await using var contexto = baseDatos.Contexto();
             await contexto.Database.MigrateAsync();
             return baseDatos;

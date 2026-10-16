@@ -88,19 +88,11 @@
                         <span asp-validation-for="Contrasena" class="text-danger small"></span>
                     </div>
 
-                    <div class="row align-items-center mb-3">
-                        <div class="col-6">
-                            <div class="form-check">
-                                <input asp-for="Recordarme" class="form-check-input" />
-                                <label asp-for="Recordarme" class="form-check-label"></label>
-                            </div>
-                        </div>
-                        <div class="col-6 text-end">
-                            <a asp-controller="Login" asp-action="RecuperarContrasena"
-                               class="small text-decoration-none">
-                                ¿Olvidó su contraseña?
-                            </a>
-                        </div>
+                    <div class="d-flex justify-content-end mb-3">
+                        <a asp-controller="Login" asp-action="RecuperarContrasena"
+                           class="small text-decoration-none">
+                            ¿Olvidó su contraseña?
+                        </a>
                     </div>
 
                     <div class="d-grid">

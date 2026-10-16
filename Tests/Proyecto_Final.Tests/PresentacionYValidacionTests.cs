@@ -48,6 +48,26 @@ public sealed class PresentacionYValidacionTests
     }
 
     [Fact]
+    public async Task Login_CuentaInactiva_ConservaSuTipoInterno_YMuestraMensajeGenericoSeguro()
+    {
+        const string mensajeGenerico = "El usuario o la contraseña son incorrectos.";
+        var resultadoAutenticacion = ResultadoAutenticacion.CuentaInactiva(mensajeGenerico);
+        var controlador = CrearControlador(resultadoAutenticacion);
+
+        var resultado = await controlador.Login(new Login
+        {
+            Usuario = "inactivo",
+            Contrasena = "contraseña"
+        });
+
+        Assert.Equal(TipoResultadoAutenticacion.CuentaInactiva, resultadoAutenticacion.Tipo);
+        Assert.IsType<ViewResult>(resultado);
+        Assert.Equal(
+            mensajeGenerico,
+            controlador.ModelState[string.Empty]!.Errors.Single().ErrorMessage);
+    }
+
+    [Fact]
     public async Task Login_ModeloInvalido_NoInvocaServicioDeAutenticacion()
     {
         var servicio = new AutenticacionPrueba(ResultadoAutenticacion.Correcto());
@@ -80,7 +100,7 @@ public sealed class PresentacionYValidacionTests
     }
 
     [Fact]
-    public async Task Login_Valido_RedirigeAlInicio()
+    public async Task Login_CuentaActivaConCredencialesValidas_RedirigeAlInicio()
     {
         var controlador = CrearControlador(ResultadoAutenticacion.Correcto());
 
