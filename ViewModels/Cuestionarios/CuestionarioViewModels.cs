@@ -391,3 +391,50 @@ public sealed class DetalleRevision
 
     public DateTime? FechaAjuste { get; set; }
 }
+
+// =====================================================================
+// IMPORTACIÓN DESDE IA
+// =====================================================================
+
+public sealed class ImportarCuestionarioIa
+{
+    // Trabajo de IA del que viene el texto (si aplica).
+    public string? JobId { get; set; }
+
+    public int? TareaId { get; set; }
+
+    // Texto devuelto por la IA o pegado por el docente.
+    [StringLength(100000)]
+    public string? Texto { get; set; }
+
+    // El resultado de la IA ya no estaba disponible (expiró o se reinició el servidor).
+    public bool ResultadoNoDisponible { get; set; }
+
+    public List<Proyecto_Final.ViewModels.Comunes.OpcionSeleccion> Tareas { get; set; } = [];
+
+    public List<PreguntaImportadaIa> Preguntas { get; set; } = [];
+}
+
+public sealed class PreguntaImportadaIa
+{
+    public bool Incluir { get; set; } = true;
+
+    public TipoPregunta Tipo { get; set; } = TipoPregunta.SeleccionUnica;
+
+    [StringLength(4000)]
+    public string Enunciado { get; set; } = string.Empty;
+
+    // Una opción por línea.
+    public string? Opciones { get; set; }
+
+    // Una respuesta correcta por línea. En selección debe coincidir con una opción.
+    public string? Correctas { get; set; }
+
+    [Range(typeof(decimal), "0.01", "9999")]
+    public decimal Punteo { get; set; } = 1;
+
+    [StringLength(2000)]
+    public string? Retroalimentacion { get; set; }
+
+    public string? Advertencia { get; set; }
+}

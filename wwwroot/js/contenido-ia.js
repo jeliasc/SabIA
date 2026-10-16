@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (['completado', 'completada', 'completed', 'listo', 'finalizado', 'finalizada', 'success'].includes(valor)) {
           estado.className = 'app-badge app-badge-success';
           if (data.resultado) { resultado.classList.remove('d-none'); resultado.querySelector('pre').textContent = typeof data.resultado === 'string' ? data.resultado : JSON.stringify(data.resultado, null, 2); }
+          card.querySelector('[data-importar-ia]')?.classList.remove('d-none');
           return;
         }
         if (['error', 'failed', 'fallido', 'fallida'].includes(valor)) { estado.className = 'app-badge app-badge-danger'; return; }

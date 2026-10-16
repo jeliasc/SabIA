@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Comunes;
+using Proyecto_Final.Servicios.GestionCuestionarios;
 using Proyecto_Final.Servicios.InteligenciaArtificial;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.ViewModels.Comunes;
@@ -43,7 +44,8 @@ public class ContenidoIAController(
             return View(await PrepararAsync(modelo));
 
         var solicitudes = new List<SolicitudContenidoIa>();
-        if (modelo.Cuestionario) solicitudes.Add(new("cuestionario", modelo.InstruccionesCuestionario ?? string.Empty));
+        // Al cuestionario se le pide un formato que la plataforma pueda importar.
+        if (modelo.Cuestionario) solicitudes.Add(new("cuestionario", FormatoCuestionarioIa.Agregar(modelo.InstruccionesCuestionario)));
         if (modelo.Resumen) solicitudes.Add(new("resumen", modelo.InstruccionesResumen ?? string.Empty));
         if (modelo.HojaTrabajo) solicitudes.Add(new("hoja_trabajo", modelo.InstruccionesHojaTrabajo ?? string.Empty));
         if (modelo.Glosario) solicitudes.Add(new("glosario", modelo.InstruccionesGlosario ?? string.Empty));

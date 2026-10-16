@@ -1,0 +1,170 @@
+@model Proyecto_Final.ViewModels.Cuestionarios.ImportarCuestionarioIa
+@using Proyecto_Final.Models
+@{
+    ViewData["Title"] = "Importar cuestionario generado con IA";
+
+    var tipos = new List<SelectListItem>
+    {
+        new("Selección única", ((int)TipoPregunta.SeleccionUnica).ToString()),
+        new("Selección múltiple", ((int)TipoPregunta.SeleccionMultiple).ToString()),
+        new("Verdadero / Falso", ((int)TipoPregunta.VerdaderoFalso).ToString()),
+        new("Respuesta directa", ((int)TipoPregunta.TextoCorto).ToString())
+    };
+    var hayTexto = !string.IsNullOrWhiteSpace(Model.Texto);
+}
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1">Importar cuestionario generado con IA</h2>
+        <p class="text-muted mb-0">Revise las preguntas, corrija lo necesario y agréguelas a una tarea de cuestionario en borrador.</p>
+    </div>
+
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        <strong>La IA puede equivocarse.</strong> Revise cada pregunta y su respuesta correcta antes de importar.
+        La tarea seguirá en borrador: usted decide cuándo publicarla.
+    </div>
+
+    @if (Model.ResultadoNoDisponible)
+    {
+        <div class="alert alert-info">
+            El resultado de la IA ya no está disponible (expiró o se reinició el servidor).
+            Puede copiarlo de la pantalla de generación y pegarlo abajo.
+        </div>
+    }
+
+    @* 1. Texto de origen *@
+    <details class="card shadow-sm border-0 mb-4" open="@(!hayTexto || Model.Preguntas.Count == 0)">
+        <summary class="card-body py-3 fw-semibold" style="cursor: pointer">
+            Texto de la IA
+            <span class="text-muted fw-normal small ms-1">(pegue o corrija el texto y vuelva a analizarlo)</span>
+        </summary>
+        <div class="card-body pt-0">
+            <form asp-action="ImportarIa" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="JobId" />
+                <input type="hidden" asp-for="TareaId" />
+                <textarea asp-for="Texto" class="form-control font-monospace small" rows="10"
+                          placeholder="Pegue aquí el cuestionario generado por la IA"></textarea>
+                <div class="d-flex justify-content-end mt-2">
+                    <button type="submit" class="app-btn app-btn-soft-secondary">
+                        <i class="bi bi-arrow-repeat"></i> Analizar texto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </details>
+
+    @if (hayTexto && Model.Preguntas.Count == 0)
+    {
+        <div class="alert alert-secondary">
+            No se identificaron preguntas en el texto. Verifique que cada pregunta esté numerada (1., 2., …),
+            con opciones A), B), … y una línea "Respuesta correcta: …".
+        </div>
+    }
+
+    @if (Model.Preguntas.Count > 0)
+    {
+        <form asp-action="ConfirmarImportacionIa" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="JobId" />
+            <input type="hidden" asp-for="Texto" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            @* 2. Tarea de destino *@
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <label asp-for="TareaId" class="form-label fw-semibold">Agregar las preguntas a la tarea</label>
+                    @if (Model.Tareas.Count == 0)
+                    {
+                        <div class="alert alert-secondary mb-0">
+                            No tiene tareas de cuestionario en borrador.
+                            <a asp-controller="Tareas" asp-action="Crear">Cree una tarea</a> de tipo Cuestionario y vuelva a esta pantalla
+                            (el texto se conserva si lo copia antes).
+                        </div>
+                    }
+                    else
+                    {
+                        <select asp-for="TareaId" class="form-select">
+                            <option value="">Seleccione una tarea de cuestionario en borrador…</option>
+                            @foreach (var t in Model.Tareas)
+                            {
+                                <option value="@t.Id">@t.Texto</option>
+                            }
+                        </select>
+                        <span asp-validation-for="TareaId" class="text-danger small"></span>
+                        <div class="form-text">Las preguntas se agregan después de las que ya tenga el cuestionario.</div>
+                    }
+                </div>
+            </div>
+
+            @* 3. Preguntas *@
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="fw-semibold mb-0">Preguntas encontradas: @Model.Preguntas.Count</h5>
+                <span class="small text-muted">Opciones y respuestas: una por línea.</span>
+            </div>
+
+            @for (var i = 0; i < Model.Preguntas.Count; i++)
+            {
+                var p = Model.Preguntas[i];
+                var conError = !ViewData.ModelState.IsValid &&
+                    ViewData.ModelState.Keys.Any(k => k.StartsWith($"Preguntas[{i}]."));
+                <div class="card shadow-sm border-0 mb-3 border-start border-4 @(conError || p.Advertencia != null ? "border-danger" : "border-primary")">
+                    <div class="card-body p-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                            <div class="form-check">
+                                <input asp-for="Preguntas[i].Incluir" class="form-check-input" />
+                                <label asp-for="Preguntas[i].Incluir" class="form-check-label fw-semibold">Pregunta @(i + 1) — incluir</label>
+                            </div>
+                            @if (p.Advertencia != null)
+                            {
+                                <span class="badge text-bg-danger">@p.Advertencia</span>
+                            }
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label asp-for="Preguntas[i].Enunciado" class="form-label small">Pregunta</label>
+                                <textarea asp-for="Preguntas[i].Enunciado" class="form-control" rows="2"></textarea>
+                                <span asp-validation-for="Preguntas[i].Enunciado" class="text-danger small"></span>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <label asp-for="Preguntas[i].Tipo" class="form-label small">Tipo</label>
+                                <select asp-for="Preguntas[i].Tipo" asp-items="tipos" class="form-select"></select>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <label asp-for="Preguntas[i].Punteo" class="form-label small">Punteo</label>
+                                <input asp-for="Preguntas[i].Punteo" class="form-control" />
+                                <span asp-validation-for="Preguntas[i].Punteo" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Preguntas[i].Opciones" class="form-label small">Opciones</label>
+                                <textarea asp-for="Preguntas[i].Opciones" class="form-control" rows="4"
+                                          placeholder="Una opción por línea. Vacío en respuesta directa."></textarea>
+                                <span asp-validation-for="Preguntas[i].Opciones" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Preguntas[i].Correctas" class="form-label small">Respuesta(s) correcta(s)</label>
+                                <textarea asp-for="Preguntas[i].Correctas" class="form-control" rows="4"
+                                          placeholder="Copie aquí el texto exacto de la opción correcta. En respuesta directa, una respuesta aceptada por línea."></textarea>
+                                <span asp-validation-for="Preguntas[i].Correctas" class="text-danger small"></span>
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="Preguntas[i].Retroalimentacion" class="form-label small">Retroalimentación (opcional)</label>
+                                <textarea asp-for="Preguntas[i].Retroalimentacion" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="d-flex flex-column flex-md-row justify-content-end gap-2 mt-4 mb-5">
+                <a asp-action="Index" class="app-btn app-btn-secondary">Cancelar</a>
+                <button type="submit" class="app-btn app-btn-soft-primary" disabled="@(Model.Tareas.Count == 0)">
+                    <i class="bi bi-box-arrow-in-down"></i> Importar preguntas marcadas
+                </button>
+            </div>
+        </form>
+    }
+</div>
