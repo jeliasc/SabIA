@@ -71,3 +71,22 @@ La demostración de IA requiere una cuenta Docente ficticia con `ContenidoIA.Gen
 - La repetición de pruebas PostgreSQL requiere una instancia temporal desechable; no usar una base existente aunque su nombre parezca de pruebas.
 - Los hallazgos de seguridad y persistencia de «Recordarme» se encuentran documentados en [AUDITORIA_ENTREGA_FINAL.md](AUDITORIA_ENTREGA_FINAL.md) y no deben modificarse sin autorización para el módulo protegido.
 - No realizar migraciones, cambios de permisos, commits, pushes ni despliegues como parte de estas verificaciones.
+
+## Paso 6: recorrido final manual obligatorio
+
+La sesión de validación no cuenta con Playwright, Selenium ni un navegador automatizado. No se debe marcar una fila como aprobada hasta ejecutarla en Edge o Chrome, en escritorio y móvil, sobre Kestrel y una base PostgreSQL descartable ya migrada. Cree solo cuentas ficticias `demo.coordinacion`, `demo.docente` y `demo.alumno`; no guarde sus contraseñas en este documento ni en capturas.
+
+Actualización Paso 6.1: Playwright ya está disponible de forma aislada en `Tests/E2E` y controló Chrome local con éxito. El Login de Coordinación y su variante móvil fueron ejecutados realmente; los demás pasos de esta guía permanecen pendientes hasta preparar sus datos ficticios completos. Para repetir la prueba aprobada, con Kestrel temporal en `http://127.0.0.1:5099`, ejecute desde `Tests/E2E`: `npm.cmd run test:e2e -- --reporter=line`.
+
+1. Con `demo.coordinacion`, pruebe Login vacío, contraseña vacía y credencial errónea; compruebe mensajes en español. Cree ciclo, períodos, grado, curso, sección, docente, alumno y encargado ficticios.
+2. Cree asignación docente e inscripción. Compruebe selects, DataTables/tarjetas y una confirmación SweetAlert2, sin datos sensibles.
+3. Con `demo.docente`, confirme que solo ve su asignación y alumnos. Cree unidad y planificación, guarde borrador, envíe a revisión e intente la ruta de revisión institucional: debe denegarse.
+4. Como Coordinación, apruebe o devuelva la planificación. Intente modificar una calificación sin permiso específico: debe denegarse y no cambiar datos.
+5. Como Docente, publique material y tarea. Cree cuestionario manual o importe solo una respuesta IA simulada; revise la vista previa y no configure clave externa. Pruebe un PDF ficticio válido e inválido.
+6. Como Alumno, confirme que solo aparecen unidad, material, tarea y cuestionario propios. Realice entrega o cuestionario y compruebe validaciones, fechas y mensajes de éxito/error.
+7. Como Docente, consulte y califique el resultado permitido; como Alumno, compruebe que solo ve su resultado.
+8. Como Coordinación, revise estadísticas, notificaciones y auditoría. Confirme que no se muestran contraseñas, tokens ni credenciales.
+9. Como negativos, cambie un ID de alumno, entrega y cuestionario por recursos de otra sección; pruebe URL docente siendo Alumno y POST sin antiforgery. Deben resultar 404, 403 o 400 y no cambiar datos.
+10. Repita 1, 3, 5 y 6 en móvil. Compruebe sidebar, botones, encabezados numéricos, validación por campo/resumen y ausencia de errores en consola.
+
+Al terminar, anote cada caso como Aprobado, Fallido, Omitido o Pendiente en la matriz. Si aparece un defecto, capture ruta, rol, pasos mínimos y resultado sin copiar sesiones, tokens, contraseñas ni datos reales.

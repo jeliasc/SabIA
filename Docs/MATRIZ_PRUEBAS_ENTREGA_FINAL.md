@@ -108,6 +108,36 @@ Comando ejecutado: `dotnet vstest ... /TestCaseFilter:"FullyQualifiedName~IaServ
 
 No hubo pruebas reales contra proveedor ni medición de tiempos externos. Para completarlas se requiere una clave suministrada por configuración segura, red autorizada y una solicitud ficticia mínima; no deben declararse cubiertas antes de esa ejecución.
 
+## Paso 6: matriz de demostración en navegador
+
+No hubo controlador de navegador disponible. Estos casos no se consideran aprobados por pruebas HTTP o de servicio; deben ejecutarse manualmente en Kestrel con una base aislada y datos ficticios.
+
+| Orden | Escenario manual | Resultado esperado | Estado |
+| --- | --- | --- | --- |
+| 1 | Coordinación inicia sesión y abre dashboard | Login en español y navegación de Coordinación visible | Pendiente de comprobación manual |
+| 2 | Configura ciclo, períodos, grado, curso y sección | Formularios, selects y confirmaciones funcionan | Pendiente de comprobación manual |
+| 3 | Registra docente, alumno y encargado ficticios | Validaciones y resultado de guardado visibles | Pendiente de comprobación manual |
+| 4 | Crea asignación e inscripción | Contexto académico esperado | Pendiente de comprobación manual |
+| 5 | Docente inicia sesión | Ve únicamente cursos y alumnos propios | Pendiente de comprobación manual |
+| 6 | Docente crea unidad y planificación | Borrador, validaciones y envío a revisión visibles | Pendiente de comprobación manual |
+| 7 | Coordinación revisa planificación | Puede aprobar/devolver; Docente no accede a revisión | Pendiente de comprobación manual |
+| 8 | Docente publica material y tarea | Alumno solo ve lo disponible en su contexto | Pendiente de comprobación manual |
+| 9 | Docente crea/importa cuestionario IA simulado | Vista previa editable; sin proveedor ni clave real | Pendiente de comprobación manual |
+| 10 | Alumno inicia sesión y revisa actividades | Dashboard y tarjetas muestran solo su inscripción | Pendiente de comprobación manual |
+| 11 | Alumno entrega o responde cuestionario | Estados, fechas y mensajes se muestran correctamente | Pendiente de comprobación manual |
+| 12 | Docente consulta y califica | Solo califica contexto propio | Pendiente de comprobación manual |
+| 13 | Alumno consulta resultados | Solo aparecen resultados propios autorizados | Pendiente de comprobación manual |
+| 14 | Coordinación revisa estadísticas, notificaciones y auditoría | Datos ficticios consistentes, sin secretos | Pendiente de comprobación manual |
+
+Controles transversales pendientes: repetir Login, formularios, sidebar, DataTables, selects con búsqueda, SweetAlert2, PDF, enlaces protegidos y errores JavaScript en escritorio y móvil. Como negativos, probar URL ajena, acción docente con Alumno, acción institucional con Docente y POST sin antiforgery; deben dar 404/403/400 según corresponda y no modificar datos.
+
+### Evidencia E2E ejecutada en Paso 6.1
+
+| Paso | Ejecutado realmente en navegador | Resultado | Evidencia | Observación |
+| --- | --- | --- | --- | --- |
+| 1. Login de Coordinación | Sí | Aprobado | `Tests/E2E/sabia.e2e.spec.mjs`, Playwright 2/2 | Escritorio: requerido, credencial inválida, sesión, cambio inicial y ausencia de «Recordarme». Móvil 390×844: campos y validación visibles. |
+| 2–14. Recorrido académico | No | Pendiente | No se declara evidencia E2E | Requiere siembra completa de datos ficticios e interacciones de navegador por perfil; las pruebas HTTP previas no sustituyen esta fila. |
+
 ## Pruebas no ejecutadas y motivo
 
 - No se hicieron llamadas reales a IA ni a correo. Las pruebas de IA usan dobles de `HttpMessageHandler` y datos de prueba.

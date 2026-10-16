@@ -104,3 +104,21 @@ La validación simulada verificó el contrato de `IaServicio` mediante `HttpMess
 - `IaServicioTests`, `LectorCuestionarioIaTests`, `ImportarCuestionarioIaTests` y `CuestionarioServicioTests` aprobaron 67 de 67 casos. Se agregaron pruebas de planificación ajena y respuesta de estado malformada.
 
 No se modificaron contratos externos, infraestructura, configuración productiva ni reglas académicas. Queda pendiente una prueba real mínima y no destructiva cuando exista una clave configurada de manera segura, conectividad autorizada y confirmación de costo/límites; también permanece pendiente el recorrido visual de las vistas de IA en navegador.
+
+## Paso 6: validación final de navegador y demostración
+
+El equipo dispone de Edge y Chrome locales, pero el repositorio no tiene Playwright, Selenium ni otro controlador de navegador instalado y no existe una herramienta de navegador conectada a esta sesión. Por tanto, no se inició Kestrel ni se declaró como ejecutada una prueba visual o E2E: abrir un navegador sin automatización ni operador no produciría una evidencia reproducible.
+
+Se creó exclusivamente el clúster PostgreSQL 18 temporal `.tmp-pg-entrega-20261016` en `127.0.0.1:55440`, con usuario local de prueba `SabiaEntrega` y autenticación `trust`. Las pruebas siguieron usando bases aleatorias `sabia_prueba_*`; dos que quedaron tras el cierre anómalo del runner se eliminaron desde ese mismo clúster. No se consultó ninguna base de desarrollo, Render ni producción.
+
+La infraestructura de VSTest/xUnit devolvió la consola antes de terminar algunos procesos hijos y el adaptador ignoró el filtro de clase. Los diagnósticos de las ejecuciones completadas registraron 29/29, 33/33 y 33/33 pruebas aprobadas, sin fallos. Se cerraron los procesos huérfanos y esta ejecución no se cuenta como recorrido E2E ni sustituye las suites ya aprobadas.
+
+Los catorce pasos funcionales, Login, visualización responsive, DataTables, selects, SweetAlert2, PDF y controles negativos quedan **pendientes de comprobación manual**; la guía y matriz se actualizaron. No se cambiaron archivos de producción, seguridad, Identity, permisos, cookies, sesiones, migraciones ni reglas de calificación.
+
+## Paso 6.1: habilitación y ejecución E2E en Chrome
+
+Se instaló `@playwright/test` 1.58.2 de forma aislada en `Tests/E2E`, sin añadir dependencias al proyecto ASP.NET Core. Playwright controló el Chrome local instalado y ejecutó Kestrel en `127.0.0.1:5099` contra un clúster PostgreSQL 18 descartable en el puerto 55441, con el superusuario ficticio `demo.coordinacion` configurado solo por variables de entorno.
+
+La suite `Tests/E2E/sabia.e2e.spec.mjs` aprobó 2 de 2 pruebas reales en navegador. Verificó en escritorio el Login vacío, credenciales incorrectas, la ausencia de «Recordarme», el mensaje genérico de credenciales, el cambio obligatorio de contraseña inicial, el acceso de Coordinación y el formulario protegido de creación de Docente con sus validaciones en español. También verificó Login y validación obligatoria a 390×844. No hubo llamadas a servicios externos ni datos reales.
+
+Esta evidencia aprueba exclusivamente el paso de Login/entrada de Coordinación y la comprobación visual asociada. El recorrido académico restante no se considera ejecutado hasta crear el conjunto completo de datos ficticios y automatizarlo; se mantiene como pendiente en la matriz. La primera ejecución detectó un selector de prueba desactualizado («Ingresar» frente a «Iniciar sesión»), que se corrigió en la suite; no era un defecto de SabIA.
