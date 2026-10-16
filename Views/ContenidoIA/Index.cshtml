@@ -12,3 +12,8 @@
     </div>
     <partial name="Generar" model="Model" />
 </div>
+
+@* Los scripts de una vista parcial no se ejecutan; se cargan aquí. *@
+@section Scripts {
+    <script src="~/js/contenido-ia-origen.js" asp-append-version="true"></script>
+}
