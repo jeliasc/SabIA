@@ -46,6 +46,30 @@ Comandos ejecutados durante esta fase:
 
 Las pruebas HTTP usan un host de prueba, un principal de Coordinación efímero y claves de Data Protection temporales. No sustituyen un recorrido de navegador con usuario humano. Permanecen pendientes la verificación visual en escritorio y móvil, el alta completa de docentes/alumnos/encargados desde formularios y el ciclo de aprobación/rechazo real de una planificación; no se presentan como ejecutados.
 
+## Validación funcional: perfil Docente
+
+La prueba HTTP crea usuarios ficticios mediante `UserManager`, asigna el rol real `Docente` y obtiene los claims del rol con `RoleManager`. Los datos académicos (ciclo, secciones, asignaciones, inscripciones, unidad, planificación, tareas y entregas) existen únicamente en una base PostgreSQL temporal, aleatoria y eliminada al terminar cada caso.
+
+| Módulo | Operación evaluada | Perfil y permisos | Resultado | Evidencia | Estado |
+| --- | --- | --- | --- | --- | --- |
+| Rol efectivo | Cargar claims del rol `Docente` sembrado | `Tareas.Crear`, `Calificaciones.Configurar` y permisos académicos; sin revisión/aprobación institucional | Se confirman permisos concedidos y ausentes | `DocenteHttpTests` durante la preparación del escenario | Aprobado |
+| Dashboard y perfil | Abrir contexto `docente`, perfil, alumnos y notificaciones | Usuario Docente activo con asignación vigente y `Alumnos.Ver`, `Notificaciones.Ver` | 200; muestra solo curso, sección y alumnos propios | `Docente_ConRolSembrado_VisualizaSoloSuContextoAcademico` | Aprobado |
+| Unidades, planificaciones y tareas | Abrir formularios de creación | `Unidades.Crear`, `Planificaciones.Crear`, `Tareas.Crear` | 200 en cada formulario; opciones preparadas con asignación propia | Misma prueba HTTP; `UnidadServicioTests`, `TareaServicioTests` | Aprobado |
+| Entregas | Abrir calificación de entrega propia | `Entregas.Calificar`, asignación vigente propia | 200 | Misma prueba HTTP; `EntregaServicioTests` | Aprobado |
+| Cuestionarios e IA | Abrir importación con tarea propia y validar importación/lectura | `Cuestionarios.Editar`; dobles HTTP de IA | 200;  pruebas de lectura/importación sin proveedor externo | Misma prueba HTTP; `CuestionarioServicioTests`, `ImportarCuestionarioIaTests`, `LectorCuestionarioIaTests`, `IaServicioTests` | Aprobado |
+| Seguridad institucional | Intentar revisar planificación y abrir administración de docentes | Sin `Planificaciones.Revisar` ni `Docentes.Ver` | 403 | `Docente_NoAccedeARutasNiRecursosAjenos_YLosPostExigenAntiforgery` | Aprobado |
+| Seguridad contextual | Cambiar identificadores para alumno, entrega y configuración ajenos | Permisos de lectura/gestión, sin asignación ajena | 404; no expone ni permite operar recurso ajeno | Misma prueba HTTP; `AccesoAcademicoServicioTests`, `AccesoContextualAlumnosTests`, `EntregaServicioTests`, `SeguridadAcademicaCalificacionesTests` | Aprobado |
+| Antiforgery | POST de envío de planificación sin token | `Planificaciones.EnviarRevision`, sin token | 400 antes de la operación | `Docente_NoAccedeARutasNiRecursosAjenos_YLosPostExigenAntiforgery` | Aprobado |
+| Persistencia PostgreSQL | Fechas de tareas, cuestionarios, intentos y vencimiento | Datos temporales aislados | 5 de 5 | `FechasTareasPostgresTests`, `CuestionarioPostgresTests` | Aprobado |
+
+Comandos ejecutados durante esta fase:
+
+- `dotnet vstest ... /TestCaseFilter:"FullyQualifiedName~DocenteHttpTests"`: 2 aprobadas de 2, PostgreSQL temporal.
+- `dotnet vstest ... /TestCaseFilter:"...AccesoAcademicoServicioTests|...AccesoContextualAlumnosTests|...UnidadServicioTests|...MaterialServicioTests|...TareaServicioTests|...TareasControllerTests|...EntregaServicioTests|...CuestionarioServicioTests|...ImportarCuestionarioIaTests|...LectorCuestionarioIaTests|...IaServicioTests|...CalculoCalificacionesTests|...ModeloCalificacionesTests|...FlujoCalificacionesTests|...SeguridadAcademicaCalificacionesTests|...NotificacionServicioTests|...PresentacionYValidacionTests"`: 162 aprobadas de 162.
+- `dotnet vstest ... /TestCaseFilter:"FullyQualifiedName~CuestionarioPostgresTests|FullyQualifiedName~FechasTareasPostgresTests"`: 5 aprobadas de 5, PostgreSQL temporal.
+
+No se ejecutó una prueba E2E de navegador; queda pendiente antes de demostración la revisión manual responsive de dashboard, formularios, selects con búsqueda, mensajes de validación, SweetAlert2 y visibilidad de acciones según permisos.
+
 ## Pruebas no ejecutadas y motivo
 
 - No se hicieron llamadas reales a IA ni a correo. Las pruebas de IA usan dobles de `HttpMessageHandler` y datos de prueba.

@@ -29,6 +29,17 @@ Antes de la demostración, confirme los claims efectivos del rol institucional: 
 6. **Relevo docente:** abrir `Asignaciones > Reemplazar docente`; comprobar resumen de obligaciones, validaciones y confirmación. No confirmar un relevo sobre información real durante la demostración.
 7. **IA y notificaciones:** usar solo entradas de prueba. Confirmar que la importación deja el cuestionario en borrador para revisión docente y revisar notificaciones/auditoría sin datos sensibles.
 
+### Perfil Docente
+
+Prepare un docente ficticio activo con una asignación vigente, alumnos inscritos, una unidad, una planificación en borrador, una tarea publicada y una entrega de demostración. El rol debe conservar los permisos académicos sembrados; no asigne `Planificaciones.Revisar` ni `Calificaciones.AprobarCorreccion` para este recorrido.
+
+1. Inicie sesión con la cuenta ficticia y abra `Inicio > Dashboard docente`. Compruebe cursos, alumnos, tareas, entregas y planificación; no debe aparecer información de otro docente.
+2. Abra `Mi perfil`, el listado contextual de alumnos y las notificaciones. Verifique que los datos corresponden a sus secciones vigentes.
+3. Cree una unidad y una planificación de prueba. Valide un campo obligatorio, guarde el borrador y envíelo a revisión. El docente no debe tener acceso a la pantalla de revisión institucional.
+4. Cree/publice una tarea de prueba, compruebe fechas de disponibilidad/vencimiento y consulte una entrega del alumno asignado. Califique y, si procede, pruebe la reapertura individual con datos desechables.
+5. Configure un cuestionario manual y una pregunta de cada tipo. Para importación IA, utilice solo texto ficticio o la simulación local: revise y edite la vista previa antes de confirmar; no exponga ni use una clave externa durante la demostración.
+6. Como control negativo, intente abrir por URL un alumno, entrega o configuración de calificaciones de otra asignación. Debe recibir acceso no encontrado/denegado y los POST deben exigir antiforgery.
+
 ## Verificaciones de interfaz
 
 - Repetir los pasos principales en ancho móvil y de escritorio.

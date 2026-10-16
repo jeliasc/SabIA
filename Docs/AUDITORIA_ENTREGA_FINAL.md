@@ -67,3 +67,16 @@ No hubo pruebas visuales de navegador. También quedan pendientes el alta comple
 ## Dictamen
 
 La base compila y todas las pruebas disponibles, incluidas las 9 de PostgreSQL aislado, pasan. El código académico y la españolización pueden avanzar a una revisión de entrega, con la salvedad del cierre por pestaña pendiente de decisión y la prueba visual manual pendiente. Esta auditoría no cambió valores persistidos, reglas de negocio, esquema ni contratos externos.
+
+## Validación funcional: perfil Docente
+
+Se añadió `DocenteHttpTests` para validar el perfil con un usuario ficticio creado por `UserManager`, el rol `Docente` y sus claims realmente sembrados. Cada caso crea una base PostgreSQL aleatoria y descartable, aplica las migraciones de la aplicación, inserta un ciclo activo, grado, secciones, dos docentes, dos alumnos inscritos, asignaciones, unidad, planificación, tareas y entregas. El manejador de autenticación de prueba obtiene los roles y claims desde Identity; no codifica permisos ni modifica la configuración de producción.
+
+- El rol conserva permisos de creación/consulta docente (`Tareas.Crear`, `Calificaciones.Configurar` y los módulos académicos correspondientes) y no recibe `Planificaciones.Revisar` ni `Calificaciones.AprobarCorreccion`.
+- El dashboard Docente mostró exclusivamente `Curso propio HTTP`; no mostró el curso de la otra asignación. También se verificaron perfil, alumnos contextuales, creación de unidad, planificación y tarea, calificación de una entrega propia, importación de cuestionario IA sin `jobId` y notificaciones.
+- Las rutas administrativas de docentes y revisión de planificación devolvieron 403. Identificadores de alumno, entrega y configuración de calificaciones ajenos devolvieron 404. El POST de envío a revisión sin antiforgery devolvió 400 antes de modificar datos.
+- `DocenteHttpTests` aprobó 2 de 2 contra PostgreSQL temporal. La batería docente de servicios aprobó 162 de 162 y las pruebas PostgreSQL de tareas/cuestionarios aprobaron 5 de 5. La importación IA se comprobó con dobles de prueba; no hubo llamada a proveedor externo.
+
+No se detectó un defecto comprobado que justificara cambios en módulos académicos. No se modificaron Usuarios, Roles, permisos, Identity, cookies, sesiones, políticas, migraciones ni reglas de calificaciones.
+
+Quedan pendientes, por falta de automatización de navegador disponible, la comprobación visual manual en escritorio y móvil, incluyendo selects con búsqueda, SweetAlert2, tablas/tarjetas responsive, confirmaciones y la validación cliente de formularios. Las pruebas HTTP y de servicio no se presentan como sustituto de dicha revisión.
