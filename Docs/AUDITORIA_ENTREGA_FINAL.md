@@ -37,6 +37,19 @@ El cambio respecto a la confirmación anterior es principalmente de reindentaci�
 
 No se hizo un cambio a esta vista porque no se demostró un defecto de marcado o comportamiento y modificarla solo produciría ruido en el diff.
 
+## Validación funcional de Coordinación
+
+Se ejecutaron dos pruebas HTTP de integración contra PostgreSQL temporal y 65 pruebas existentes de servicios y seguridad relacionados. El host de prueba usa un principal efímero con permisos de Coordinación y un almacén de claves de Data Protection temporal; no modifica Identity, los roles, las políticas ni la configuración de la aplicación.
+
+- El dashboard de Coordinación, la creación de ciclos y la ruta de revisión de planificaciones se autorizaron correctamente.
+- Sin `Calificaciones.Configurar` ni `Usuarios.Ver`, las rutas respectivas devolvieron 403.
+- Un POST de activación de ciclo sin token antiforgery devolvió 400 y no alcanzó la operación.
+- Los flujos existentes cubren cierre/reapertura de ciclo, inscripciones, acceso contextual, relevo docente, auditoría y límites de calificaciones.
+
+«Coordinación» no es un rol fijo en el seeder: es el perfil de un rol activo que posee `Planificaciones.Revisar`; el seeder agrega sus claims coordinadores complementarios. Para la demostración debe verificarse que el rol institucional asignado al usuario cuente con los permisos administrativos específicos que se pretendan mostrar.
+
+No hubo pruebas visuales de navegador. También quedan pendientes el alta completa de docentes, alumnos y encargados desde la interfaz y el ciclo real de aprobar/devolver una planificación; se documentan como pendientes y no como resultados ejecutados.
+
 ## Hallazgos que requieren autorización
 
 1. **Cuenta inactiva (corregido con alcance autorizado).** `AutenticacionServicio` conserva la clasificación interna `CuentaInactiva` y registra «Cuenta inactiva.» en auditoría, pero entrega al formulario «El usuario o la contraseña son incorrectos.», igual que para usuario inexistente y contraseña incorrecta. La cuenta inactiva no llega a `PasswordSignInAsync`, por lo que continúa sin autenticarse.

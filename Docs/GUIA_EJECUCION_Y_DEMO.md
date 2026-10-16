@@ -10,6 +10,17 @@
 
 ## Recorrido sugerido de demostración
 
+### Perfil Coordinación
+
+Antes de la demostración, confirme los claims efectivos del rol institucional: `Planificaciones.Revisar` habilita el contexto de Coordinación y los permisos complementarios de dashboard, cierre/reapertura de ciclo y aprobación de correcciones. Agregue además los permisos concretos de cada módulo administrativo que se vaya a demostrar; no basta con el nombre del rol.
+
+1. Inicie sesión con una cuenta ficticia de Coordinación y abra `Inicio > Dashboard de coordinación`.
+2. Compruebe ciclos, períodos, grados, secciones y cursos con registros de demostración; pruebe un dato obligatorio y una referencia incompatible.
+3. Consulte docentes, alumnos y encargados; confirme las búsquedas y que las cuentas académicas se vinculan al usuario correspondiente.
+4. Muestre asignaciones, una inscripción y, si hay datos preparados, el relevo docente. No use información real ni confirme un relevo no planificado.
+5. Abra una planificación en revisión y registre una aprobación o devolución de prueba; compruebe responsable, fecha y auditoría.
+6. Verifique que módulos no concedidos al rol devuelven acceso denegado y que cada POST exige el token antiforgery.
+
 1. **Login:** mostrar mensajes de usuario y contraseña obligatorios; probar una credencial incorrecta y verificar el texto genérico. No usar credenciales reales en capturas ni registros.
 2. **Datos académicos:** crear o editar un dato no sensible y verificar que selectores y badges muestran los nombres de presentación en español, conservando sus valores internos.
 3. **Planificación y materiales:** crear un borrador, revisar una publicación y comprobar que un alumno solo puede visualizar/descargar según disponibilidad y permiso.
