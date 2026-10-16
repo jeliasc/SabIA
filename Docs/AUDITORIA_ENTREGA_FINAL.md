@@ -91,3 +91,16 @@ Se añadió `AlumnoHttpTests` siguiendo la infraestructura HTTP temporal de los 
 - `AlumnoHttpTests` aprobó 2 de 2 contra PostgreSQL temporal; la batería de servicios de acceso contextual, entregas, cuestionarios, notificaciones y regresión de Login aprobó 69 de 69; las pruebas PostgreSQL de tareas/cuestionarios aprobaron 5 de 5.
 
 No se detectó un defecto probado ni se modificó lógica académica de producción. No se cambiaron Usuarios, Roles, permisos, autenticación, cookies, sesiones, políticas, migraciones ni reglas de calificaciones. La revisión visual real de navegador —escritorio, móvil, validaciones cliente y botones condicionales— permanece pendiente y no se sustituye con estas pruebas HTTP.
+
+## Validación integral: Inteligencia Artificial
+
+La configuración versionada define la URL histórica privada del proveedor y deja `InteligenciaArtificial:ApiKey` vacía. No se leyeron archivos de secretos, variables locales ni credenciales reales; por ello no se realizó ni se declara una conexión real al proveedor. Este resultado es un bloqueo seguro, no un fallo de la aplicación ni una confirmación de conectividad externa.
+
+La validación simulada verificó el contrato de `IaServicio` mediante `HttpMessageHandler`: `POST /generar/` envía `prompt`, `max_tokens` y `X-API-Key`; `POST /generar-desde-documento/` envía multipart `documento` y `solicitudes`; `GET /estado/{job_id}/` procesa estados pendiente, completado y error. También se comprobaron respuestas HTTP y JSON inválidos, errores de comunicación, timeout, cancelación explícita, deduplicación de dos minutos y propiedad de cada trabajo durante 24 horas.
+
+- El PDF local exige tamaño válido, extensión `.pdf`, MIME `application/pdf` y firma `%PDF-`; se procesa en memoria y no se almacena mediante `IArchivoFisicoServicio`.
+- Una planificación ajena se rechaza antes de abrir/enviar su documento; las solicitudes requieren `ContenidoIA.Generar`, usuario autenticado y perfil Docente u operador institucional.
+- El resultado de IA no publica ni guarda cuestionarios de forma automática: `LectorCuestionarioIa` e `ImportarCuestionarioIaTests` validan vista previa editable, preguntas incompletas, respuestas ambiguas y la importación mediante el servicio académico existente.
+- `IaServicioTests`, `LectorCuestionarioIaTests`, `ImportarCuestionarioIaTests` y `CuestionarioServicioTests` aprobaron 67 de 67 casos. Se agregaron pruebas de planificación ajena y respuesta de estado malformada.
+
+No se modificaron contratos externos, infraestructura, configuración productiva ni reglas académicas. Queda pendiente una prueba real mínima y no destructiva cuando exista una clave configurada de manera segura, conectividad autorizada y confirmación de costo/límites; también permanece pendiente el recorrido visual de las vistas de IA en navegador.

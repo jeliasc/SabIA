@@ -50,6 +50,15 @@ Prepare un alumno ficticio activo, con inscripción vigente, un curso asignado, 
 4. Resuelva un cuestionario ficticio con preguntas de selección única, verdadero/falso y respuesta directa. Revise límite de intentos, tiempo y resultado según su configuración; no invoque IA externa.
 5. Como control negativo, cambie en la URL los identificadores de alumno, entrega o cuestionario por los de otra sección. Compruebe que no se muestre información ajena. Intente crear una tarea o configurar calificaciones: debe recibir acceso denegado.
 
+### Inteligencia Artificial
+
+La demostración de IA requiere una cuenta Docente ficticia con `ContenidoIA.Generar`, una planificación propia con PDF ficticio o un PDF local no sensible. No copie claves API en formularios, capturas, documentación ni consola.
+
+1. Seleccione uno o más tipos de contenido y use instrucciones ficticias. Confirme que el formulario rechaza origen ambiguo, ausencia de tipos y PDF inválido.
+2. Para un PDF local, pruebe únicamente archivos no sensibles. El archivo debe ser `.pdf`, MIME `application/pdf`, firma PDF válida y tamaño dentro del límite configurado; no debe persistirse como archivo académico.
+3. Consulte el trabajo sólo desde la misma cuenta que inició la generación. Ante resultado de cuestionario, abra la importación, revise y corrija la vista previa antes de guardar.
+4. Si no hay clave configurada de forma segura o no existe autorización de red/costo, muestre solamente el flujo simulado o el mensaje controlado de configuración. No intente acceder a la dirección privada histórica ni afirme que el proveedor fue validado.
+
 ## Verificaciones de interfaz
 
 - Repetir los pasos principales en ancho móvil y de escritorio.

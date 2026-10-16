@@ -93,6 +93,21 @@ Comandos ejecutados durante esta fase:
 
 No se ejecutó una prueba E2E de navegador. Antes de demostración queda pendiente validar manualmente el dashboard, perfil, tablas/tarjetas responsive, selects, mensajes de validación, botones condicionales y confirmaciones en escritorio y móvil.
 
+## Validación integral: Inteligencia Artificial
+
+| Área | Escenario | Resultado | Evidencia | Estado |
+| --- | --- | --- | --- | --- |
+| Configuración externa | Clave versionada vacía y URL privada histórica | No se consultaron secretos locales ni se llamó al proveedor | `appsettings.json`, `ConfiguracionIa` | Bloqueado de forma segura |
+| Generación directa | Prompt, tokens, encabezado, HTTP, timeout, cancelación y JSON inválido | Contrato y errores controlados con proveedor simulado | `IaServicioTests` | Aprobado simulado |
+| Generación desde PDF | Multipart, tipos, instrucciones, archivo local, tamaño, MIME, extensión y firma | Solo PDF válido llega al cliente HTTP; archivo local no se persiste | `IaServicioTests` | Aprobado simulado |
+| Trabajos asíncronos | `job_id`, estados pendiente/listo/error, propiedad, expiración lógica y deduplicación | Solo el propietario consulta; respuesta malformada produce error seguro | `IaServicioTests` | Aprobado simulado |
+| Seguridad contextual | Permiso de IA y planificación ajena | Rechazo antes de enviar documento ajeno | `IaServicioTests.GenerarDesdeDocumento_PlanificacionAjena_NoEnviaDocumentoAlProveedor` | Aprobado simulado |
+| Importación académica | Lectura de texto/JSON, vista previa, preguntas inválidas y guardado autorizado | No publica ni guarda automáticamente sin revisión | `LectorCuestionarioIaTests`, `ImportarCuestionarioIaTests`, `CuestionarioServicioTests` | Aprobado simulado |
+
+Comando ejecutado: `dotnet vstest ... /TestCaseFilter:"FullyQualifiedName~IaServicioTests|...LectorCuestionarioIaTests|...ImportarCuestionarioIaTests|...CuestionarioServicioTests"`: 67 aprobadas de 67, 0 fallidas y 0 omitidas.
+
+No hubo pruebas reales contra proveedor ni medición de tiempos externos. Para completarlas se requiere una clave suministrada por configuración segura, red autorizada y una solicitud ficticia mínima; no deben declararse cubiertas antes de esa ejecución.
+
 ## Pruebas no ejecutadas y motivo
 
 - No se hicieron llamadas reales a IA ni a correo. Las pruebas de IA usan dobles de `HttpMessageHandler` y datos de prueba.

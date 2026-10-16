@@ -203,6 +203,45 @@ public sealed class IaServicioTests
         Assert.Single(handler.Rutas);
     }
 
+    [Fact]
+    public async Task GenerarDesdeDocumento_PlanificacionAjena_NoEnviaDocumentoAlProveedor()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarPlanificacionAsync(contexto);
+        var handler = new Handler(_ => throw new InvalidOperationException("No debe invocarse."));
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var servicio = CrearServicio(contexto, handler, cache, usuarioId: "docente-2", docenteId: 2);
+
+        var resultado = await servicio.GenerarDesdeDocumentoAsync(
+            1,
+            [new SolicitudContenidoIa("resumen")],
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(resultado.Exitoso);
+        Assert.Contains("No tiene acceso", resultado.Mensaje, StringComparison.Ordinal);
+        Assert.Empty(handler.Rutas);
+    }
+
+    [Fact]
+    public async Task ConsultarEstado_RespuestaMalformada_DevuelveErrorSeguro()
+    {
+        await using var contexto = CrearContexto();
+        var handler = new Handler(request =>
+            request.RequestUri!.AbsolutePath.EndsWith("/generar/", StringComparison.Ordinal)
+                ? RespuestaTrabajos("resumen")
+                : Task.FromResult(Json("{no es json}")));
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var servicio = CrearServicio(contexto, handler, cache);
+
+        var trabajo = await servicio.GenerarDirectoAsync("estado inválido", 100, TestContext.Current.CancellationToken);
+        var resultado = await servicio.ConsultarEstadoAsync(
+            trabajo.Datos!.Single().JobId,
+            TestContext.Current.CancellationToken);
+
+        Assert.False(resultado.Exitoso);
+        Assert.Equal("No fue posible obtener el estado del trabajo de IA.", resultado.Mensaje);
+    }
+
     private static Contexto CrearContexto() => new(new DbContextOptionsBuilder<Contexto>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString())
         .Options);
@@ -212,13 +251,14 @@ public sealed class IaServicioTests
         Handler handler,
         IMemoryCache cache,
         string apiKey = "clave-prueba",
-        string usuarioId = "docente-1") =>
+        string usuarioId = "docente-1",
+        int docenteId = 1) =>
         new(
             new HttpClient(handler) { BaseAddress = new Uri("http://ia-prueba/api/") },
             Options.Create(new ConfiguracionIa { UrlBase = "http://ia-prueba/api", ApiKey = apiKey }),
             contexto,
             new ArchivosPrueba(),
-            new AccesoPrueba(usuarioId),
+            new AccesoPrueba(usuarioId, docenteId),
             cache);
 
     private static async Task SembrarPlanificacionAsync(Contexto contexto)
@@ -278,13 +318,13 @@ public sealed class IaServicioTests
         public Task EliminarAsync(string claveAlmacenamiento, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
-    private sealed class AccesoPrueba(string usuarioId) : IAccesoAcademicoServicio
+    private sealed class AccesoPrueba(string usuarioId, int docenteId) : IAccesoAcademicoServicio
     {
         public string? UsuarioId => usuarioId;
         public bool EsOperadorInstitucional => false;
         public bool TienePermiso(string permiso) => permiso == Permisos.ContenidoIA.Generar;
-        public Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync() => Task.FromResult(new ContextoAcademicoUsuario(1, null));
-        public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult<int?>(1);
+        public Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync() => Task.FromResult(new ContextoAcademicoUsuario(docenteId, null));
+        public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult<int?>(docenteId);
         public Task<int?> ObtenerAlumnoIdAsync() => Task.FromResult<int?>(null);
         public Task<bool> EsDocenteDeAsignacionAsync(int asignacionId) => Task.FromResult(true);
         public Task<bool> AlumnoPerteneceAsignacionAsync(int asignacionId) => Task.FromResult(false);
