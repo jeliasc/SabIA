@@ -2,12 +2,19 @@ namespace Proyecto_Final.Servicios.Autenticacion;
 
 public enum TipoResultadoAutenticacion
 {
+    [Display(Name = "Éxito")]
     Exito,
+    [Display(Name = "Credenciales inválidas")]
     CredencialesInvalidas,
+    [Display(Name = "Cuenta inactiva")]
     CuentaInactiva,
+    [Display(Name = "Bloqueado")]
     Bloqueado,
+    [Display(Name = "Requiere cambio de contraseña")]
     RequiereCambioContrasena,
+    [Display(Name = "No autenticado")]
     NoAutenticado,
+    [Display(Name = "Validación")]
     Validacion
 }
 

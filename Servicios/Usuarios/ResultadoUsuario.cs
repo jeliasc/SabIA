@@ -2,11 +2,17 @@ namespace Proyecto_Final.Servicios.Usuarios;
 
 public enum TipoResultadoUsuario
 {
+    [Display(Name = "Éxito")]
     Exito,
+    [Display(Name = "Error")]
     Error,
+    [Display(Name = "Advertencia")]
     Advertencia,
+    [Display(Name = "Validación")]
     Validacion,
+    [Display(Name = "No autenticado")]
     NoAutenticado,
+    [Display(Name = "Prohibido")]
     Prohibido
 }
 

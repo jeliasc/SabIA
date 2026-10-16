@@ -15,102 +15,111 @@
             <div class="card shadow-sm border-secondary h-100">
                 <div class="card-body">
                     <h3 class="h5">Obligaciones pendientes</h3>
-                    <p class="text-muted">Este informe se recalcula dentro de la transacción antes de efectuar el relevo.</p>
-                    <dl class="row mb-0">
-                        <dt class="col-8">Tareas abiertas</dt><dd class="col-4 text-end">@o.TareasAbiertas</dd>
-                        <dt class="col-8">Entregas sin calificar</dt><dd class="col-4 text-end">@o.EntregasPendientesCalificacion</dd>
-                        <dt class="col-8">Intentos en curso</dt><dd class="col-4 text-end">@o.CuestionariosEnCurso</dd>
-                        <dt class="col-8">Correcciones pendientes</dt><dd class="col-4 text-end">@o.CorreccionesPendientes</dd>
-                        <dt class="col-8">Evaluaciones sin cerrar</dt><dd class="col-4 text-end">@o.EvaluacionesSinCerrar</dd>
-                        <dt class="col-8">Planificaciones pendientes</dt><dd class="col-4 text-end">@o.PlanificacionesPendientes</dd>
-                    </dl>
-                    @if (o.TienePendientes)
-                    {
-                        <div class="alert alert-warning mt-3 mb-0">
-                            Estas obligaciones impiden un relevo ordinario. El excepcional requiere autorización y delegación explícitas.
-                        </div>
-                    }
+                    <p class="text-muted">Este informe se recalcula dentro de la transacción antes de efectuar el
+                        relevo.</p>
+                        <dl class="row mb-0">
+                            <dt class="col-8">Tareas abiertas</dt>
+                            <dd class="col-4 text-end">@o.TareasAbiertas</dd>
+                            <dt class="col-8">Entregas sin calificar</dt>
+                            <dd class="col-4 text-end">@o.EntregasPendientesCalificacion</dd>
+                            <dt class="col-8">Intentos en curso</dt>
+                            <dd class="col-4 text-end">@o.CuestionariosEnCurso</dd>
+                            <dt class="col-8">Correcciones pendientes</dt>
+                            <dd class="col-4 text-end">@o.CorreccionesPendientes</dd>
+                            <dt class="col-8">Evaluaciones sin cerrar</dt>
+                            <dd class="col-4 text-end">@o.EvaluacionesSinCerrar</dd>
+                            <dt class="col-8">Planificaciones pendientes</dt>
+                            <dd class="col-4 text-end">@o.PlanificacionesPendientes</dd>
+                        </dl>
+                        @if (o.TienePendientes)
+                        {
+                            <div class="alert alert-warning mt-3 mb-0">
+                                Estas obligaciones impiden un relevo ordinario. El excepcional requiere autorización y
+                                delegación explícitas.
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="col-lg-7">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
-                    <form asp-action="ReemplazarDocente" method="post"
-                          data-confirmar-accion-academica
-                          data-confirmar-titulo="Confirmar relevo docente"
-                          data-confirmar-mensaje="La asignación actual quedará histórica y se creará una nueva versión. Los registros académicos existentes no se trasladarán."
-                          data-confirmar-texto="Confirmar relevo" data-confirmar-color="#dc3545">
-                        @Html.AntiForgeryToken()
-                        @Html.HiddenFor(x => x.AsignacionId)
-                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="col-lg-7">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <form asp-action="ReemplazarDocente" method="post" data-confirmar-accion-academica
+                              data-confirmar-titulo="Confirmar relevo docente"
+                              data-confirmar-mensaje="La asignación actual quedará histórica y se creará una nueva versión. Los registros académicos existentes no se trasladarán."
+                              data-confirmar-texto="Confirmar relevo" data-confirmar-color="#dc3545">
+                            @Html.AntiForgeryToken()
+                            @Html.HiddenFor(x => x.AsignacionId)
+                            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-                        <div class="mb-3">
-                            <label asp-for="DocenteSustitutoId" class="form-label">Docente sustituto</label>
-                            <select asp-for="DocenteSustitutoId" class="form-select" data-select-busqueda>
-                                <option value="">Seleccione...</option>
-                                @foreach (var docente in Model.Docentes)
-                                {
-                                    <option value="@docente.Id">@docente.Texto</option>
-                                }
-                            </select>
-                            <span asp-validation-for="DocenteSustitutoId" class="text-danger"></span>
-                        </div>
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label asp-for="Tipo" class="form-label">Tipo de relevo</label>
-                                <select asp-for="Tipo" class="form-select">
-                                    <option value="@TipoRelevoAsignacion.Ordinario">Ordinario</option>
-                                    <option value="@TipoRelevoAsignacion.Excepcional">Excepcional</option>
+                            <div class="mb-3">
+                                <label asp-for="DocenteSustitutoId" class="form-label">Docente sustituto</label>
+                                <select asp-for="DocenteSustitutoId" class="form-select" data-select-busqueda>
+                                    <option value="">Seleccione...</option>
+                                    @foreach (var docente in Model.Docentes)
+                                    {
+                                        <option value="@docente.Id">@docente.Texto</option>
+                                    }
                                 </select>
+                                <span asp-validation-for="DocenteSustitutoId" class="text-danger"></span>
                             </div>
-                            <div class="col-md-6">
-                                <label asp-for="FechaEfectiva" class="form-label">Fecha efectiva (Guatemala)</label>
-                                <input asp-for="FechaEfectiva" type="datetime-local" class="form-control" />
-                                <span asp-validation-for="FechaEfectiva" class="text-danger"></span>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label asp-for="Tipo" class="form-label">Tipo de relevo</label>
+                                    <select asp-for="Tipo" class="form-select">
+                                        <option value="@TipoRelevoAsignacion.Ordinario">Ordinario</option>
+                                        <option value="@TipoRelevoAsignacion.Excepcional">Excepcional</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="FechaEfectiva" class="form-label">Fecha efectiva (Guatemala)</label>
+                                    <input asp-for="FechaEfectiva" type="datetime-local" class="form-control" />
+                                    <span asp-validation-for="FechaEfectiva" class="text-danger"></span>
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="mb-3">
-                            <label asp-for="Motivo" class="form-label">Motivo y justificación</label>
-                            <textarea asp-for="Motivo" class="form-control" rows="4"></textarea>
-                            <span asp-validation-for="Motivo" class="text-danger"></span>
-                        </div>
+                            <div class="mb-3">
+                                <label asp-for="Motivo" class="form-label">Motivo y justificación</label>
+                                <textarea asp-for="Motivo" class="form-control" rows="4"></textarea>
+                                <span asp-validation-for="Motivo" class="text-danger"></span>
+                            </div>
 
-                        <div class="mb-3">
-                            <label asp-for="OperacionesDelegadas" class="form-label">Delegación excepcional</label>
-                            <select asp-for="OperacionesDelegadas" class="form-select">
-                                <option value="0">Sin delegación sobre registros anteriores</option>
-                                <option value="1">Calificar entregas pendientes</option>
-                                <option value="3">Calificar y reabrir entregas</option>
-                                <option value="32">Permitir continuidad de actividades a alumnos</option>
-                                <option value="63">Continuidad completa autorizada</option>
-                            </select>
-                            <div class="form-text">Solo se crea para un relevo excepcional; nunca cambia la autoría original.</div>
-                        </div>
+                            <div class="mb-3">
+                                <label asp-for="OperacionesDelegadas" class="form-label">Delegación excepcional</label>
+                                <select asp-for="OperacionesDelegadas" class="form-select">
+                                    <option value="0">Sin delegación sobre registros anteriores</option>
+                                    <option value="1">Calificar entregas pendientes</option>
+                                    <option value="3">Calificar y reabrir entregas</option>
+                                    <option value="32">Permitir continuidad de actividades a alumnos</option>
+                                    <option value="63">Continuidad completa autorizada</option>
+                                </select>
+                                <div class="form-text">Solo se crea para un relevo excepcional; nunca cambia la autoría
+                                    original.</div>
+                                </div>
 
-                        <div class="form-check mb-4">
-                            <input asp-for="ConfirmarConsecuencias" class="form-check-input" />
-                            <label asp-for="ConfirmarConsecuencias" class="form-check-label">
-                                Confirmo que revisé las obligaciones y comprendo las consecuencias del relevo excepcional.
-                            </label>
-                            <span asp-validation-for="ConfirmarConsecuencias" class="text-danger d-block"></span>
-                        </div>
+                                <div class="form-check mb-4">
+                                    <input asp-for="ConfirmarConsecuencias" class="form-check-input" />
+                                    <label asp-for="ConfirmarConsecuencias" class="form-check-label">
+                                        Confirmo que revisé las obligaciones y comprendo las consecuencias del relevo
+                                        excepcional.
+                                    </label>
+                                    <span asp-validation-for="ConfirmarConsecuencias" class="text-danger d-block"></span>
+                                </div>
 
-                        <div class="d-flex justify-content-end gap-2">
-                            <a asp-action="Index" class="app-btn app-btn-secondary">Cancelar</a>
-                            <button type="submit" class="app-btn app-btn-soft-danger">Reemplazar docente</button>
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a asp-action="Index" class="app-btn app-btn-secondary">Cancelar</a>
+                                    <button type="submit" class="app-btn app-btn-soft-danger">Reemplazar docente</button>
+                                </div>
+                            </form>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-@section Scripts
-{
-    <partial name="_ValidationScriptsPartial" />
-}
+        @section Scripts
+        {
+            <partial name="_ValidationScriptsPartial" />
+        }
