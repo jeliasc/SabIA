@@ -7,7 +7,7 @@ namespace Proyecto_Final.ViewModels.Tareas;
 
 public class FormularioTarea
 {
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione una asignación.")]
     public int AsignacionId { get; set; }
 
     public int? UnidadAsignacionId { get; set; }
@@ -15,12 +15,12 @@ public class FormularioTarea
     public TipoTarea Tipo { get; set; } =
         TipoTarea.Archivo;
 
-    [Required, StringLength(200)]
+    [Required(ErrorMessage = "El título es obligatorio."), StringLength(200, ErrorMessage = "El título no puede superar los 200 caracteres.")]
     public string Titulo { get; set; } = string.Empty;
 
     public string? Instrucciones { get; set; }
 
-    [Range(typeof(decimal), "0", "9999999")]
+    [Range(typeof(decimal), "0", "9999999", ErrorMessage = "Ingrese un punteo máximo válido.")]
     public decimal PunteoMaximo { get; set; } = 100;
 
     public DateTime? FechaDisponibilidad { get; set; }

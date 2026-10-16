@@ -44,7 +44,7 @@ public sealed class ConfigurarCuestionario
 
     public bool OrdenAleatorio { get; set; }
 
-    [Range(0, 100)]
+    [Range(0, 100, ErrorMessage = "El máximo de intentos debe estar entre 0 y 100.")]
     public int MaximoIntentos { get; set; } = 1;
 
     public CriterioCalificacionIntentos CriterioCalificacion { get; set; } =
@@ -65,19 +65,19 @@ public sealed class CrearPregunta
 
     public int? TiempoPredeterminadoSegundos { get; set; }
 
-    [Range(1, 500)]
+    [Range(1, 500, ErrorMessage = "El orden debe estar entre 1 y 500.")]
     public int Orden { get; set; } = 1;
 
     public TipoPregunta Tipo { get; set; } =
         TipoPregunta.SeleccionUnica;
 
-    [Required]
+    [Required(ErrorMessage = "El enunciado es obligatorio.")]
     public string Enunciado { get; set; } = string.Empty;
 
-    [Range(typeof(decimal), "0.01", "9999")]
+    [Range(typeof(decimal), "0.01", "9999", ErrorMessage = "Ingrese un punteo válido.")]
     public decimal Punteo { get; set; } = 1;
 
-    [Required]
+    [Required(ErrorMessage = "La respuesta correcta es obligatoria.")]
     public string RespuestaCorrecta { get; set; } = string.Empty;
 
     public string? OpcionesSeparadas { get; set; }
@@ -85,7 +85,7 @@ public sealed class CrearPregunta
     [Range(10, 3600, ErrorMessage = "El tiempo debe estar entre 10 y 3600 segundos.")]
     public int? TiempoLimiteSegundos { get; set; }
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "La retroalimentación no puede superar los 2000 caracteres.")]
     public string? Retroalimentacion { get; set; }
 }
 
@@ -404,7 +404,7 @@ public sealed class ImportarCuestionarioIa
     public int? TareaId { get; set; }
 
     // Texto devuelto por la IA o pegado por el docente.
-    [StringLength(100000)]
+    [StringLength(100000, ErrorMessage = "El contenido no puede superar los 100000 caracteres.")]
     public string? Texto { get; set; }
 
     // El resultado de la IA ya no estaba disponible (expiró o se reinició el servidor).
@@ -421,7 +421,7 @@ public sealed class PreguntaImportadaIa
 
     public TipoPregunta Tipo { get; set; } = TipoPregunta.SeleccionUnica;
 
-    [StringLength(4000)]
+    [StringLength(4000, ErrorMessage = "El texto no puede superar los 4000 caracteres.")]
     public string Enunciado { get; set; } = string.Empty;
 
     // Una opción por línea.
@@ -430,10 +430,10 @@ public sealed class PreguntaImportadaIa
     // Una respuesta correcta por línea. En selección debe coincidir con una opción.
     public string? Correctas { get; set; }
 
-    [Range(typeof(decimal), "0.01", "9999")]
+    [Range(typeof(decimal), "0.01", "9999", ErrorMessage = "Ingrese un punteo válido.")]
     public decimal Punteo { get; set; } = 1;
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "La retroalimentación no puede superar los 2000 caracteres.")]
     public string? Retroalimentacion { get; set; }
 
     public string? Advertencia { get; set; }

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Net;
 using Proyecto_Final.Data;
 using Proyecto_Final.Data.Seeders;
@@ -208,6 +210,33 @@ builder.Services.AddControllersWithViews(options =>
     // A TODOS LOS CONTROLADORES DEL SISTEMA.
     options.Filters.AddService<ForzarCambioContrasenaFiltro>();
     options.Filters.AddService<AuditoriaRechazosFiltro>();
+
+    options.ModelBindingMessageProvider.SetAttemptedValueIsInvalidAccessor(
+        (valor, campo) => $"El valor '{valor}' no es válido para {campo}.");
+    options.ModelBindingMessageProvider.SetMissingBindRequiredValueAccessor(
+        campo => $"Debe proporcionar un valor para {campo}.");
+    options.ModelBindingMessageProvider.SetMissingKeyOrValueAccessor(
+        () => "Debe proporcionar un valor.");
+    options.ModelBindingMessageProvider.SetNonPropertyAttemptedValueIsInvalidAccessor(
+        valor => $"El valor '{valor}' no es válido.");
+    options.ModelBindingMessageProvider.SetNonPropertyUnknownValueIsInvalidAccessor(
+        () => "El valor no es válido.");
+    options.ModelBindingMessageProvider.SetUnknownValueIsInvalidAccessor(
+        valor => $"El valor '{valor}' no es válido.");
+    options.ModelBindingMessageProvider.SetValueIsInvalidAccessor(
+        valor => $"El valor '{valor}' no es válido.");
+    options.ModelBindingMessageProvider.SetValueMustBeANumberAccessor(
+        campo => $"{campo} debe ser un número.");
+    options.ModelBindingMessageProvider.SetValueMustNotBeNullAccessor(
+        _ => "El campo es obligatorio.");
+});
+
+var culturaGuatemala = new CultureInfo("es-GT");
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    options.DefaultRequestCulture = new RequestCulture(culturaGuatemala);
+    options.SupportedCultures = [culturaGuatemala];
+    options.SupportedUICultures = [culturaGuatemala];
 });
 
 // CONFIGURAR SERVICIO DE CORREO
@@ -297,6 +326,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseRequestLocalization();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();

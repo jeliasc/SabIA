@@ -9,16 +9,16 @@ public class FormularioPlanificacion
 {
     public TipoPlanificacion Tipo { get; set; }
 
-    [Required, StringLength(200)]
+    [Required(ErrorMessage = "El título es obligatorio."), StringLength(200, ErrorMessage = "El título no puede superar los 200 caracteres.")]
     public string Titulo { get; set; } = string.Empty;
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "La descripción no puede superar los 2000 caracteres.")]
     public string? Objetivos { get; set; }
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Las observaciones no pueden superar los 2000 caracteres.")]
     public string? Descripcion { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Seleccione una asignación.")]
     public string Contenido { get; set; } = string.Empty;
 
     public string? Actividades { get; set; }
@@ -27,7 +27,7 @@ public class FormularioPlanificacion
 
     public string? EstrategiaEvaluacion { get; set; }
 
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione una asignación.")]
     public int AsignacionId { get; set; }
 
     public int? PeriodoId { get; set; }
@@ -89,7 +89,7 @@ public sealed class RevisarPlanificacion
 
     public string Contenido { get; set; } = string.Empty;
 
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "El comentario no puede superar los 2000 caracteres.")]
     public string? Observaciones { get; set; }
 
     public bool Aprobar { get; set; }

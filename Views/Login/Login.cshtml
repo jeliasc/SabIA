@@ -53,6 +53,8 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="urlRetorno" value="@ViewData["UrlRetorno"]" />
 
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-3" role="alert"></div>
+
                     <div class="mb-3">
                         <label asp-for="Usuario" class="form-label"></label>
                         <div class="input-group">

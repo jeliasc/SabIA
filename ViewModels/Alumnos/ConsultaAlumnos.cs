@@ -2,9 +2,13 @@ namespace Proyecto_Final.ViewModels.Alumnos;
 
 public enum TipoAccesoAlumnos
 {
+    [Display(Name = "Denegado")]
     Denegado,
+    [Display(Name = "Institucional")]
     Institucional,
+    [Display(Name = "Docente")]
     Docente,
+    [Display(Name = "Alumno")]
     Alumno
 }
 

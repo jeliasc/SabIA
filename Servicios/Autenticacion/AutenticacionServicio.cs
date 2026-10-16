@@ -37,7 +37,7 @@ public class AutenticacionServicio : IAutenticacionServicio
             await RegistrarRechazoInicioSesionAsync("Credenciales inválidas.");
             return ResultadoAutenticacion
                 .CredencialesInvalidas(
-                    "Usuario o contraseña incorrectos."
+                    "El usuario o la contraseña son incorrectos."
                 );
         }
 
@@ -71,7 +71,7 @@ public class AutenticacionServicio : IAutenticacionServicio
             await RegistrarRechazoInicioSesionAsync("Credenciales inválidas.", usuario.Id);
             return ResultadoAutenticacion
                 .CredencialesInvalidas(
-                    "Usuario o contraseña incorrectos."
+                    "El usuario o la contraseña son incorrectos."
                 );
         }
 

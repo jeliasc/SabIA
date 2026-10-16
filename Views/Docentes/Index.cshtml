@@ -83,7 +83,7 @@
                                     }
                                 </td>
                                 <td>@docente.Correo</td>
-                                <td>@(docente.NivelAcademico?.ToString() ?? "Sin registrar")</td>
+                                <td>@(docente.NivelAcademico?.GetDisplayName() ?? "Sin registrar")</td>
                                 <td class="text-start">@docente.AsignacionesActivas</td>
                                 <td>
                                     <span class="app-badge @(docente.Activo ? "app-badge-success" : "app-badge-danger")">
@@ -135,7 +135,7 @@
     <div class="d-md-none" data-contenedor-docentes-movil>
         @foreach (var docente in Model)
         {
-            var nivelAcademico = docente.NivelAcademico?.ToString() ?? "Sin registrar";
+            var nivelAcademico = docente.NivelAcademico?.GetDisplayName() ?? "Sin registrar";
             var estado = docente.Activo ? "Activo" : "Inactivo";
             var busqueda = $"{docente.Carnet} {docente.NombreCompleto} {docente.Correo} " +
                 $"{docente.Titulo} {nivelAcademico} {docente.AsignacionesActivas} {estado}";

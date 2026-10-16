@@ -97,7 +97,7 @@
                                         : x.Estado == Proyecto_Final.Models.EstadoEntrega.Pendiente
                                             ? "app-badge-secondary"
                                             : "app-badge-info")">
-                                    @x.Estado
+                                    @x.Estado.GetDisplayName()
                                 </span>
                             </td>
 
@@ -191,7 +191,7 @@
                                 : x.Estado == Proyecto_Final.Models.EstadoEntrega.Pendiente
                                     ? "app-badge-secondary"
                                     : "app-badge-info")">
-                            @x.Estado
+                            @x.Estado.GetDisplayName()
                         </span>
                     </div>
 

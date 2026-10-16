@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
+using Proyecto_Final.Extensions;
 using Proyecto_Final.Models;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Academico;
@@ -390,7 +391,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
                         Telefono = relacion.Encargado.Telefono,
                         TelefonoAlterno = relacion.Encargado.TelefonoAlterno,
                         Correo = relacion.Encargado.Correo,
-                        Parentesco = relacion.Parentesco.ToString()
+                        Parentesco = relacion.Parentesco.GetDisplayName()
                     })
                     .ToList()
             })

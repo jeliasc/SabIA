@@ -18,6 +18,6 @@ public sealed class DocumentoLista
 
 public sealed class CrearDocumento
 {
-    [Required]
+    [Required(ErrorMessage = "Seleccione un archivo.")]
     public IFormFile? Archivo { get; set; }
 }

@@ -9,13 +9,13 @@ public class FormularioPeriodo
     [Display(Name = "Ciclo escolar")]
     public int CicloEscolarId { get; set; }
 
-    [Required, StringLength(50)]
+    [Required(ErrorMessage = "El nombre es obligatorio."), StringLength(50, ErrorMessage = "El nombre no puede superar los 50 caracteres.")]
     public string Nombre { get; set; } = string.Empty;
 
-    [Required, Display(Name = "Fecha de inicio")]
+    [Required(ErrorMessage = "La fecha de inicio es obligatoria."), Display(Name = "Fecha de inicio")]
     public DateOnly FechaInicio { get; set; }
 
-    [Required, Display(Name = "Fecha de finalización")]
+    [Required(ErrorMessage = "La fecha de finalización es obligatoria."), Display(Name = "Fecha de finalización")]
     public DateOnly FechaFin { get; set; }
 }
 

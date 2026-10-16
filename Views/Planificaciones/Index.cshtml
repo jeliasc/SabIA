@@ -93,7 +93,7 @@
                                     @x.Titulo
                                 </td>
 
-                                <td>@x.Tipo</td>
+                                <td>@x.Tipo.GetDisplayName()</td>
 
                                 <td>@x.Curso</td>
 
@@ -107,7 +107,7 @@
                                               : x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta
                                                 ? "app-badge-danger"
                                                 : "app-badge-secondary")">
-                                            @x.Estado
+                                            @x.Estado.GetDisplayName()
                                         </span>
                                 </td>
 

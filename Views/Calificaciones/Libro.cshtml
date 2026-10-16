@@ -17,7 +17,7 @@
         </div>
         <div class="app-actions flex-wrap align-self-lg-start">
             <span class="app-badge @(Model.EstadoCierre == EstadoCierreCalificaciones.Cerrado ? "app-badge-secondary" : "app-badge-success")">
-                @Model.EstadoCierre
+                @Model.EstadoCierre.GetDisplayName()
             </span>
             <a asp-action="Abacus" asp-route-id="@Model.ConfiguracionId"
                class="app-btn app-btn-soft-secondary">Resumen Abacus</a>

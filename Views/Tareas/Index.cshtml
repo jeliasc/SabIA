@@ -112,7 +112,7 @@
 
                                 <td>@x.Seccion</td>
 
-                                <td>@x.Tipo</td>
+                                <td>@x.Tipo.GetDisplayName()</td>
 
                                 <td>
                                     @(x.Limite?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Sin límite")
@@ -128,7 +128,7 @@
                                           : x.Estado == Proyecto_Final.Models.EstadoTarea.Cerrada
                                             ? "app-badge-danger"
                                             : "app-badge-secondary")">
-                                        @x.Estado
+                                        @x.Estado.GetDisplayName()
                                     </span>
                                 </td>
                                 @if (hayAcciones)

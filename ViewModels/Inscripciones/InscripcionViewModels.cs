@@ -6,10 +6,10 @@ namespace Proyecto_Final.ViewModels.Inscripciones;
 
 public class FormularioInscripcion
 {
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione un alumno.")]
     public int AlumnoId { get; set; }
 
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione una sección.")]
     public int SeccionId { get; set; }
 
     public DateOnly Fecha { get; set; } =
@@ -49,10 +49,10 @@ public sealed class TrasladarInscripcion
 
     public int SeccionOrigenId { get; set; }
 
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione una sección de destino.")]
     public int SeccionDestinoId { get; set; }
 
-    [Required, StringLength(500)]
+    [Required(ErrorMessage = "El motivo es obligatorio."), StringLength(500, ErrorMessage = "El motivo no puede superar los 500 caracteres.")]
     public string Motivo { get; set; } = string.Empty;
 
     public List<OpcionSeleccion> Secciones { get; set; } = [];

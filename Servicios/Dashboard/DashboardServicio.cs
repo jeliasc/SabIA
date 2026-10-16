@@ -385,7 +385,7 @@ public sealed class DashboardServicio(
                 .Select(x => new PlanificacionResumenDashboard
                 {
                     Titulo = x.Titulo,
-                    Estado = x.Estado.ToString(),
+                    Estado = x.Estado,
                     Periodo = x.Asignaciones
                         .Where(a => a.Periodo != null)
                         .Select(a => a.Periodo!.Nombre)
@@ -394,7 +394,7 @@ public sealed class DashboardServicio(
                 .ToListAsync();
 
             var devueltas = modelo.Planificaciones.Count(x =>
-                x.Estado == EstadoPlanificacion.Devuelta.ToString());
+                x.Estado == EstadoPlanificacion.Devuelta);
             if (devueltas > 0)
             {
                 modelo.Alertas.Add(new AlertaPrototipo
