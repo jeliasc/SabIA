@@ -9,10 +9,33 @@ public interface IIaServicio
         IReadOnlyCollection<string> tipos,
         CancellationToken cancellationToken = default);
 
+    Task<ResultadoOperacion<List<TrabajoIa>>> GenerarDesdeDocumentoAsync(
+        int planificacionId,
+        IReadOnlyCollection<SolicitudContenidoIa> solicitudes,
+        Stream? documento = null,
+        string? nombreDocumento = null,
+        string? tipoMimeDocumento = null,
+        CancellationToken cancellationToken = default);
+
+    Task<ResultadoOperacion<List<TrabajoIa>>> GenerarDesdeArchivoLocalAsync(
+        IReadOnlyCollection<SolicitudContenidoIa> solicitudes,
+        Stream documento,
+        string nombreDocumento,
+        string? tipoMimeDocumento,
+        long tamanoDocumento,
+        CancellationToken cancellationToken = default);
+
+    Task<ResultadoOperacion<List<TrabajoIa>>> GenerarDirectoAsync(
+        string prompt,
+        int maxTokens,
+        CancellationToken cancellationToken = default);
+
     Task<ResultadoOperacion<EstadoTrabajoIa>> ConsultarEstadoAsync(
         string jobId,
         CancellationToken cancellationToken = default);
 }
+
+public sealed record SolicitudContenidoIa(string Tipo, string Instrucciones = "");
 
 public sealed class TrabajoIa
 {

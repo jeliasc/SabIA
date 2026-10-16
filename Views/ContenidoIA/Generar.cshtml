@@ -5,13 +5,25 @@
 <div class="container-fluid">
     <div class="mb-4">
         <h2 class="fw-bold mb-1">Generar contenido con IA</h2>
-        <p class="text-muted mb-0">Seleccione una planificación con PDF y los materiales que desea solicitar.</p>
+        <p class="text-muted mb-0">Seleccione exactamente un documento de origen y defina los materiales que desea solicitar.</p>
     </div>
     <div class="card border-0 shadow-sm">
         <div class="card-body p-4">
-            <form asp-action="Generar" method="post">@Html.AntiForgeryToken()
+            <form asp-action="Generar" method="post" enctype="multipart/form-data" data-origen-ia-formulario>
+                @Html.AntiForgeryToken()
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-                <div class="mb-4">
+                <fieldset class="mb-4">
+                    <legend class="fs-6 fw-semibold mb-2">Documento de origen</legend>
+                    <div class="form-check">
+                        <input asp-for="OrigenDocumento" class="form-check-input" type="radio" value="Planificacion" data-origen-ia="planificacion" />
+                        <label class="form-check-label" for="OrigenDocumento">Utilizar una planificación existente</label>
+                    </div>
+                    <div class="form-check">
+                        <input asp-for="OrigenDocumento" class="form-check-input" type="radio" value="ArchivoLocal" data-origen-ia="archivo" />
+                        <label class="form-check-label" for="OrigenDocumento">Cargar un archivo PDF desde mi computadora</label>
+                    </div>
+                </fieldset>
+                <div class="mb-4" data-origen-planificacion>
                     <label asp-for="PlanificacionId" class="form-label">Planificación</label>
                     <select asp-for="PlanificacionId" class="form-select" data-select-busqueda>
                         <option value="">Seleccione...</option>
@@ -20,39 +32,72 @@
                             <option value="@x.Id">@x.Texto</option>
                         }
                     </select>
+                    <div class="form-text">Se verificará el acceso contextual y el PDF asociado antes de generar.</div>
+                </div>
+                <div class="mb-4 d-none" data-origen-archivo>
+                    <label asp-for="Documento" class="form-label">Archivo PDF</label>
+                    <input asp-for="Documento" class="form-control" accept="application/pdf,.pdf" />
+                    <div class="form-text">El archivo se usa solo para esta solicitud; no se almacena permanentemente.</div>
+                    <span asp-validation-for="Documento" class="text-danger"></span>
                 </div>
                 <div class="row g-3 mb-4">
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <div class="form-check">
                             <input asp-for="Resumen" class="form-check-input" />
                             <label asp-for="Resumen" class="form-check-label">Resumen</label>
                         </div>
+                        <textarea asp-for="InstruccionesResumen" class="form-control form-control-sm mt-2" rows="2" placeholder="Instrucciones opcionales para el resumen"></textarea>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <div class="form-check">
                             <input asp-for="Cuestionario" class="form-check-input" />
                             <label asp-for="Cuestionario" class="form-check-label">Cuestionario</label>
                         </div>
+                        <textarea asp-for="InstruccionesCuestionario" class="form-control form-control-sm mt-2" rows="2" placeholder="Instrucciones opcionales para el cuestionario"></textarea>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <div class="form-check">
                             <input asp-for="HojaTrabajo" class="form-check-input" />
                             <label asp-for="HojaTrabajo" class="form-check-label">Hoja de trabajo</label>
                         </div>
+                        <textarea asp-for="InstruccionesHojaTrabajo" class="form-control form-control-sm mt-2" rows="2" placeholder="Instrucciones opcionales para la hoja de trabajo"></textarea>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <div class="form-check">
                             <input asp-for="Glosario" class="form-check-input" />
                             <label asp-for="Glosario" class="form-check-label">Glosario</label>
                         </div>
+                        <textarea asp-for="InstruccionesGlosario" class="form-control form-control-sm mt-2" rows="2" placeholder="Instrucciones opcionales para el glosario"></textarea>
                     </div>
                 </div>
-                <div class="d-flex justify-content-end">
-                    <button class="app-btn app-btn-soft-primary" type="submit">
-                        <i class="bi bi-stars"></i> Generar contenido
-                    </button>
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <a asp-action="GenerarDirecto" class="app-btn app-btn-secondary">Generación directa</a>
+                    <button class="app-btn app-btn-soft-primary" type="submit"><i class="bi bi-stars"></i> Generar contenido</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const formulario = document.querySelector('[data-origen-ia-formulario]');
+            if (!formulario) return;
+            const plan = formulario.querySelector('[data-origen-planificacion]');
+            const archivo = formulario.querySelector('[data-origen-archivo]');
+            const selectorPlan = formulario.querySelector('[name="PlanificacionId"]');
+            const selectorArchivo = formulario.querySelector('[name="Documento"]');
+            const actualizar = () => {
+                const local = formulario.querySelector('[data-origen-ia="archivo"]').checked;
+                plan.classList.toggle('d-none', local);
+                archivo.classList.toggle('d-none', !local);
+                selectorPlan.disabled = local;
+                selectorArchivo.disabled = !local;
+                if (local) selectorPlan.value = '';
+                else selectorArchivo.value = '';
+            };
+            formulario.querySelectorAll('[data-origen-ia]').forEach(x => x.addEventListener('change', actualizar));
+            actualizar();
+        });
+    </script>
+}
