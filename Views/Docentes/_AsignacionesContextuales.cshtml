@@ -10,7 +10,7 @@ else
             <thead>
                 <tr>
                     <th>Curso</th>
-                    <th>Ciclo</th>
+                    <th class="text-start">Ciclo</th>
                     <th>Grado y sección</th>
                     <th>Carrera</th>
                 </tr>
@@ -18,7 +18,7 @@ else
             <tbody>@foreach (var asignacion in Model) {
                 <tr>
                     <td class="fw-semibold">@asignacion.Curso</td>
-                    <td>@asignacion.CicloEscolar</td>
+                    <td class="text-start">@asignacion.CicloEscolar</td>
                     <td>@asignacion.Grado @asignacion.Seccion</td>
                     <td>@asignacion.Carrera</td>
                 </tr>
