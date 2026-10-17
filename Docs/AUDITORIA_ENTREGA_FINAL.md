@@ -122,3 +122,80 @@ Se instaló `@playwright/test` 1.58.2 de forma aislada en `Tests/E2E`, sin añad
 La suite `Tests/E2E/sabia.e2e.spec.mjs` aprobó 2 de 2 pruebas reales en navegador. Verificó en escritorio el Login vacío, credenciales incorrectas, la ausencia de «Recordarme», el mensaje genérico de credenciales, el cambio obligatorio de contraseña inicial, el acceso de Coordinación y el formulario protegido de creación de Docente con sus validaciones en español. También verificó Login y validación obligatoria a 390×844. No hubo llamadas a servicios externos ni datos reales.
 
 Esta evidencia aprueba exclusivamente el paso de Login/entrada de Coordinación y la comprobación visual asociada. El recorrido académico restante no se considera ejecutado hasta crear el conjunto completo de datos ficticios y automatizarlo; se mantiene como pendiente en la matriz. La primera ejecución detectó un selector de prueba desactualizado («Ingresar» frente a «Iniciar sesión»), que se corrigió en la suite; no era un defecto de SabIA.
+
+## Paso 6.2: aprobación y publicación académica en Chrome
+
+El 16/10/2026 se ejecutó Chrome mediante Playwright contra Kestrel local (`127.0.0.1:5102`) y PostgreSQL 18 temporal aislado (`55444`). El seeder creó solo cuentas y contexto académico ficticios; la unidad, planificación y tareas del escenario se crearon mediante formularios web.
+
+- Docente creó `Unidad creada E2E`, creó `Planificación creada E2E` y confirmó «Enviar a revisión» en SweetAlert2.
+- Coordinación abrió `Planificaciones/Revisar/1` y aprobó la planificación desde la interfaz. La persistencia dejó estado `3`, fecha de envío, fecha de aprobación y usuario aprobador. La auditoría registró `Planificaciones/Revisar` (crear revisión y editar planificación).
+- Docente creó y publicó `Tarea visible E2E` mediante el formulario y la confirmación «Publicar tarea». Persistió como estado `2`, con fecha de publicación y fechas de disponibilidad/límite; la auditoría registró `Tareas/Crear` y `Tareas/Publicar`.
+- Alumno inició sesión y, en viewport móvil 390×844, visualizó `Tarea visible E2E`, `Curso E2E` y `E2E A` en `/Tareas`.
+
+La prueba integrada inicial superó su límite de 45 segundos mientras el POST de aprobación terminaba, pero sus efectos se verificaron en interfaz, persistencia y auditoría. Se elevó únicamente el tiempo de la prueba y se ejecutó después una continuación aislada: 1 prueba Playwright aprobada de 1. Dos intentos previos de tarea quedaron con disponibilidad futura por datos E2E (uno con 2099 y otro por conversión Guatemala→UTC); no fueron visibles para el Alumno. El tercer intento usó una hora de Guatemala vigente y aprobó. Todo ese contenido existió solo en la base temporal eliminada al finalizar.
+
+También se ejecutó un fixture cruzado: el seeder preparó la sección B, una asignación adicional del mismo Docente y un Alumno distinto inscrito allí. Desde Chrome el Docente creó y publicó `Tarea ajena E2E` para B. La consulta temporal confirmó ambas tareas publicadas y una entrega inicial por cada inscripción; la sesión móvil de `demo.alumno`, inscrito solo en A, mostró `Tarea visible E2E` y no mostró `Tarea ajena E2E`. El aislamiento entre secciones queda aprobado.
+
+No se modificaron archivos de producción, Identity, permisos, cookies, sesiones, migraciones ni reglas académicas.
+
+## Paso 6.3: entrega, calificación y consulta de resultado en Chrome
+
+El 16/10/2026 se completó el ciclo de entrega con Chrome controlado por Playwright, Kestrel local y PostgreSQL temporal aislado. La tarea `Tarea visible E2E` y el archivo de respuesta fueron creados desde la interfaz; el seeder solamente aportó cuentas ficticias, inscripciones y contexto académico.
+
+- Alumno de la sección A abrió la entrega en vista móvil, adjuntó el archivo ficticio y recibió la confirmación de entrega. La fila persistida corresponde al alumno `E2E-ALU`, tarea `Tarea visible E2E`, con fecha de entrega y estado calificado.
+- Docente asignado abrió la entrega y registró desde el formulario la calificación `8.00` y la retroalimentación de prueba. PostgreSQL temporal confirmó ambos valores y la auditoría registró `Entregas/Entregar` y `Entregas/Calificar`.
+- Alumno consultó su historial y resultado en móvil. La comprobación final Playwright de solo lectura aprobó 1/1 en 55.3 s y verificó calificación y retroalimentación visibles; Docente pudo consultar el mismo historial autorizado.
+- Alumno de otra sección y Docente sin asignación iniciaron sesión en Chrome. Sus solicitudes autenticadas a detalle y calificación, respectivamente, devolvieron 404; no se modificaron datos.
+
+La primera corrida de mutación alcanzó la entrega y calificación, pero el aserto posterior tomaba el enlace global `Ver historial` en lugar de `Ver historial de intentos`. Fue un selector de Playwright, no un defecto de SabIA; se hizo exacto y la verificación posterior aprobó. Durante la prueba también se detectó que la vista de entrega no renderizaba el error de propiedad `Archivo`; se agregó exclusivamente `asp-validation-for="Archivo"` en `Views/Entregas/Entregar.cshtml`. No cambia la regla que exige el archivo ni la lógica de entrega.
+
+No se modificaron Identity, autenticación, roles, permisos, cookies, sesiones, migraciones ni reglas de calificación.
+
+## Paso 6.4: cuestionarios en Chrome
+
+El 16/10/2026 se ejecutó en Chrome controlado por Playwright el ciclo de cuestionario con Kestrel local y PostgreSQL temporal aislado. El seeder aportó exclusivamente usuarios, secciones, asignaciones e inscripciones ficticias; el Docente creó y publicó el cuestionario desde la interfaz.
+
+- Docente configuró `Cuestionario completo E2E A` para su curso, con un intento máximo y tres preguntas: selección múltiple, verdadero/falso y respuesta directa. La publicación se confirmó con SweetAlert2.
+- Alumno A, en viewport móvil, inició el intento, navegó entre preguntas, respondió las tres y lo finalizó. El resultado visible fue 100 %; la base temporal confirmó tres respuestas e intento finalizado con calificación `100.00`.
+- Docente consultó desde su interfaz los resultados y el detalle del intento. La auditoría temporal registró configuración, preguntas, publicación, inicio, guardado de respuestas y finalización.
+- Alumno de la sección B y Docente sin asignación recibieron 404 en solicitudes autenticadas originadas desde contextos de Chrome para resolver/consultar el cuestionario e intento de A. No hubo cambios no autorizados.
+
+`Tests/E2E/cuestionarios.spec.mjs` aprobó 1 de 1 prueba. Un primer intento reveló solamente una aserción de Playwright sobre un mensaje temporal que esa vista no renderiza; la pregunta sí se había persistido. Se corrigió el selector de la prueba, no el código de producción. No se inició la demostración de IA ni se modificaron Identity, autenticación, permisos, migraciones o reglas de calificación.
+
+## Paso 6.5: IA simulada en Chrome
+
+El 16/10/2026 se ejecutó en Chrome con Playwright el recorrido completo Docente → proveedor IA simulado local → vista previa editable → importación. Kestrel recibió una URL y clave ficticias solo por variables de entorno y envió el PDF ficticio multipart al simulador local; no se consultó el proveedor externo ni se usaron claves reales.
+
+- Docente validó origen de archivo requerido e inválido, creó desde la interfaz la tarea en borrador `Cuestionario IA importado E2E`, cargó un PDF ficticio y solicitó exclusivamente cuestionario.
+- El simulador devolvió un trabajo `pendiente`; Chrome consultó `/ContenidoIA/Estado` y recibió después `completado`, mostró el JSON y habilitó la importación.
+- Docente abrió la vista previa, corrigió el primer enunciado y confirmó la importación. PostgreSQL temporal confirmó la tarea aún en borrador, origen `InteligenciaArtificial`, dos preguntas y el texto corregido. La auditoría registró `Cuestionarios/ConfirmarImportacionIa`.
+- En móvil se comprobó la navegación a la configuración del cuestionario importado. Un POST sin antiforgery fue rechazado con 400; Alumno fue redirigido/denegado antes de la función de IA y Docente ajeno no vio la planificación propia en su selector.
+
+`Tests/E2E/ia-flujo.spec.mjs` aprobó 1 de 1 prueba. Para archivo sin seleccionar o MIME inválido, la interfaz mostró el resumen español genérico "Revise la información ingresada"; la comprobación de detalle específico por archivo queda como mejora de presentación pendiente, sin debilitar la validación. No hubo cambios de producción, seguridad, permisos, autenticación, migraciones o reglas académicas.
+
+## Paso 7: cierre técnico consolidado
+
+Este apartado es el estado vigente de entrega y prevalece sobre las notas cronológicas de planificación o pendientes anteriores. La evidencia no se suma como si fueran pruebas únicas: las suites HTTP, .NET, JavaScript y E2E cubren capas y escenarios parcialmente superpuestos.
+
+| Alcance | Estado consolidado | Evidencia real |
+| --- | --- | --- |
+| Compilación y pruebas no E2E | Aprobado | Compilación previa, 198 pruebas .NET sin PostgreSQL, 9 pruebas PostgreSQL en clúster aislado y 4 pruebas JavaScript aprobadas. |
+| Login y validaciones | Aprobado en navegador | `sabia.e2e.spec.mjs`: 2/2 en Chrome; escritorio y móvil, campos requeridos, credencial genérica, cambio inicial y ausencia de «Recordarme». |
+| Unidad, planificación, revisión y tarea | Aprobado en navegador | Docente creó unidad, planificación y tarea; Coordinación aprobó; SweetAlert2, persistencia y auditoría temporal comprobadas. |
+| Actividades, entrega, calificación y resultado | Aprobado en navegador | Alumno entregó y consultó resultado; Docente calificó; vista móvil, persistencia, auditoría y restricciones cruzadas comprobadas. |
+| Cuestionarios | Aprobado en navegador | `cuestionarios.spec.mjs`: 1/1; creación, publicación, resolución móvil, resultado y aislamiento contextual. |
+| IA | Comprobado con simulación en navegador | `ia-flujo.spec.mjs`: 1/1; proveedor local ficticio, sondeo pendiente/completado, edición e importación persistida. No prueba un proveedor externo. |
+| Estructura académica, altas e inscripciones desde UI | Pendiente de ejecución manual | El seeder creó estas precondiciones en la base descartable; no sustituyó sus formularios ni permite declararlos aprobados en navegador. |
+| Materiales y panel final de Coordinación | Pendiente de ejecución manual | No hay evidencia E2E completa de carga de material ni de estadísticas, notificaciones y auditoría desde el dashboard. |
+
+No se detectaron secretos reales, trazas, resultados de Playwright, dependencias generadas ni bases temporales dentro del árbol de cambios. Las únicas credenciales localizables son ficticias y están limitadas al seeder E2E; las cadenas de conexión y los valores del proveedor simulado se inyectan por variables de entorno y no se almacenan en archivos.
+
+Observaciones abiertas, sin cambios de código en este cierre:
+
+- Prioridad media: para PDF ausente o MIME inválido, IA conserva la validación pero muestra un resumen genérico; falta decidir si se autoriza un mensaje específico por campo.
+- Prioridad media: antes de la demostración, ejecutar manualmente altas de estructura, usuarios, encargados, asignaciones e inscripciones con una Coordinación de demostración y permisos efectivos verificados.
+- Prioridad media: ejecutar manualmente materiales, estadísticas y notificaciones del dashboard de Coordinación.
+- Prioridad alta para cualquier demostración de proveedor real: configurar y autorizar separadamente conectividad, credenciales y costos. Esta entrega sólo aprobó el contrato mediante simulador local.
+- PostgreSQL productivo, Render y cualquier base no descartable no fueron accedidos ni validados por estas pruebas.
+
+El único cambio de producción pendiente de incorporar es la presentación de `asp-validation-for="Archivo"` en `Views/Entregas/Entregar.cshtml`; conserva la regla de archivo y no modifica autenticación, permisos, calificación, migraciones ni reglas de negocio.

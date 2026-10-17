@@ -138,6 +138,26 @@ Controles transversales pendientes: repetir Login, formularios, sidebar, DataTab
 | 1. Login de Coordinación | Sí | Aprobado | `Tests/E2E/sabia.e2e.spec.mjs`, Playwright 2/2 | Escritorio: requerido, credencial inválida, sesión, cambio inicial y ausencia de «Recordarme». Móvil 390×844: campos y validación visibles. |
 | 2–14. Recorrido académico | No | Pendiente | No se declara evidencia E2E | Requiere siembra completa de datos ficticios e interacciones de navegador por perfil; las pruebas HTTP previas no sustituyen esta fila. |
 
+### Evidencia E2E ejecutada en Paso 6.2
+
+| Escenario | Ejecutado realmente en Chrome | Resultado | Evidencia comprobada | Observación |
+| --- | --- | --- | --- | --- |
+| Docente crea unidad, planificación y la envía a revisión | Sí | Aprobado | Formularios y SweetAlert2; filas `Unidades`, `Planificaciones`, `PlanificacionesAsignaciones`, `PlanificacionesDetalles` y auditoría temporal | Acciones hechas desde el navegador; no por el seeder. |
+| Coordinación aprueba la planificación | Sí | Aprobado | Botón `Aprobar` en `/Planificaciones/Revisar/1`; estado, fechas, aprobador y dos registros `Planificaciones/Revisar` persistidos | El primer test excedió el timeout global después de iniciar la operación; la operación finalizó y se comprobó en PostgreSQL temporal. |
+| Docente crea y publica tarea | Sí | Aprobado | Formulario `/Tareas/Crear`, SweetAlert2 «Publicar tarea», estado publicado, fechas y auditoría `Tareas/Crear` y `Tareas/Publicar` | Prueba final Playwright: 1/1 aprobada. |
+| Alumno visualiza tarea disponible en móvil | Sí | Aprobado | Chrome 390×844, `/Tareas`, texto `Tarea visible E2E`, `Curso E2E` y `E2E A` | La disponibilidad se configuró vigente en hora de Guatemala. |
+| Alumno no ve tareas de otra sección | Sí | Aprobado | Chrome móvil no mostró `Tarea ajena E2E`; PostgreSQL temporal confirmó que estaba publicada en `Curso ajeno E2E`, sección B | El Alumno probado tiene inscripción solo en A; B cuenta con un Alumno ficticio diferente para que la publicación sea válida. |
+
+### Evidencia E2E ejecutada en Paso 6.3
+
+| Escenario | Ejecutado realmente en Chrome | Resultado | Evidencia comprobada | Observación |
+| --- | --- | --- | --- | --- |
+| Alumno entrega tarea de su sección | Sí | Aprobado | Formulario de `/Entregas/Entregar`, archivo ficticio, mensaje de éxito y fila temporal de `Entregas` para `E2E-ALU` | La tarea y entrega fueron creadas desde la interfaz; el seeder no creó ninguna entrega. |
+| Docente consulta y califica | Sí | Aprobado | Formulario de calificación, nota `8.00`, retroalimentación, persistencia y auditoría `Entregas/Entregar` y `Entregas/Calificar` | El Docente es el asignado al curso A. |
+| Alumno consulta su resultado | Sí | Aprobado | Chrome móvil, historial de intentos con estado calificado, nota y retroalimentación | Verificación Playwright de solo lectura: 1/1 aprobada en 55.3 s. |
+| Alumno ajeno no consulta la entrega | Sí | Aprobado | Solicitud autenticada desde el contexto Chrome del Alumno de B a la entrega de A devolvió 404 | Sin exposición ni modificación de datos. |
+| Docente sin asignación no califica | Sí | Aprobado | Solicitud autenticada desde el contexto Chrome del Docente ajeno a `Calificar` devolvió 404 | Sin cambio de calificación. |
+
 ## Pruebas no ejecutadas y motivo
 
 - No se hicieron llamadas reales a IA ni a correo. Las pruebas de IA usan dobles de `HttpMessageHandler` y datos de prueba.
@@ -146,3 +166,46 @@ Controles transversales pendientes: repetir Login, formularios, sidebar, DataTab
 ## Criterio de repetición
 
 Tras cualquier cambio de código, repetir compilación, la suite .NET no PostgreSQL, las pruebas JavaScript y `git diff --check`. Para PostgreSQL, crear un clúster nuevo y aislado, verificar su directorio y puerto antes de usarlo, establecer `SABIA_PRUEBAS_PG` contra su base administrativa y confirmar `SABIA_PRUEBAS_PG_CONFIRMAR=BASE_DESCARTABLE`. Nunca usar configuraciones de desarrollo, Render o producción.
+
+### Evidencia E2E ejecutada en Paso 6.4
+
+| Escenario | Ejecutado realmente en Chrome | Resultado | Evidencia comprobada | Observación |
+| --- | --- | --- | --- | --- |
+| Docente configura y publica cuestionario | Sí | Aprobado | Formulario de tarea y configuración; tres preguntas (múltiple, V/F y directa); SweetAlert2 de publicación; filas temporales de tarea, cuestionario y preguntas | El seeder no creó el cuestionario. |
+| Alumno inicia, navega, responde y finaliza | Sí | Aprobado | Chrome móvil, formulario de intento, tres respuestas, resultado visible 100 % | Persistencia: intento finalizado, calificación `100.00` y tres respuestas. |
+| Docente consulta resultados | Sí | Aprobado | Pantalla de resultados y detalle del intento del Alumno A | Auditoría temporal de configuración, respuestas y finalización. |
+| Alumno ajeno no accede a cuestionario/intento | Sí | Aprobado | Solicitudes autenticadas desde contexto Chrome de Alumno B devolvieron 404 | Sin exposición ni cambio de datos. |
+| Docente sin asignación no consulta resultados | Sí | Aprobado | Solicitud autenticada desde contexto Chrome del Docente ajeno devolvió 404 | Sin exposición ni cambio de datos. |
+
+### Evidencia E2E ejecutada en Paso 6.5
+
+| Escenario | Ejecutado realmente en Chrome | Resultado | Evidencia comprobada | Observación |
+| --- | --- | --- | --- | --- |
+| Generación desde PDF con IA simulada | Sí | Aprobado | Carga multipart del PDF ficticio, trabajo pendiente y sondeo posterior completado | Proveedor HTTP local; no hubo conexión externa ni clave real. |
+| Vista previa editable e importación | Sí | Aprobado | Edición del enunciado, redirección a Configurar y persistencia de dos preguntas | Tarea permanece en borrador; no se publicó automáticamente. |
+| Persistencia y auditoría | Sí | Aprobado | PostgreSQL: origen IA, dos preguntas, texto corregido; auditoría `ConfirmarImportacionIa` | Datos eliminados con la base temporal. |
+| Validaciones y antiforgery | Sí | Aprobado con observación | Archivo requerido/MIME inválido muestran resumen español; POST sin token devuelve 400 | Falta mensaje por campo más específico para el archivo inválido. |
+| Restricciones de IA | Sí | Aprobado | Alumno recibe denegación/redirección sin acceso a la función; Docente ajeno no ve planificación de A | Catálogo temporal confirma permiso solo para Docente/Superusuario. |
+
+## Paso 7: matriz consolidada vigente
+
+Esta tabla reemplaza para cierre las menciones cronológicas que indiquen que no se ejecutó E2E. Las filas de detalle anteriores se mantienen como evidencia, pero no deben sumarse entre sí ni con las suites HTTP, .NET o JavaScript.
+
+| Recorrido o control | Clasificación | Estado | Evidencia |
+| --- | --- | --- | --- |
+| Compilación y regresión automatizada | Prueba automatizada | Aprobado | 198 .NET sin PostgreSQL, 9 PostgreSQL temporal y 4 JavaScript ya documentadas. |
+| Login y entrada de Coordinación | Navegador | Aprobado | Chrome: `sabia.e2e.spec.mjs`, 2/2; escritorio y móvil. |
+| Docente consulta contexto académico | Navegador | Aprobado | Navegación de cursos y alumnos con cuenta ficticia autorizada. |
+| Crear unidad y planificación; enviar a revisión | Navegador | Aprobado | Formularios reales, confirmación SweetAlert2 y persistencia temporal. |
+| Coordinación aprueba planificación | Navegador | Aprobado | Interfaz, estado, fechas, aprobador y auditoría temporal. |
+| Crear y publicar tarea; Alumno la visualiza | Navegador | Aprobado | Interfaz de Docente y vista móvil del Alumno; aislamiento entre secciones. |
+| Entrega, calificación y consulta de resultado | Navegador | Aprobado | Formularios reales, persistencia, auditoría y denegaciones 404 cruzadas. |
+| Cuestionario: configurar, resolver y consultar | Navegador | Aprobado | `cuestionarios.spec.mjs`, 1/1; tres tipos de pregunta y aislamiento contextual. |
+| IA: generar, sondear, editar e importar | Simulación en navegador | Aprobado con alcance limitado | `ia-flujo.spec.mjs`, 1/1; proveedor HTTP local ficticio, sin proveedor externo. |
+| Crear estructura académica, usuarios, encargados, asignaciones e inscripciones | Manual pendiente | Pendiente | El seeder prepara contexto, pero no es evidencia de formularios reales. |
+| Publicar material; estadísticas, notificaciones y auditoría desde dashboard | Manual pendiente | Pendiente | Se comprobó auditoría de acciones concretas, no el recorrido completo de esos paneles. |
+| IA con proveedor externo | Proveedor externo | Pendiente | Requiere configuración y autorización independiente; no se usaron claves reales. |
+
+### Integridad de artefactos de prueba
+
+`Tests/E2E` conserva sólo fuente reproducible, fixtures ficticios, `package.json` y `package-lock.json`. No forman parte del conjunto propuesto `node_modules`, `test-results`, reportes, trazas, archivos de salida ni clústeres PostgreSQL temporales; ninguno está presente entre los cambios actuales. Las cuentas y contraseñas que aparecen en el seeder son ficticias y exclusivas de la base descartable; secretos, conexiones reales y datos personales no se versionan.

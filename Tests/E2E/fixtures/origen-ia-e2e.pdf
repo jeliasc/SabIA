@@ -1,0 +1,8 @@
+%PDF-1.4
+% PDF ficticio mínimo para pruebas E2E aisladas de SabIA.
+1 0 obj
+<< /Type /Catalog >>
+endobj
+trailer
+<< /Root 1 0 R >>
+%%EOF

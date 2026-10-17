@@ -90,3 +90,47 @@ Actualización Paso 6.1: Playwright ya está disponible de forma aislada en `Tes
 10. Repita 1, 3, 5 y 6 en móvil. Compruebe sidebar, botones, encabezados numéricos, validación por campo/resumen y ausencia de errores en consola.
 
 Al terminar, anote cada caso como Aprobado, Fallido, Omitido o Pendiente en la matriz. Si aparece un defecto, capture ruta, rol, pasos mínimos y resultado sin copiar sesiones, tokens, contraseñas ni datos reales.
+
+## Evidencia ejecutada: continuación Paso 6.2
+
+El recorrido parcial siguiente fue ejecutado realmente en Chrome con cuentas y datos ficticios sobre Kestrel y PostgreSQL temporales: Docente creó una unidad y planificación, la envió a revisión; Coordinación la aprobó; Docente creó/publicó una tarea; Alumno la visualizó en móvil. Las confirmaciones de enviar a revisión y publicar se resolvieron mediante SweetAlert2.
+
+Para repetirlo, use el seeder `Tests/E2E/Seed/Sabia.E2E.Seed.csproj` contra una base PostgreSQL descartable ya migrada y ejecute desde `Tests/E2E`:
+
+`npx.cmd playwright test flujo-academico.spec.mjs --grep "Continuación: Docente publica" --project=chrome-local --reporter=line`
+
+La tarea debe usar una disponibilidad ya vigente expresada como hora de Guatemala; el servidor la conserva en UTC. No interprete una tarea futura como una falla de visibilidad del Alumno. El aislamiento entre secciones fue comprobado con una segunda asignación y un segundo Alumno ficticios: la tarea publicada de B no apareció en la sesión móvil del Alumno inscrito en A.
+
+## Evidencia ejecutada: continuación Paso 6.3
+
+Con el mismo escenario temporal, el Alumno de A adjuntó y envió una respuesta ficticia para `Tarea visible E2E`; el Docente asignado abrió el historial y registró una calificación de demostración. El Alumno consultó después su resultado en viewport móvil. La persistencia temporal confirmó la entrega, nota y retroalimentación, y la auditoría registró las acciones de entregar y calificar.
+
+La comprobación final `Paso 6.3: verifica resultado y aislamiento de la entrega calificada` aprobó 1/1 en Chrome. Además del resultado del Alumno y la consulta autorizada del Docente, validó solicitudes autenticadas de un Alumno de la sección B y de un Docente sin asignación: ambas recibieron 404 para detalle/calificación de la entrega de A. Para repetir solo esta verificación, con la base temporal que ya contenga la entrega calificada, ejecute:
+
+`npx.cmd playwright test flujo-academico.spec.mjs --grep "verifica resultado y aislamiento" --project=chrome-local --reporter=line`
+
+La vista `Entregas/Entregar` ahora incluye la salida de validación para `Archivo`, de modo que los errores de propiedad enviados por el servidor se muestran junto al control de carga. Esto no modifica el requisito de archivo ni las reglas de calificación.
+
+## Evidencia ejecutada: Paso 6.4 — cuestionarios
+
+La prueba real `Tests/E2E/cuestionarios.spec.mjs` aprobó 1/1 en Chrome, Kestrel local y PostgreSQL temporal. Con datos ficticios, Docente creó desde la interfaz `Cuestionario completo E2E A`, configuró un intento y agregó preguntas de selección múltiple, verdadero/falso y respuesta directa; luego lo publicó mediante SweetAlert2.
+
+Alumno A lo resolvió desde viewport móvil: inició intento, navegó entre las tres preguntas, respondió y finalizó. El resultado visible fue 100 %. Docente consultó el resultado y el detalle autorizado. PostgreSQL temporal confirmó cuestionario publicado, tres preguntas, tres respuestas e intento finalizado con calificación `100.00`.
+
+Como control negativo, Alumno B y Docente sin asignación recibieron 404 en solicitudes autenticadas desde sus propios contextos Chrome para recursos de A. No se ejecutó IA en este paso. Para repetirlo, use una base temporal ya migrada y el seeder, inicie Kestrel y ejecute desde `Tests/E2E`: `npx.cmd playwright test cuestionarios.spec.mjs --project=chrome-local --reporter=line`.
+
+## Evidencia ejecutada: Paso 6.5 — IA simulada
+
+`Tests/E2E/ia-flujo.spec.mjs` aprobó 1/1 en Chrome contra Kestrel, PostgreSQL y un proveedor HTTP simulados en localhost. Docente cargó un PDF ficticio, solicitó cuestionario, observó el estado `pendiente` y el resultado `completado`, abrió la vista previa, corrigió un enunciado e importó dos preguntas a `Cuestionario IA importado E2E` desde la interfaz.
+
+La importación conservó la tarea en borrador. PostgreSQL temporal confirmó origen IA, dos preguntas y el texto corregido; la auditoría registró `ConfirmarImportacionIa`. Se comprobó también la configuración en viewport móvil, el rechazo 400 de un POST sin antiforgery, la denegación/redirección al Alumno y la ausencia de la planificación A para Docente ajeno.
+
+La prueba no representa una conexión real al proveedor externo. Los casos de archivo requerido y MIME inválido mostraron el resumen español genérico de validación; queda pendiente mejorar el detalle por campo si se autoriza una corrección de presentación. Para repetirla, configure solo la URL y clave ficticias del proveedor local y ejecute desde `Tests/E2E`: `npx.cmd playwright test ia-flujo.spec.mjs --project=chrome-local --reporter=line`.
+
+## Paso 7: demostración reproducible y límites declarados
+
+La demostración aprobada usa exclusivamente Kestrel local, PostgreSQL temporal aislado, usuarios ficticios y la fuente de `Tests/E2E`. Desde esa carpeta, restaure las dependencias declaradas con `npm ci`; prepare una base descartable migrada, ejecute el seeder con una cadena de conexión temporal e inicie Kestrel con esa misma conexión. Para el flujo de IA, ejecute además el proveedor simulado local y use únicamente sus valores ficticios por variables de entorno.
+
+Los recorridos que pueden demostrarse como ejecutados en Chrome son Login, unidad, planificación, aprobación, tarea, entrega, calificación, resultado, cuestionarios e IA simulada. La evidencia de pantalla móvil corresponde a 390×844. No presente como ejecutados en navegador los formularios de estructura académica, altas de usuarios/encargados, asignación e inscripción, carga de material ni el recorrido completo de estadísticas, notificaciones y auditoría de Coordinación: requieren comprobación manual previa.
+
+Antes de la demostración, valide manualmente que la cuenta ficticia de Coordinación tenga los permisos efectivos esperados y realice esas operaciones pendientes. Si se desea conectar IA real, debe obtenerse autorización independiente para URL, credenciales, costos y conectividad; la evidencia actual sólo valida el contrato con un proveedor local simulado. No se deben reutilizar bases reales, credenciales reales, ni archivos de `node_modules`, reportes, trazas o clústeres temporales.
