@@ -89,7 +89,7 @@
                                 <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
                                           ? "app-badge-success"
                                           : "app-badge-secondary")">
-                                        @x.Estado
+                                        @x.Estado.GetDisplayName()
                                     </span>
                             </td>
 
@@ -149,7 +149,7 @@
                         <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
                               ? "app-badge-success"
                               : "app-badge-secondary")">
-                            @x.Estado
+                            @x.Estado.GetDisplayName()
                         </span>
                     </div>
 

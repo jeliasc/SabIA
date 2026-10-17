@@ -9,7 +9,7 @@ public class FormularioCurso
     [Display(Name = "Grado")]
     public int GradoId { get; set; }
 
-    [Required, StringLength(100)]
+    [Required(ErrorMessage = "El nombre es obligatorio."), StringLength(100, ErrorMessage = "El nombre no puede superar los 100 caracteres.")]
     [Display(Name = "Nombre del curso")]
     public string Nombre { get; set; } = string.Empty;
 }

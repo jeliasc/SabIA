@@ -4,6 +4,7 @@ using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.GestionAsignaciones;
 using Proyecto_Final.Servicios.SeguridadAcademica;
+using Proyecto_Final.ViewModels.Comunes;
 using Proyecto_Final.ViewModels.Cuestionarios;
 
 namespace Proyecto_Final.Servicios.GestionCuestionarios;
@@ -1344,6 +1345,187 @@ public sealed class CuestionarioServicio(
 
         return await acceso.EsDocenteDeAsignacionAsync(asignacionId);
     }
+
+    // =====================================================================
+    // IMPORTACIÓN DESDE IA
+    // =====================================================================
+
+    // Tareas de cuestionario en borrador donde el usuario puede agregar preguntas.
+    public async Task<List<OpcionSeleccion>> ObtenerTareasParaImportarAsync()
+    {
+        var perfil = await acceso.ObtenerContextoUsuarioAsync();
+        var consulta = contexto.Tareas
+            .AsNoTracking()
+            .Where(x =>
+                x.Tipo == TipoTarea.Cuestionario &&
+                x.Estado == EstadoTarea.Borrador &&
+                x.Asignacion.Estado == EstadoRegistro.Activo &&
+                x.Asignacion.Seccion.CicloEscolar.Activo);
+
+        if (perfil.DocenteId.HasValue)
+            consulta = consulta.Where(x => x.Asignacion.DocenteId == perfil.DocenteId.Value);
+        else if (!acceso.EsOperadorInstitucional)
+            return [];
+
+        return await consulta
+            .OrderByDescending(x => x.Id)
+            .Select(x => new OpcionSeleccion
+            {
+                Id = x.Id,
+                Texto = x.Titulo + " · " + x.Asignacion.Curso.Nombre + " · " +
+                        x.Asignacion.Seccion.Grado.Nombre + " " + x.Asignacion.Seccion.Nombre
+            })
+            .ToListAsync();
+    }
+
+    // Agrega al cuestionario de la tarea las preguntas revisadas por el
+    // docente. La tarea sigue en borrador: el docente decide cuándo publicar.
+    public async Task<ResultadoOperacion<int>> ImportarPreguntasAsync(ImportarCuestionarioIa modelo)
+    {
+        if (!modelo.TareaId.HasValue)
+            return ResultadoOperacion<int>.Validacion(nameof(modelo.TareaId), "Seleccione la tarea de cuestionario.");
+
+        var tarea = await contexto.Tareas.FirstOrDefaultAsync(x =>
+            x.Id == modelo.TareaId.Value &&
+            x.Tipo == TipoTarea.Cuestionario &&
+            x.Estado == EstadoTarea.Borrador);
+
+        if (tarea is null)
+            return ResultadoOperacion<int>.Validacion(nameof(modelo.TareaId), "La tarea no existe o ya fue publicada.");
+
+        if (!await acceso.PuedeGestionarAsignacionVigenteAsync(tarea.AsignacionId))
+            return ResultadoOperacion<int>.Error("No tiene acceso a esa tarea.");
+
+        var seleccionadas = modelo.Preguntas
+            .Select((pregunta, indice) => (pregunta, indice))
+            .Where(x => x.pregunta.Incluir)
+            .ToList();
+
+        if (seleccionadas.Count == 0)
+            return ResultadoOperacion<int>.Error("Marque al menos una pregunta para importar.");
+
+        // Validación de cada pregunta marcada.
+        var errores = new Dictionary<string, string>();
+        var preparadas = new List<(PreguntaImportadaIa Datos, string[] Opciones, List<string> Correctas)>();
+
+        foreach (var (pregunta, indice) in seleccionadas)
+        {
+            var clave = $"Preguntas[{indice}]";
+            var opciones = pregunta.Tipo == TipoPregunta.VerdaderoFalso
+                ? ["Verdadero", "Falso"]
+                : Lineas(pregunta.Opciones);
+            var correctas = Lineas(pregunta.Correctas).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+            if (string.IsNullOrWhiteSpace(pregunta.Enunciado))
+                errores[$"{clave}.Enunciado"] = "Escriba la pregunta.";
+
+            if (pregunta.Punteo <= 0)
+                errores[$"{clave}.Punteo"] = "El punteo debe ser mayor que cero.";
+
+            if (pregunta.Tipo == TipoPregunta.TextoCorto)
+            {
+                if (correctas.Count == 0)
+                    errores[$"{clave}.Correctas"] = "Escriba al menos una respuesta aceptada.";
+                opciones = [];
+            }
+            else
+            {
+                if (opciones.Length < 2)
+                    errores[$"{clave}.Opciones"] = "Escriba al menos dos opciones, una por línea.";
+                else if (correctas.Count == 0)
+                    errores[$"{clave}.Correctas"] = "Indique la respuesta correcta.";
+                else if (pregunta.Tipo != TipoPregunta.SeleccionMultiple && correctas.Count != 1)
+                    errores[$"{clave}.Correctas"] = "Este tipo de pregunta lleva una sola respuesta correcta.";
+                else if (correctas.Any(c => !opciones.Any(o => CoincideOpcion(o, c))))
+                    errores[$"{clave}.Correctas"] = "Cada respuesta correcta debe ser igual a una de las opciones.";
+            }
+
+            preparadas.Add((pregunta, opciones, correctas));
+        }
+
+        if (errores.Count > 0)
+            return ResultadoOperacion<int>.Validacion(errores);
+
+        await using var transaccion = await contexto.Database.BeginTransactionAsync();
+        try
+        {
+            var cuestionario = await contexto.Cuestionarios
+                .FirstOrDefaultAsync(x => x.TareaId == tarea.Id);
+
+            if (cuestionario is null)
+            {
+                cuestionario = new Cuestionario { TareaId = tarea.Id };
+                contexto.Cuestionarios.Add(cuestionario);
+            }
+
+            if (cuestionario.ModalidadTiempo == ModalidadTiempoCuestionario.TiempoPorPregunta &&
+                !cuestionario.TiempoPorPreguntaSegundos.HasValue)
+            {
+                await transaccion.RollbackAsync();
+                return ResultadoOperacion<int>.Error(
+                    "El cuestionario usa tiempo por pregunta sin un tiempo predeterminado. Configúrelo antes de importar.");
+            }
+
+            cuestionario.Origen = OrigenCuestionario.InteligenciaArtificial;
+            await contexto.SaveChangesAsync();
+
+            var orden = await contexto.Preguntas
+                .Where(x => x.CuestionarioId == cuestionario.Id)
+                .Select(x => (int?)x.Orden)
+                .MaxAsync() ?? 0;
+
+            foreach (var (datos, opciones, correctas) in preparadas)
+            {
+                var pregunta = new Pregunta
+                {
+                    CuestionarioId = cuestionario.Id,
+                    Orden = ++orden,
+                    Tipo = datos.Tipo,
+                    Enunciado = datos.Enunciado.Trim(),
+                    Punteo = datos.Punteo,
+                    Retroalimentacion = string.IsNullOrWhiteSpace(datos.Retroalimentacion)
+                        ? null
+                        : datos.Retroalimentacion.Trim()
+                };
+
+                for (var i = 0; i < opciones.Length; i++)
+                {
+                    pregunta.Opciones.Add(new OpcionPregunta
+                    {
+                        Orden = i + 1,
+                        Texto = opciones[i],
+                        EsCorrecta = correctas.Any(c => CoincideOpcion(opciones[i], c))
+                    });
+                }
+
+                if (datos.Tipo == TipoPregunta.TextoCorto)
+                {
+                    foreach (var correcta in correctas)
+                        pregunta.RespuestasAceptadas.Add(new RespuestaAceptada { Texto = correcta });
+                }
+
+                contexto.Preguntas.Add(pregunta);
+            }
+
+            await contexto.SaveChangesAsync();
+            await transaccion.CommitAsync();
+
+            return ResultadoOperacion<int>.Correcto(
+                cuestionario.Id,
+                $"Se importaron {preparadas.Count} pregunta(s). Revise el cuestionario y publíquelo cuando esté listo.");
+        }
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
+    }
+
+    private static string[] Lineas(string? valor) =>
+        (valor ?? string.Empty)
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(x => x.Length > 0)
+            .ToArray();
 
     // =====================================================================
     // APOYO

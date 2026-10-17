@@ -37,9 +37,17 @@
                 Cuestionarios manuales o generados con apoyo de IA.
             </p>
         </div>
-        <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-primary">
-            @(soloLectura ? "Ver vigentes" : "Ver historial")
-        </a>
+        <div class="d-flex flex-wrap gap-2">
+            @if (editar && !soloLectura)
+            {
+                <a asp-action="ImportarIa" class="app-btn app-btn-soft-secondary">
+                    <i class="bi bi-stars"></i> Importar desde IA
+                </a>
+            }
+            <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-primary">
+                @(soloLectura ? "Ver vigentes" : "Ver historial")
+            </a>
+        </div>
     </div>
 
     <div class="card shadow-sm border border-secondary">
@@ -80,9 +88,9 @@
                                         : x.MaximoIntentos)
                                 </td>
 
-                                <td>@x.Origen</td>
+                                <td>@x.Origen.GetDisplayName()</td>
 
-                                <td>@x.EstadoTarea</td>
+                                <td>@x.EstadoTarea.GetDisplayName()</td>
 
                                 @if (hayAcciones)
                                 {

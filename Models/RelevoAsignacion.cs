@@ -4,19 +4,28 @@ namespace Proyecto_Final.Models;
 
 public enum TipoRelevoAsignacion
 {
+    [Display(Name = "Ordinario")]
     Ordinario = 1,
+    [Display(Name = "Excepcional")]
     Excepcional = 2
 }
 
 [Flags]
 public enum OperacionDelegacionAcademica
 {
+    [Display(Name = "Ninguna")]
     Ninguna = 0,
+    [Display(Name = "Calificar entregas")]
     CalificarEntregas = 1,
+    [Display(Name = "Reabrir entregas")]
     ReabrirEntregas = 2,
+    [Display(Name = "Revisar cuestionarios")]
     RevisarCuestionarios = 4,
+    [Display(Name = "Gestionar evaluaciones")]
     GestionarEvaluaciones = 8,
+    [Display(Name = "Solicitar correcciones")]
     SolicitarCorrecciones = 16,
+    [Display(Name = "Continuar actividades de alumnos")]
     ContinuarActividadesAlumnos = 32
 }
 

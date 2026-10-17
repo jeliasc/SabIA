@@ -53,7 +53,7 @@ public sealed class EntregarTarea
 
     public DateTime? FechaLimite { get; set; }
 
-    [StringLength(1000)]
+    [StringLength(1000, ErrorMessage = "El comentario no puede superar los 1000 caracteres.")]
     public string? Comentario { get; set; }
 
     public IFormFile? Archivo { get; set; }
@@ -114,10 +114,10 @@ public sealed class CalificarEntrega
 
     public DateTime? FechaEntrega { get; set; }
 
-    [Range(typeof(decimal), "0", "9999999")]
+    [Range(typeof(decimal), "0", "9999999", ErrorMessage = "Ingrese una calificación válida.")]
     public decimal Calificacion { get; set; }
 
-    [StringLength(4000)]
+    [StringLength(4000, ErrorMessage = "La retroalimentación no puede superar los 4000 caracteres.")]
     public string? Retroalimentacion { get; set; }
 
     public bool Devolver { get; set; }
@@ -151,9 +151,9 @@ public sealed class ReabrirEntrega
 
     public EstadoEntrega EstadoActual { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Seleccione una entrega.")]
     public DateTime FechaLimite { get; set; }
 
-    [Required, StringLength(500, MinimumLength = 5)]
+    [Required(ErrorMessage = "El motivo es obligatorio."), StringLength(500, MinimumLength = 5, ErrorMessage = "El motivo debe contener entre 5 y 500 caracteres.")]
     public string Motivo { get; set; } = string.Empty;
 }

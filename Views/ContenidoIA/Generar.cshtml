@@ -15,12 +15,12 @@
                 <fieldset class="mb-4">
                     <legend class="fs-6 fw-semibold mb-2">Documento de origen</legend>
                     <div class="form-check">
-                        <input asp-for="OrigenDocumento" class="form-check-input" type="radio" value="Planificacion" data-origen-ia="planificacion" />
-                        <label class="form-check-label" for="OrigenDocumento">Utilizar una planificación existente</label>
+                        <input asp-for="OrigenDocumento" id="OrigenDocumentoPlanificacion" class="form-check-input" type="radio" value="Planificacion" data-origen-ia="planificacion" />
+                        <label class="form-check-label" for="OrigenDocumentoPlanificacion">Utilizar una planificación existente</label>
                     </div>
                     <div class="form-check">
-                        <input asp-for="OrigenDocumento" class="form-check-input" type="radio" value="ArchivoLocal" data-origen-ia="archivo" />
-                        <label class="form-check-label" for="OrigenDocumento">Cargar un archivo PDF desde mi computadora</label>
+                        <input asp-for="OrigenDocumento" id="OrigenDocumentoArchivo" class="form-check-input" type="radio" value="ArchivoLocal" data-origen-ia="archivo" />
+                        <label class="form-check-label" for="OrigenDocumentoArchivo">Cargar un archivo PDF desde mi computadora</label>
                     </div>
                 </fieldset>
                 <div class="mb-4" data-origen-planificacion>
@@ -79,25 +79,5 @@
     </div>
 </div>
 @section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const formulario = document.querySelector('[data-origen-ia-formulario]');
-            if (!formulario) return;
-            const plan = formulario.querySelector('[data-origen-planificacion]');
-            const archivo = formulario.querySelector('[data-origen-archivo]');
-            const selectorPlan = formulario.querySelector('[name="PlanificacionId"]');
-            const selectorArchivo = formulario.querySelector('[name="Documento"]');
-            const actualizar = () => {
-                const local = formulario.querySelector('[data-origen-ia="archivo"]').checked;
-                plan.classList.toggle('d-none', local);
-                archivo.classList.toggle('d-none', !local);
-                selectorPlan.disabled = local;
-                selectorArchivo.disabled = !local;
-                if (local) selectorPlan.value = '';
-                else selectorArchivo.value = '';
-            };
-            formulario.querySelectorAll('[data-origen-ia]').forEach(x => x.addEventListener('change', actualizar));
-            actualizar();
-        });
-    </script>
+    <script src="~/js/contenido-ia-origen.js" asp-append-version="true"></script>
 }

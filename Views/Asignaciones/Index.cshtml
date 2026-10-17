@@ -112,7 +112,7 @@
                                         <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
                                               ? "app-badge-success"
                                               : "app-badge-danger")">
-                                            @x.Estado
+                                            @x.Estado.GetDisplayName()
                                         </span>
                                     </td>
 

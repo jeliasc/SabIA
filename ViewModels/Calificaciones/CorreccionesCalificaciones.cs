@@ -27,19 +27,19 @@ public sealed class CorreccionCalificacionLista
 
 public sealed class SolicitarCorreccionCalificacion
 {
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione una configuración.")]
     public int ConfiguracionId { get; set; }
 
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione un resultado.")]
     public int ResultadoId { get; set; }
 
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione una actividad.")]
     public int ActividadId { get; set; }
 
-    [Range(typeof(decimal), "0", "9999999")]
+    [Range(typeof(decimal), "0", "9999999", ErrorMessage = "Ingrese una nota válida.")]
     public decimal NotaPropuesta { get; set; }
 
-    [Required, StringLength(1000, MinimumLength = 10)]
+    [Required(ErrorMessage = "El motivo es obligatorio."), StringLength(1000, MinimumLength = 10, ErrorMessage = "El motivo debe contener entre 10 y 1000 caracteres.")]
     public string Motivo { get; set; } = string.Empty;
 }
 
@@ -49,7 +49,7 @@ public sealed class RevisarCorreccionCalificacion
     public bool Aprobar { get; set; }
     public Guid VersionConcurrencia { get; set; }
 
-    [StringLength(1000)]
+    [StringLength(1000, ErrorMessage = "La observación no puede superar los 1000 caracteres.")]
     public string? Observacion { get; set; }
 }
 

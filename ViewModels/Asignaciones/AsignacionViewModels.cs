@@ -6,13 +6,13 @@ namespace Proyecto_Final.ViewModels.Asignaciones;
 
 public class FormularioAsignacion
 {
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione una sección.")]
     public int SeccionId { get; set; }
 
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione un curso.")]
     public int CursoId { get; set; }
 
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione un docente.")]
     public int DocenteId { get; set; }
 
     public List<OpcionAsignacion> Secciones { get; set; } = [];
@@ -90,12 +90,12 @@ public sealed class ReemplazarDocenteAsignacion
     [Range(1, int.MaxValue, ErrorMessage = "Seleccione el docente sustituto.")]
     public int DocenteSustitutoId { get; set; }
 
-    [Required, StringLength(1000, MinimumLength = 10)]
+    [Required(ErrorMessage = "El motivo es obligatorio."), StringLength(1000, MinimumLength = 10, ErrorMessage = "El motivo debe contener entre 10 y 1000 caracteres.")]
     public string Motivo { get; set; } = string.Empty;
 
     public TipoRelevoAsignacion Tipo { get; set; } = TipoRelevoAsignacion.Ordinario;
 
-    [Required]
+    [Required(ErrorMessage = "La fecha efectiva es obligatoria.")]
     public DateTime FechaEfectiva { get; set; }
 
     public bool ConfirmarConsecuencias { get; set; }

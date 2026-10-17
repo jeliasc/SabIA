@@ -39,8 +39,8 @@
                                 {
                                     <tr>
                                         <td class="text-nowrap">@movimiento.FechaUtc.ToString("dd/MM/yyyy HH:mm:ss")</td>
-                                        <td>@movimiento.Tipo</td>
-                                        <td>@movimiento.EstadoAnterior → @movimiento.EstadoNuevo</td>
+                                        <td>@movimiento.Tipo.GetDisplayName()</td>
+                                        <td>@movimiento.EstadoAnterior.GetDisplayName() → @movimiento.EstadoNuevo.GetDisplayName()</td>
                                         <td>@movimiento.Responsable</td>
                                         <td class="text-break">@(movimiento.Justificacion ?? "—")</td>
                                     </tr>

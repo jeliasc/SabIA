@@ -63,7 +63,7 @@
                         @foreach (var x in Model)
                         {
                             <tr>
-                                <td>@x.Nivel</td>
+                                <td>@x.Nivel.GetDisplayName()</td>
 
                                 <td class="fw-semibold">
                                     @x.Nombre

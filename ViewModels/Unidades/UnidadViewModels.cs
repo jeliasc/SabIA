@@ -6,13 +6,13 @@ namespace Proyecto_Final.ViewModels.Unidades;
 
 public class FormularioUnidad
 {
-    [Required, StringLength(150)]
+    [Required(ErrorMessage = "El título es obligatorio."), StringLength(150, ErrorMessage = "El título no puede superar los 150 caracteres.")]
     public string Titulo { get; set; } = string.Empty;
 
-    [StringLength(1000)]
+    [StringLength(1000, ErrorMessage = "La descripción no puede superar los 1000 caracteres.")]
     public string? Descripcion { get; set; }
 
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "El orden debe ser mayor que cero.")]
     public int AsignacionId { get; set; }
 
     public int? PeriodoId { get; set; }

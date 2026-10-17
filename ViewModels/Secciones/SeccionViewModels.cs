@@ -13,7 +13,7 @@ public class FormularioSeccion
     [Display(Name = "Grado")]
     public int GradoId { get; set; }
 
-    [Required, StringLength(5)]
+    [Required(ErrorMessage = "El nombre de la sección es obligatorio."), StringLength(5, ErrorMessage = "El nombre de la sección no puede superar los 5 caracteres.")]
     [Display(Name = "Sección")]
     public string Nombre { get; set; } = string.Empty;
 }

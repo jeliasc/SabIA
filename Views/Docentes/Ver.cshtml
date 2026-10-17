@@ -87,7 +87,7 @@
                         <div class="col-md-6">
                             <label for="detalle-nivel" class="form-label">Nivel académico</label>
                             <input id="detalle-nivel" type="text" class="form-control"
-                                   value="@(Model.NivelAcademico?.ToString() ?? "Sin registro")" readonly />
+                                   value="@(Model.NivelAcademico?.GetDisplayName() ?? "Sin registro")" readonly />
                         </div>
 
                         <div class="col-md-6">
@@ -176,7 +176,7 @@
                                             <td>@asignacion.Curso</td>
                                             <td>
                                                 <span class="app-badge @(asignacion.Estado == EstadoRegistro.Activo ? "app-badge-success" : "app-badge-danger")">
-                                                    @asignacion.Estado
+                                                    @asignacion.Estado.GetDisplayName()
                                                 </span>
                                             </td>
                                         </tr>
@@ -193,7 +193,7 @@
                                         <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                                             <div class="fw-semibold">@asignacion.Curso</div>
                                             <span class="app-badge @(asignacion.Estado == EstadoRegistro.Activo ? "app-badge-success" : "app-badge-danger")">
-                                                @asignacion.Estado
+                                                @asignacion.Estado.GetDisplayName()
                                             </span>
                                         </div>
                                         <div>@asignacion.Grado @asignacion.Seccion</div>

@@ -6,5 +6,6 @@ public enum TipoEventoAuditoria
 {
     [Display(Name = "Operación")]
     Operacion = 1,
+    [Display(Name = "Seguridad")]
     Seguridad = 2
 }

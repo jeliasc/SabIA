@@ -3,12 +3,16 @@ using Microsoft.AspNetCore.Mvc;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.GestionCuestionarios;
 using Proyecto_Final.Servicios.GestionNotificaciones;
+using Proyecto_Final.Servicios.InteligenciaArtificial;
 using Proyecto_Final.ViewModels.Cuestionarios;
 
 namespace Proyecto_Final.Controllers;
 
 [Authorize(Policy = Permisos.Cuestionarios.Ver)]
-public class CuestionariosController(ICuestionarioServicio s, INotificacionServicio notificaciones) : Controller
+public class CuestionariosController(
+    ICuestionarioServicio s,
+    INotificacionServicio notificaciones,
+    IIaServicio ia) : Controller
 {
     public async Task<IActionResult> Index() =>
         View(await s.ObtenerTodosAsync());
@@ -274,5 +278,65 @@ public class CuestionariosController(ICuestionarioServicio s, INotificacionServi
         }
 
         return NotFound();
+    }
+
+    // =====================================================================
+    // IMPORTAR DESDE IA
+    // =====================================================================
+
+    // Vista previa a partir de un trabajo de IA terminado (o vacía para pegar texto).
+    [HttpGet]
+    [Authorize(Policy = Permisos.Cuestionarios.Editar)]
+    public async Task<IActionResult> ImportarIa(string? jobId, int? tareaId, CancellationToken cancellationToken)
+    {
+        var m = new ImportarCuestionarioIa { JobId = jobId, TareaId = tareaId };
+
+        if (!string.IsNullOrWhiteSpace(jobId))
+        {
+            var estado = await ia.ConsultarEstadoAsync(jobId, cancellationToken);
+            if (estado.Exitoso && !string.IsNullOrWhiteSpace(estado.Datos?.Resultado))
+                m.Texto = estado.Datos.Resultado;
+            else
+                m.ResultadoNoDisponible = true;
+        }
+
+        m.Preguntas = LectorCuestionarioIa.Analizar(m.Texto);
+        m.Tareas = await s.ObtenerTareasParaImportarAsync();
+        return View(m);
+    }
+
+    // Vuelve a interpretar el texto (pegado o corregido por el docente).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Permisos.Cuestionarios.Editar)]
+    public async Task<IActionResult> ImportarIa(ImportarCuestionarioIa m)
+    {
+        ModelState.Clear();
+        m.Preguntas = LectorCuestionarioIa.Analizar(m.Texto);
+        m.Tareas = await s.ObtenerTareasParaImportarAsync();
+        return View(m);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Permisos.Cuestionarios.Editar)]
+    public async Task<IActionResult> ConfirmarImportacionIa(ImportarCuestionarioIa m)
+    {
+        var r = await s.ImportarPreguntasAsync(m);
+
+        if (!r.Exitoso)
+        {
+            ModelState.Clear();
+            foreach (var (campo, mensaje) in r.Errores)
+                ModelState.AddModelError(campo, mensaje);
+            if (r.Errores.Count == 0 || r.Errores.Keys.All(x => x.StartsWith("Preguntas[")))
+                ModelState.AddModelError(string.Empty, r.Errores.Count == 0 ? r.Mensaje : "Revise las preguntas marcadas en rojo.");
+
+            m.Tareas = await s.ObtenerTareasParaImportarAsync();
+            return View(nameof(ImportarIa), m);
+        }
+
+        TempData["Informacion"] = r.Mensaje;
+        return RedirectToAction(nameof(Configurar), new { tareaId = m.TareaId });
     }
 }

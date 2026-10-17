@@ -28,7 +28,7 @@
                 <dd class="col-sm-9">@(Model.Tipo == Proyecto_Final.Models.TipoEventoAuditoria.Operacion ? "Operación" :
                                         "Seguridad")</dd>
                     <dt class="col-sm-3">Resultado</dt>
-                    <dd class="col-sm-9">@Model.Resultado</dd>
+                    <dd class="col-sm-9">@Model.Resultado.GetDisplayName()</dd>
                     <dt class="col-sm-3">Entidad</dt>
                     <dd class="col-sm-9">@(Model.Entidad ?? "—") @Model.EntidadId</dd>
                     <dt class="col-sm-3">Descripción</dt>

@@ -1,3 +1,5 @@
+using Proyecto_Final.Models;
+
 namespace Proyecto_Final.ViewModels.Prototipo;
 
 public class DashboardPrototipo
@@ -75,7 +77,7 @@ public class EntregaPendientePrototipo
 public sealed class PlanificacionResumenDashboard
 {
     public string Titulo { get; set; } = string.Empty;
-    public string Estado { get; set; } = string.Empty;
+    public EstadoPlanificacion Estado { get; set; }
     public string Periodo { get; set; } = string.Empty;
 }
 

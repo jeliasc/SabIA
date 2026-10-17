@@ -43,7 +43,7 @@
                 <section data-intento-id="@intento.Id" hidden="@(intento.Id == seleccionado?.Id ? null : "hidden")">
                     <h3 class="h5">Intento @intento.NumeroEnvio</h3>
                     <dl class="row mb-3">
-                        <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">@intento.Estado</dd>
+                        <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">@intento.Estado.GetDisplayName()</dd>
                         <dt class="col-sm-3">Fecha de entrega</dt><dd class="col-sm-9">@(intento.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Pendiente")</dd>
                         @if (intento.Calificacion.HasValue) { <dt class="col-sm-3">Calificación</dt><dd class="col-sm-9">@intento.Calificacion / @Model.PunteoMaximo</dd> }
                         @if (!string.IsNullOrWhiteSpace(intento.Retroalimentacion)) { <dt class="col-sm-3">Retroalimentación</dt><dd class="col-sm-9 white-space-pre-line">@intento.Retroalimentacion</dd> }

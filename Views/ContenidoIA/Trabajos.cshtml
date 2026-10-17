@@ -1,6 +1,10 @@
 @model Proyecto_Final.ViewModels.ContenidoIA.TrabajosContenidoIa
+@using Microsoft.AspNetCore.Authorization
+@using Proyecto_Final.Seguridad
+@inject IAuthorizationService A
 @{
     ViewData["Title"] = "Generación con IA";
+    var puedeImportar = (await A.AuthorizeAsync(User, Permisos.Cuestionarios.Editar)).Succeeded;
 }
 <div class="container-fluid">
     <div class="mb-4">
@@ -23,6 +27,14 @@
                             <pre class="mb-0 text-wrap"></pre>
                         </div>
                         <div class="text-danger d-none" data-error></div>
+                        @if (puedeImportar && trabajo.Tipo == "cuestionario")
+                        {
+                            @* Se muestra cuando el trabajo termina (contenido-ia.js). *@
+                            <a asp-controller="Cuestionarios" asp-action="ImportarIa" asp-route-jobId="@trabajo.JobId"
+                               class="app-btn app-btn-soft-primary mt-3 d-none" data-importar-ia>
+                                <i class="bi bi-ui-checks"></i> Usar en un cuestionario
+                            </a>
+                        }
                     </div>
                 </div>
             </div>

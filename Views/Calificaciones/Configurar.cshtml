@@ -114,7 +114,7 @@
                                         <select name="Categorias[@i].Tipo" class="form-select" data-campo="Tipo">
                                             @foreach (var tipo in Enum.GetValues<TipoCategoriaEvaluacion>())
                                             {
-                                                <option value="@((int)tipo)" selected="@(categoria.Tipo == tipo ? "selected" : null)">@tipo</option>
+                                                <option value="@((int)tipo)" selected="@(categoria.Tipo == tipo ? "selected" : null)">@tipo.GetDisplayName()</option>
                                             }
                                         </select>
                                     </div>

@@ -4,11 +4,11 @@ namespace Proyecto_Final.ViewModels.Autenticacion;
 
 public class Login
 {
-    [Required(ErrorMessage = "El nombre de usuario es obligatorio.")]
+    [Required(ErrorMessage = "Ingrese su nombre de usuario.")]
     [Display(Name = "Usuario")]
     public string Usuario { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "La contraseña es obligatoria.")]
+    [Required(ErrorMessage = "Ingrese su contraseña.")]
     [DataType(DataType.Password)]
     [Display(Name = "Contraseña")]
     public string Contrasena { get; set; } = string.Empty;

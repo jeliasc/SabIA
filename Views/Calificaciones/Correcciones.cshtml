@@ -36,7 +36,7 @@
                                     <div class="text-muted small">@solicitud.Curso · @solicitud.Periodo · @solicitud.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</div>
                                 </div>
                                 <span class="app-badge align-self-start @(solicitud.Estado == EstadoSolicitudCorreccion.Aplicada ? "app-badge-success" : solicitud.Estado == EstadoSolicitudCorreccion.Rechazada ? "app-badge-danger" : "app-badge-warning")">
-                                    @solicitud.Estado
+                                    @solicitud.Estado.GetDisplayName()
                                 </span>
                             </div>
                             <div class="row g-3 mb-3">

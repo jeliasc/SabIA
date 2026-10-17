@@ -100,7 +100,7 @@
                                     <td>
                                         <span
                                             class="app-badge @(item.EstadoCierre == EstadoCierreCalificaciones.Cerrado ? "app-badge-secondary" : "app-badge-success")">
-                                            @item.EstadoCierre
+                                            @item.EstadoCierre.GetDisplayName()
                                         </span>
                                     </td>
                                     <td>
@@ -138,7 +138,7 @@
                             </div>
                             <span
                                 class="app-badge align-self-start @(item.EstadoCierre == EstadoCierreCalificaciones.Cerrado ? "app-badge-secondary" : "app-badge-success")">
-                                @item.EstadoCierre
+                                @item.EstadoCierre.GetDisplayName()
                             </span>
                         </div>
                         <dl class="row small mb-3">

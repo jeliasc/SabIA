@@ -7,21 +7,21 @@ namespace Proyecto_Final.ViewModels.Materiales;
 
 public class FormularioMaterial
 {
-    [Range(1, int.MaxValue)]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione una unidad.")]
     public int UnidadId { get; set; }
 
     [EnumDataType(typeof(TipoMaterial))]
     public TipoMaterial Tipo { get; set; }
 
-    [Required, StringLength(200)]
+    [Required(ErrorMessage = "El título es obligatorio."), StringLength(200, ErrorMessage = "El título no puede superar los 200 caracteres.")]
     public string Titulo { get; set; } = string.Empty;
 
-    [StringLength(1000)]
+    [StringLength(1000, ErrorMessage = "La descripción no puede superar los 1000 caracteres.")]
     public string? Descripcion { get; set; }
 
     public bool Descargable { get; set; } = true;
 
-    [StringLength(2048)]
+    [StringLength(2048, ErrorMessage = "La dirección del enlace no puede superar los 2048 caracteres.")]
     public string? UrlExterna { get; set; }
 
     public IFormFile? Archivo { get; set; }

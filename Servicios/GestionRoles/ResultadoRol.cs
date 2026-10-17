@@ -2,9 +2,13 @@ namespace Proyecto_Final.Servicios.GestionRoles;
 
 public enum TipoResultadoRol
 {
+    [Display(Name = "Correcto")]
     Correcto,
+    [Display(Name = "Validación")]
     Validacion,
+    [Display(Name = "Advertencia")]
     Advertencia,
+    [Display(Name = "Error")]
     Error
 }
 

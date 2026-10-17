@@ -56,7 +56,7 @@
                                 <td class="text-start">@item.Orden</td>
                                 <td class="fw-semibold">@item.Titulo</td>
                                 <td>@item.Unidad</td>
-                                <td>@item.Tipo</td>
+                                <td>@item.Tipo.GetDisplayName()</td>
                                 <td>
                                     @if (item.Archivo != null && item.PuedeVisualizar)
                                     {
@@ -81,7 +81,7 @@
                                     }
                                 </td>
                                 <td><span
-                                    class="app-badge @(item.Estado == EstadoPublicacionMaterial.Publicado ? "app-badge-success" : item.Estado == EstadoPublicacionMaterial.Oculto ? "app-badge-danger" : "app-badge-secondary")">@item.Estado</span>
+                                    class="app-badge @(item.Estado == EstadoPublicacionMaterial.Publicado ? "app-badge-success" : item.Estado == EstadoPublicacionMaterial.Oculto ? "app-badge-danger" : "app-badge-secondary")">@item.Estado.GetDisplayName()</span>
                                 </td>
                                 @if (hayAcciones)
                                 {

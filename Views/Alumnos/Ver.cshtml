@@ -201,7 +201,7 @@
                                             <td>@inscripcion.Carrera</td>
                                             <td>@inscripcion.Fecha.ToString("dd/MM/yyyy")</td>
                                             <td>
-                                                <span class="app-badge @claseEstado">@inscripcion.Estado</span>
+                                                <span class="app-badge @claseEstado">@inscripcion.Estado.GetDisplayName()</span>
                                                 @if (inscripcion.EsVigente)
                                                 {
                                                     <span class="app-badge app-badge-success ms-1">Vigente</span>
@@ -227,7 +227,7 @@
                                         <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                                             <div class="fw-semibold">@inscripcion.Grado @inscripcion.Seccion</div>
                                             <div class="d-flex flex-column align-items-end gap-1">
-                                                <span class="app-badge @claseEstado">@inscripcion.Estado</span>
+                                                <span class="app-badge @claseEstado">@inscripcion.Estado.GetDisplayName()</span>
                                                 @if (inscripcion.EsVigente)
                                                 {
                                                     <span class="app-badge app-badge-success">Vigente</span>
