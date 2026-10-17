@@ -199,3 +199,14 @@ Observaciones abiertas, sin cambios de código en este cierre:
 - PostgreSQL productivo, Render y cualquier base no descartable no fueron accedidos ni validados por estas pruebas.
 
 El único cambio de producción pendiente de incorporar es la presentación de `asp-validation-for="Archivo"` en `Views/Entregas/Entregar.cshtml`; conserva la regla de archivo y no modifica autenticación, permisos, calificación, migraciones ni reglas de negocio.
+
+## Paso 8: administración académica en Chrome
+
+El 16/10/2026 se ejecutó `Tests/E2E/administracion-academica.spec.mjs` en Chrome controlado por Playwright contra Kestrel local y PostgreSQL temporal aislado. La corrida final aprobó 1/1 en 3.0 minutos. Todas las entidades del escenario fueron creadas desde formularios reales: ciclo 2099, período, grado, curso, secciones A y B, docente con cuenta temporal, encargado independiente, alumno con encargado registrado en línea, asignación docente e inscripción inicial.
+
+- Se comprobaron en pantalla la validación de fechas requeridas del ciclo y la de nombre requerido del alumno, la confirmación SweetAlert2 de las altas de Docente y Alumno, y el rechazo visible de un carnet docente duplicado.
+- La creación de alumno con sección registró la inscripción inicial; un intento posterior de inscripción activa duplicada fue rechazado desde el formulario. La asignación fue creada para el curso y sección correspondientes.
+- Los conteos de la base temporal confirmaron persistencia de 1 ciclo, 1 período, 1 grado, 2 secciones y las filas creadas de cursos, docentes, alumnos, encargados, asignaciones e inscripciones. Un POST de creación de encargado sin antiforgery devolvió 400.
+- Docente inició sesión y vio su curso; al abrir la creación de ciclos recibió denegación. Alumno inició sesión en viewport 390×844 y vio únicamente su sección y encargado asociado. La portada de Coordinación cargó correctamente.
+
+No se modificó código de producción. Los únicos ajustes fueron selectores y datos ficticios de la nueva prueba E2E. La cuenta de coordinación de esta corrida es el superusuario inicial ficticio, por lo que valida las pantallas administrativas pero no sustituye una comprobación futura del conjunto exacto de permisos de un rol de Coordinación limitado. Permanecen pendientes el traslado/reinscripción desde UI y el recorrido completo de estadísticas, notificaciones y auditoría desde sus paneles.
