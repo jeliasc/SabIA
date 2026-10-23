@@ -40,10 +40,11 @@
         }
     </div>
 
-    <div class="card shadow-sm border border-secondary">
+    <div class="card shadow-sm border border-secondary d-none d-md-block">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table app-table w-100" data-tabla-index data-actions-column="@(hayAcciones ? "true" : "false")">
+                <table class="table app-table w-100" data-tabla-index
+                       data-actions-column="@(hayAcciones ? "true" : "false")">
                     <thead>
                         <tr>
                             <th>Nivel</th>
@@ -79,15 +80,15 @@
 
                                 @if (hayAcciones)
                                 {
-                                <td class="text-end">
-                                    @if (editar)
-                                    {
-                                        <a asp-action="Editar" asp-route-id="@x.Id"
-                                           class="app-btn app-btn-soft-secondary app-btn-sm">
-                                            Editar
-                                        </a>
-                                    }
-                                </td>
+                                    <td class="text-end">
+                                        @if (editar)
+                                        {
+                                            <a asp-action="Editar" asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Editar
+                                            </a>
+                                        }
+                                    </td>
                                 }
                             </tr>
                         }
@@ -97,3 +98,56 @@
         </div>
     </div>
 </div>
+<div class="d-md-none" id="gradosMovil">
+    <div class="mb-3">
+        <div class="d-grid">
+            <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                    aria-controls="busqueda-grados-movil" data-mostrar-busqueda-grados>
+                <i class="bi bi-search" aria-hidden="true"> </i>
+                Buscar grado
+            </button>
+        </div>
+        <div id="busqueda-grados-movil" class="mt-2 d-none" data-contenedor-busqueda-grados>
+            <input type="search" id="buscarGradoMovil" class="form-control"
+                   placeholder="Nivel, grado, carrera u orden..." aria-label="Buscar grados" autocomplete="off" />
+        </div>
+    </div>
+    <div data-lista-grados-movil>
+        @foreach (var x in Model)
+        {
+            <article class="card shadow-sm border-0 mb-3 grado-movil-item"
+                     data-busqueda="@($"{x.Nivel.GetDisplayName()} {x.Nombre} {x.Carrera} {x.Orden} {x.Secciones} {x.Cursos}")">
+                <div class="card-body">
+                    <div class="fw-bold">@x.Nombre</div>
+                    <div class="text-muted mb-3">@x.Nivel.GetDisplayName() · @x.Carrera</div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-4"><span class="small text-muted d-block">Orden</span>@x.Orden</div>
+                        <div class="col-4"><span class="small text-muted d-block">Secciones</span>@x.Secciones</div>
+                        <div class="col-4"><span class="small text-muted d-block">Cursos</span>@x.Cursos</div>
+                    </div>
+                    @if (editar)
+                    {
+                        <a asp-action="Editar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary w-100">Editar</a>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+    <p class="text-muted text-center py-3 d-none" data-sin-grados-movil>No se encontraron grados.</p>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <span class="small text-muted" data-contador-grados-movil> </span>
+        <div class="d-flex gap-2">
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm" data-anterior-grados-movil>
+                Anterior
+            </button>
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm" data-siguiente-grados-movil>
+                Siguiente
+            </button>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script src="~/js/grados-index.js" asp-append-version="true"></script>
+}

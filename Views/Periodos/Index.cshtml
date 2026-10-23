@@ -40,10 +40,11 @@
         }
     </div>
 
-    <div class="card shadow-sm border border-secondary">
+    <div class="card shadow-sm border border-secondary d-none d-md-block">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table app-table w-100" data-tabla-index data-actions-column="@(hayAcciones ? "true" : "false")"
+                <table class="table app-table w-100" data-tabla-index
+                       data-actions-column="@(hayAcciones ? "true" : "false")"
                        data-search-placeholder="Ciclo o período...">
                     <thead>
                         <tr>
@@ -81,15 +82,15 @@
 
                                 @if (hayAcciones)
                                 {
-                                <td class="text-end">
-                                    @if (editar)
-                                    {
-                                        <a asp-action="Editar" asp-route-id="@x.Id"
-                                           class="app-btn app-btn-soft-secondary app-btn-sm">
-                                            Editar
-                                        </a>
-                                    }
-                                </td>
+                                    <td class="text-end">
+                                        @if (editar)
+                                        {
+                                            <a asp-action="Editar" asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Editar
+                                            </a>
+                                        }
+                                    </td>
                                 }
                             </tr>
                         }
@@ -99,3 +100,58 @@
         </div>
     </div>
 </div>
+<div class="d-md-none" id="periodosMovil">
+    <div class="mb-3">
+        <div class="d-grid">
+            <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                    aria-controls="busqueda-periodos-movil" data-mostrar-busqueda-periodos>
+                <i class="bi bi-search" aria-hidden="true"> </i>
+                Buscar período
+            </button>
+        </div>
+        <div id="busqueda-periodos-movil" class="mt-2 d-none" data-contenedor-busqueda-periodos>
+            <input type="search" id="buscarPeriodoMovil" class="form-control"
+                   placeholder="Ciclo, período, nombre o fecha..." aria-label="Buscar períodos" autocomplete="off" />
+        </div>
+    </div>
+    <div data-lista-periodos-movil>
+        @foreach (var x in Model)
+        {
+            <article class="card shadow-sm border-0 mb-3 periodo-movil-item"
+                     data-busqueda="@($"{x.Ciclo} {x.Numero} {x.Nombre} {x.Inicio:dd/MM/yyyy} {x.Fin:dd/MM/yyyy}")">
+                <div class="card-body">
+                    <div class="fw-bold">@x.Nombre</div>
+                    <div class="text-muted mb-3">Ciclo @x.Ciclo · Período @x.Numero</div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <span class="small text-muted d-block">Inicio</span>@x.Inicio.ToString("dd/MM/yyyy")
+                        </div>
+                        <div class="col-6">
+                            <span class="small text-muted d-block">Fin</span>@x.Fin.ToString("dd/MM/yyyy")
+                        </div>
+                    </div>
+                    @if (editar)
+                    {
+                        <a asp-action="Editar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary w-100">Editar</a>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+    <p class="text-muted text-center py-3 d-none" data-sin-periodos-movil>No se encontraron períodos.</p>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <span class="small text-muted" data-contador-periodos-movil> </span>
+        <div class="d-flex gap-2">
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
+                    data-anterior-periodos-movil>Anterior
+            </button>
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm" data-siguiente-periodos-movil>
+                Siguiente
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/periodos-index.js" asp-append-version="true"></script>
+}

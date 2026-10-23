@@ -47,7 +47,7 @@
         }
     </div>
 
-    <div class="card shadow-sm border border-secondary">
+    <div class="card shadow-sm border border-secondary d-none d-md-block">
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table app-table w-100"
@@ -130,4 +130,19 @@
             </div>
         </div>
     </div>
+
+    <div class="d-md-none" id="cursosMovil">
+        <div class="mb-3"><div class="d-grid"><button type="button" class="app-btn app-btn-secondary" aria-expanded="false" aria-controls="busqueda-cursos-movil" data-mostrar-busqueda-cursos><i class="bi bi-search" aria-hidden="true"></i> Buscar curso</button></div><div id="busqueda-cursos-movil" class="mt-2 d-none" data-contenedor-busqueda-cursos><input type="search" id="buscarCursoMovil" class="form-control" placeholder="Curso, grado, carrera o estado..." aria-label="Buscar cursos" autocomplete="off" /></div></div>
+        <div data-lista-cursos-movil>
+            @foreach (var x in Model)
+            {
+                var activo = x.Estado == EstadoRegistro.Activo;
+                <article class="card shadow-sm border-0 mb-3 curso-movil-item" data-busqueda="@($"{x.Nombre} {x.Grado} {x.Carrera} {x.Asignaciones} {(activo ? "Activo" : "Inactivo")}")"><div class="card-body"><div class="d-flex justify-content-between gap-2"><div class="fw-bold">@x.Nombre</div><span class="app-badge @(activo ? "app-badge-success" : "app-badge-danger")">@(activo ? "Activo" : "Inactivo")</span></div><div class="text-muted mb-3">@x.Grado · @x.Carrera</div><div class="mb-3"><span class="text-muted">Asignaciones:</span> @x.Asignaciones</div><div class="d-grid gap-2">@if (editar) { <a asp-action="Editar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary">Editar</a> }@if (estado) { <form asp-action="CambiarEstado" asp-route-id="@x.Id" asp-route-activar="@(!activo)" method="post">@Html.AntiForgeryToken()<button type="submit" class="app-btn @(activo ? "app-btn-soft-danger" : "app-btn-soft-success") w-100">@(activo ? "Desactivar" : "Activar")</button></form> }</div></div></article>
+            }
+        </div>
+        <p class="text-muted text-center py-3 d-none" data-sin-cursos-movil>No se encontraron cursos.</p>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3"><span class="small text-muted" data-contador-cursos-movil></span><div class="d-flex gap-2"><button type="button" class="app-btn app-btn-soft-secondary app-btn-sm" data-anterior-cursos-movil>Anterior</button><button type="button" class="app-btn app-btn-soft-secondary app-btn-sm" data-siguiente-cursos-movil>Siguiente</button></div></div>
+    </div>
 </div>
+
+@section Scripts { <script src="~/js/cursos-index.js" asp-append-version="true"></script> }

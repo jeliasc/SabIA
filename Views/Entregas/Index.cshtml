@@ -111,52 +111,53 @@
                             {
                                 <td>
                                     <div class="app-actions app-actions-table">
-                                    @if (entregar && x.PuedeEntregarse && x.CuestionarioId.HasValue)
-                                    {
-                                        <a asp-controller="Cuestionarios" asp-action="Resolver" asp-route-id="@x.CuestionarioId"
-                                           class="app-btn app-btn-soft-primary app-btn-sm">
-                                            Resolver
-                                        </a>
-                                    }
-                                    else if (entregar && x.PuedeEntregarse)
-                                    {
-                                        <a asp-action="Entregar" asp-route-id="@x.Id"
-                                           class="app-btn app-btn-soft-primary app-btn-sm">
-                                            Entregar
-                                        </a>
-                                    }
+                                        @if (entregar && x.PuedeEntregarse && x.CuestionarioId.HasValue)
+                                        {
+                                            <a asp-controller="Cuestionarios" asp-action="Resolver" asp-route-id="@x.CuestionarioId"
+                                               class="app-btn app-btn-soft-primary app-btn-sm">
+                                                Resolver
+                                            </a>
+                                        }
+                                        else if (entregar && x.PuedeEntregarse)
+                                        {
+                                            <a asp-action="Entregar" asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-primary app-btn-sm">
+                                                Entregar
+                                            </a>
+                                        }
 
-                                    @if (cal && x.CuestionarioId.HasValue && x.Estado != Proyecto_Final.Models.EstadoEntrega.Pendiente)
-                                    {
-                                        <a asp-controller="Cuestionarios" asp-action="RespuestasEntrega" asp-route-id="@x.Id"
-                                           class="app-btn app-btn-soft-secondary app-btn-sm">
-                                            Ver respuestas
-                                        </a>
-                                    }
+                                        @if (cal && x.CuestionarioId.HasValue && x.Estado !=
+                                    Proyecto_Final.Models.EstadoEntrega.Pendiente)
+                                        {
+                                            <a asp-controller="Cuestionarios" asp-action="RespuestasEntrega" asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Ver respuestas
+                                            </a>
+                                        }
 
-                                    @if (cal && x.PuedeCalificarse)
-                                    {
-                                        <a asp-action="Calificar" asp-route-id="@x.Id"
-                                           class="app-btn app-btn-soft-secondary app-btn-sm">
-                                            Calificar
-                                        </a>
-                                    }
+                                        @if (cal && x.PuedeCalificarse)
+                                        {
+                                            <a asp-action="Calificar" asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Calificar
+                                            </a>
+                                        }
 
-                                    @if (puedeVer)
-                                    {
-                                        <a asp-action="Detalle" asp-route-id="@x.Id"
-                                           class="app-btn app-btn-soft-secondary app-btn-sm">
-                                            Historial
-                                        </a>
-                                    }
+                                        @if (puedeVer)
+                                        {
+                                            <a asp-action="Detalle" asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Historial
+                                            </a>
+                                        }
 
-                                    @if (reabrir && x.PuedeReabrirse)
-                                    {
-                                        <a asp-action="Reabrir" asp-route-id="@x.Id"
-                                           class="app-btn app-btn-soft-danger app-btn-sm">
-                                            Reabrir
-                                        </a>
-                                    }
+                                        @if (reabrir && x.PuedeReabrirse)
+                                        {
+                                            <a asp-action="Reabrir" asp-route-id="@x.Id"
+                                               class="app-btn app-btn-soft-danger app-btn-sm">
+                                                Reabrir
+                                            </a>
+                                        }
                                     </div>
                                 </td>
                             }
@@ -167,100 +168,124 @@
         </div>
     </div>
 
-    <div class="d-md-none">
-        @if (!Model.Any())
-        {
-            <div class="alert alert-info" role="status">
-                No existen entregas para mostrar.
+    <div class="d-md-none" id="entregasMovil">
+        <div class="mb-3">
+            <div class="d-grid">
+                <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                        aria-controls="busqueda-entregas-movil" data-mostrar-busqueda-entregas>
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    Buscar entrega
+                </button>
             </div>
-        }
+            <div id="busqueda-entregas-movil" class="mt-2 d-none" data-contenedor-busqueda-entregas>
+                <input type="search" id="buscarEntregaMovil" class="form-control"
+                       placeholder="Alumno, tarea, curso, estado o calificación..." aria-label="Buscar entregas"
+                       autocomplete="off" />
+            </div>
+        </div>
 
-        @foreach (var x in Model)
-        {
-            <div class="card border-0 shadow-sm mb-3">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between gap-2">
-                        <div class="fw-bold">
-                            @x.Tarea
+        <div data-lista-entregas-movil>
+
+            @foreach (var x in Model)
+            {
+                <div class="card border-0 shadow-sm mb-3 entrega-movil-item"
+                     data-busqueda="@($"{x.Alumno} {x.Tarea} {x.Curso} {x.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")} {x.Estado.GetDisplayName()} {x.Calificacion} {x.PunteoMaximo}")">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between gap-2">
+                            <div class="fw-bold">
+                                @x.Tarea
+                            </div>
+
+                            <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoEntrega.Calificada
+                                  ? "app-badge-success"
+                                  : x.Estado == Proyecto_Final.Models.EstadoEntrega.Devuelta
+                                    ? "app-badge-danger"
+                                    : x.Estado == Proyecto_Final.Models.EstadoEntrega.Pendiente
+                                        ? "app-badge-secondary"
+                                        : "app-badge-info")">
+                                @x.Estado.GetDisplayName()
+                            </span>
                         </div>
 
-                        <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoEntrega.Calificada
-                              ? "app-badge-success"
-                              : x.Estado == Proyecto_Final.Models.EstadoEntrega.Devuelta
-                                ? "app-badge-danger"
-                                : x.Estado == Proyecto_Final.Models.EstadoEntrega.Pendiente
-                                    ? "app-badge-secondary"
-                                    : "app-badge-info")">
-                            @x.Estado.GetDisplayName()
-                        </span>
-                    </div>
-
-                    <div class="text-muted">
-                        @x.Curso
-                    </div>
-
-                    <div class="small mb-3">
-                        @x.Alumno
-                    </div>
-
-                    @if (x.FechaLimiteIndividual.HasValue)
-                    {
-                        <div class="small text-danger mb-3">
-                            Plazo individual: @x.FechaLimiteIndividual.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                        <div class="text-muted">
+                            @x.Curso
                         </div>
-                    }
 
-                    @if (entregar && x.PuedeEntregarse && x.CuestionarioId.HasValue)
-                    {
-                        <a asp-controller="Cuestionarios" asp-action="Resolver" asp-route-id="@x.CuestionarioId"
-                           class="app-btn app-btn-soft-primary w-100">
-                            Resolver cuestionario
-                        </a>
-                    }
-                    else if (entregar && x.PuedeEntregarse)
-                    {
-                        <a asp-action="Entregar" asp-route-id="@x.Id" class="app-btn app-btn-soft-primary w-100">
-                            Entregar tarea
-                        </a>
-                    }
+                        <div class="small mb-3">
+                            @x.Alumno
+                        </div>
 
-                    @if (cal && x.CuestionarioId.HasValue && x.Estado != Proyecto_Final.Models.EstadoEntrega.Pendiente)
-                    {
-                        <a asp-controller="Cuestionarios" asp-action="RespuestasEntrega" asp-route-id="@x.Id"
-                           class="app-btn app-btn-soft-secondary w-100 mt-2">
-                            Ver respuestas
-                        </a>
-                    }
+                        @if (x.FechaLimiteIndividual.HasValue)
+                        {
+                            <div class="small text-danger mb-3">
+                                Plazo individual: @x.FechaLimiteIndividual.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </div>
+                        }
 
-                    @if (cal && x.PuedeCalificarse)
-                    {
-                        <a asp-action="Calificar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary w-100">
-                            Calificar
-                        </a>
-                    }
+                        @if (entregar && x.PuedeEntregarse && x.CuestionarioId.HasValue)
+                        {
+                            <a asp-controller="Cuestionarios" asp-action="Resolver" asp-route-id="@x.CuestionarioId"
+                               class="app-btn app-btn-soft-primary w-100">
+                                Resolver cuestionario
+                            </a>
+                        }
+                        else if (entregar && x.PuedeEntregarse)
+                        {
+                            <a asp-action="Entregar" asp-route-id="@x.Id" class="app-btn app-btn-soft-primary w-100">
+                                Entregar tarea
+                            </a>
+                        }
 
-                    @if (puedeVer)
-                    {
-                        <a asp-action="Detalle" asp-route-id="@x.Id"
-                           class="app-btn app-btn-soft-secondary w-100 mt-2">
-                            Ver historial de intentos
-                        </a>
-                    }
+                        @if (cal && x.CuestionarioId.HasValue && x.Estado != Proyecto_Final.Models.EstadoEntrega.Pendiente)
+                        {
+                            <a asp-controller="Cuestionarios" asp-action="RespuestasEntrega" asp-route-id="@x.Id"
+                               class="app-btn app-btn-soft-secondary w-100 mt-2">
+                                Ver respuestas
+                            </a>
+                        }
 
-                    @if (reabrir && x.PuedeReabrirse)
-                    {
-                        <a asp-action="Reabrir" asp-route-id="@x.Id"
-                           class="app-btn app-btn-soft-danger w-100 mt-2">
-                            Reabrir entrega
-                        </a>
-                    }
+                        @if (cal && x.PuedeCalificarse)
+                        {
+                            <a asp-action="Calificar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary w-100">
+                                Calificar
+                            </a>
+                        }
+
+                        @if (puedeVer)
+                        {
+                            <a asp-action="Detalle" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary w-100 mt-2">
+                                Ver historial de intentos
+                            </a>
+                        }
+
+                        @if (reabrir && x.PuedeReabrirse)
+                        {
+                            <a asp-action="Reabrir" asp-route-id="@x.Id" class="app-btn app-btn-soft-danger w-100 mt-2">
+                                Reabrir entrega
+                            </a>
+                        }
+                    </div>
                 </div>
+            }
+        </div>
+
+        <p class="text-muted text-center py-3 d-none" data-sin-entregas-movil>
+            No se encontraron entregas.
+        </p>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+            <span class="small text-muted" data-contador-entregas-movil></span>
+            <div class="d-flex gap-2">
+                <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
+                        data-anterior-entregas-movil>Anterior</button>
+                <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
+                        data-siguiente-entregas-movil>Siguiente</button>
             </div>
-        }
+        </div>
     </div>
 </div>
 
 @section Scripts
 {
     <script src="~/js/entregas.js" asp-append-version="true"></script>
+    <script src="~/js/entregas-index.js" asp-append-version="true"></script>
 }
