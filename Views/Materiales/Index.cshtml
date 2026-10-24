@@ -30,7 +30,7 @@
         </div>
     </div>
 
-    <div class="card shadow-sm border border-secondary">
+    <div class="card shadow-sm border border-secondary d-none d-lg-block">
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table app-table w-100" data-tabla-index
@@ -45,7 +45,7 @@
                             <th>Estado</th>
                             @if (hayAcciones)
                             {
-                                <th>Acciones</th>
+                                <th class="text-end">Acciones</th>
                             }
                         </tr>
                     </thead>
@@ -60,10 +60,10 @@
                                 <td>
                                     @if (item.Archivo != null && item.PuedeVisualizar)
                                     {
-                                        <div class="app-actions app-actions-table">
+                                        <div class="app-actions app-actions-table d-flex justify-content-start gap-2">
                                             <a asp-action="Visualizar" asp-route-id="@item.Id"
-                                               class="app-btn app-btn-soft-primary app-btn-sm"
-                                               target="_blank" rel="noopener">Visualizar</a>
+                                               class="app-btn app-btn-soft-primary app-btn-sm" target="_blank"
+                                               rel="noopener">Visualizar</a>
                                             @if (puedeDescargar && item.PuedeDescargar)
                                             {
                                                 <a asp-action="Descargar" asp-route-id="@item.Id"
@@ -87,33 +87,33 @@
                                 {
                                     <td>
                                         <div class="app-actions app-actions-table">
-                                        @if (puedeEditar)
-                                        {
-                                            <a asp-action="Editar" asp-route-id="@item.Id"
-                                               class="app-btn app-btn-soft-secondary app-btn-sm">Editar</a>
-                                        }
-                                        @if (puedePublicar && item.Estado != EstadoPublicacionMaterial.Publicado)
-                                        {
-                                            <form asp-action="Publicar" asp-route-id="@item.Id" method="post"
-                                                  data-confirmar-accion-academica data-confirmar-titulo="Publicar material"
-                                                  data-confirmar-mensaje="El material quedará disponible para los alumnos autorizados."
-                                                  data-confirmar-texto="Publicar" data-confirmar-color="#198754">
-                                                @Html.AntiForgeryToken()
-                                                <button class="app-btn app-btn-soft-success app-btn-sm"
-                                                        type="submit">Publicar</button>
-                                            </form>
-                                        }
-                                        @if (puedePublicar && item.Estado == EstadoPublicacionMaterial.Publicado)
-                                        {
-                                            <form asp-action="Ocultar" asp-route-id="@item.Id" method="post"
-                                                  data-confirmar-accion-academica data-confirmar-titulo="Ocultar material"
-                                                  data-confirmar-mensaje="El material dejará de estar disponible para los alumnos."
-                                                  data-confirmar-texto="Ocultar">
-                                                @Html.AntiForgeryToken()
-                                                <button class="app-btn app-btn-soft-danger app-btn-sm"
-                                                        type="submit">Ocultar</button>
-                                            </form>
-                                        }
+                                            @if (puedeEditar)
+                                            {
+                                                <a asp-action="Editar" asp-route-id="@item.Id"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">Editar</a>
+                                            }
+                                            @if (puedePublicar && item.Estado != EstadoPublicacionMaterial.Publicado)
+                                            {
+                                                <form asp-action="Publicar" asp-route-id="@item.Id" method="post"
+                                                      data-confirmar-accion-academica data-confirmar-titulo="Publicar material"
+                                                      data-confirmar-mensaje="El material quedará disponible para los alumnos autorizados."
+                                                      data-confirmar-texto="Publicar" data-confirmar-color="#198754">
+                                                    @Html.AntiForgeryToken()
+                                                    <button class="app-btn app-btn-soft-success app-btn-sm"
+                                                            type="submit">Publicar</button>
+                                                </form>
+                                            }
+                                            @if (puedePublicar && item.Estado == EstadoPublicacionMaterial.Publicado)
+                                            {
+                                                <form asp-action="Ocultar" asp-route-id="@item.Id" method="post"
+                                                      data-confirmar-accion-academica data-confirmar-titulo="Ocultar material"
+                                                      data-confirmar-mensaje="El material dejará de estar disponible para los alumnos."
+                                                      data-confirmar-texto="Ocultar">
+                                                    @Html.AntiForgeryToken()
+                                                    <button class="app-btn app-btn-soft-danger app-btn-sm"
+                                                            type="submit">Ocultar</button>
+                                                </form>
+                                            }
                                         </div>
                                     </td>
                                 }
@@ -126,7 +126,163 @@
     </div>
 </div>
 
+<!-- Vista móvil de materiales -->
+<div class="d-lg-none" id="materialesMovil">
+
+    <div class="mb-3">
+        <div class="d-grid">
+            <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                    aria-controls="busqueda-materiales-movil" data-mostrar-busqueda-materiales>
+                <i class="bi bi-search" aria-hidden="true"></i>
+                Buscar material
+            </button>
+        </div>
+
+        <div id="busqueda-materiales-movil" class="mt-2 d-none" data-contenedor-busqueda-materiales>
+
+            <input type="search" id="buscarMaterialMovil" class="form-control"
+                   placeholder="Material, unidad, tipo o estado..." aria-label="Buscar materiales" autocomplete="off" />
+        </div>
+    </div>
+
+    <div id="listaMaterialesMovil">
+        @foreach (var item in Model)
+        {
+            <div class="card border rounded-3 mb-3 material-movil-item"
+                 data-busqueda="@($"{item.Titulo} {item.Unidad} {item.Tipo.GetDisplayName()} {item.Estado.GetDisplayName()} {item.Orden}".ToLowerInvariant())">
+
+                <div class="card-body">
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                        <div class="fw-semibold">
+                            @item.Titulo
+                        </div>
+
+                        <span class="app-badge text-nowrap @(item.Estado == EstadoPublicacionMaterial.Publicado
+                              ? "app-badge-success"
+                              : item.Estado == EstadoPublicacionMaterial.Oculto
+                                ? "app-badge-danger"
+                                : "app-badge-secondary")">
+                            @item.Estado.GetDisplayName()
+                        </span>
+                    </div>
+
+                    <div class="mb-2">
+                        <span class="text-muted">Unidad:</span>
+                        <span class="fw-medium">@item.Unidad</span>
+                    </div>
+
+                    <div class="mb-2">
+                        <span class="text-muted">Tipo:</span>
+                        <span>@item.Tipo.GetDisplayName()</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <span class="text-muted">Orden:</span>
+                        <span>@item.Orden</span>
+                    </div>
+
+                    @if ((item.Archivo != null && item.PuedeVisualizar) || item.Url != null)
+                    {
+                        <div class="d-grid gap-2 mb-2">
+                            @if (item.Archivo != null && item.PuedeVisualizar)
+                            {
+                                <a asp-action="Visualizar" asp-route-id="@item.Id" class="app-btn app-btn-soft-primary app-btn-sm"
+                                   target="_blank" rel="noopener">
+                                    Visualizar
+                                </a>
+
+                                @if (puedeDescargar && item.PuedeDescargar)
+                                {
+                                    <a asp-action="Descargar" asp-route-id="@item.Id" class="app-btn app-btn-soft-secondary app-btn-sm">
+                                        Descargar
+                                    </a>
+                                }
+                            }
+                            else if (item.Url != null)
+                            {
+                                <a href="@item.Url" target="_blank" rel="noopener" class="app-btn app-btn-soft-primary app-btn-sm">
+                                    Abrir enlace
+                                </a>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="small text-muted mb-3">
+                            Sin recurso disponible
+                        </p>
+                    }
+
+                    @if (!soloLectura && (puedeEditar || puedePublicar))
+                    {
+                        <div class="d-grid gap-2">
+
+                            @if (puedeEditar)
+                            {
+                                <a asp-action="Editar" asp-route-id="@item.Id" class="app-btn app-btn-soft-secondary app-btn-sm">
+                                    Editar
+                                </a>
+                            }
+
+                            @if (puedePublicar && item.Estado != EstadoPublicacionMaterial.Publicado)
+                            {
+                                <form asp-action="Publicar" asp-route-id="@item.Id" method="post" data-confirmar-accion-academica
+                                      data-confirmar-titulo="Publicar material"
+                                      data-confirmar-mensaje="El material quedará disponible para los alumnos autorizados."
+                                      data-confirmar-texto="Publicar" data-confirmar-color="#198754">
+
+                                    @Html.AntiForgeryToken()
+
+                                    <button type="submit" class="app-btn app-btn-soft-success app-btn-sm w-100">
+                                        Publicar
+                                    </button>
+                                </form>
+                            }
+
+                            @if (puedePublicar && item.Estado == EstadoPublicacionMaterial.Publicado)
+                            {
+                                <form asp-action="Ocultar" asp-route-id="@item.Id" method="post" data-confirmar-accion-academica
+                                      data-confirmar-titulo="Ocultar material"
+                                      data-confirmar-mensaje="El material dejará de estar disponible para los alumnos."
+                                      data-confirmar-texto="Ocultar">
+
+                                    @Html.AntiForgeryToken()
+
+                                    <button type="submit" class="app-btn app-btn-soft-danger app-btn-sm w-100">
+                                        Ocultar
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    }
+
+                </div>
+            </div>
+        }
+    </div>
+
+    <p id="sinMaterialesMovil" class="text-muted text-center py-3 d-none">
+        No se encontraron materiales.
+    </p>
+
+    <div class="d-flex justify-content-between align-items-center gap-2 mt-3">
+        <span id="contadorMaterialesMovil" class="small text-muted"></span>
+
+        <div class="d-flex gap-2">
+            <button type="button" id="anteriorMaterialesMovil" class="app-btn app-btn-soft-secondary app-btn-sm">
+                Anterior
+            </button>
+
+            <button type="button" id="siguienteMaterialesMovil" class="app-btn app-btn-soft-secondary app-btn-sm">
+                Siguiente
+            </button>
+        </div>
+    </div>
+</div>
+
 @section Scripts
 {
     <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+    <script src="~/js/materiales-index.js" asp-append-version="true"></script>
 }

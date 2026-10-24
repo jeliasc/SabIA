@@ -134,3 +134,13 @@ La demostración aprobada usa exclusivamente Kestrel local, PostgreSQL temporal 
 Los recorridos que pueden demostrarse como ejecutados en Chrome son Login, unidad, planificación, aprobación, tarea, entrega, calificación, resultado, cuestionarios e IA simulada. La evidencia de pantalla móvil corresponde a 390×844. No presente como ejecutados en navegador los formularios de estructura académica, altas de usuarios/encargados, asignación e inscripción, carga de material ni el recorrido completo de estadísticas, notificaciones y auditoría de Coordinación: requieren comprobación manual previa.
 
 Antes de la demostración, valide manualmente que la cuenta ficticia de Coordinación tenga los permisos efectivos esperados y realice esas operaciones pendientes. Si se desea conectar IA real, debe obtenerse autorización independiente para URL, credenciales, costos y conectividad; la evidencia actual sólo valida el contrato con un proveedor local simulado. No se deben reutilizar bases reales, credenciales reales, ni archivos de `node_modules`, reportes, trazas o clústeres temporales.
+
+## Paso 8: demostración de administración académica
+
+La prueba reproducible `Tests/E2E/administracion-academica.spec.mjs` ya ejecutó en Chrome la creación de estructura académica y de personas desde la interfaz. Para repetirla, inicie Kestrel contra una base PostgreSQL temporal vacía y ejecute desde `Tests/E2E`:
+
+`npx.cmd playwright test administracion-academica.spec.mjs --project=chrome-local --reporter=line`
+
+La demostración debe mostrar: validación de ciclo sin fechas, activación de ciclo, período, grado, curso y dos secciones; alta de docente con confirmación y comprobación de carnet duplicado; alta de encargado; alta de alumno con encargado asociado e inscripción inicial; asignación docente; y rechazo de una inscripción activa duplicada. Luego inicie sesión con las cuentas temporales que muestra cada resultado —sin registrarlas en capturas— para comprobar perfil de Docente y perfil móvil del Alumno. El flujo también valida un POST sin antiforgery (400) y que Docente no pueda crear ciclos.
+
+No se debe presentar como ejecutado el traslado/retiro/reinscripción ni el recorrido completo de estadísticas, notificaciones y auditoría: siguen pendientes. Para una demostración de Coordinación limitada, no use el resultado del superusuario ficticio como sustituto de la verificación de permisos efectivos del rol.

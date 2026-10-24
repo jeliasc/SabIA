@@ -50,116 +50,191 @@
             </a>
         }
     </div>
+</div>
 
-    <div class="card shadow-sm border border-secondary">
-        <div class="card-body">
+<div class="card shadow-sm border border-secondary d-none d-md-block">
+    <div class="card-body">
+        <div class="table-responsive">
             <div class="table-responsive">
-                <div class="table-responsive">
-                    <table class="table app-table w-100" data-tabla-index
-                           data-actions-column="@(mostrarAcciones ? "true" : "false")"
-                           data-search-placeholder="Grado, carrera, sección, curso o docente..."
-                           data-empty-message="No existen asignaciones registradas"
-                           data-zero-message="No se encontraron asignaciones">
-                        <thead>
+                <table class="table app-table w-100" data-tabla-index
+                       data-actions-column="@(mostrarAcciones ? "true" : "false")"
+                       data-search-placeholder="Grado, carrera, sección, curso o docente..."
+                       data-empty-message="No existen asignaciones registradas"
+                       data-zero-message="No se encontraron asignaciones">
+                    <thead>
+                        <tr>
+                            <th class="text-start">Ciclo</th>
+                            <th>Grado</th>
+                            <th>Carrera</th>
+                            <th>Sección</th>
+                            <th>Curso</th>
+                            <th>Docente</th>
+                            <th>Vigencia</th>
+                            <th>Estado</th>
+                            @if (mostrarAcciones)
+                            {
+                                <th class="text-end">Acciones</th>
+                            }
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var x in Model)
+                        {
                             <tr>
-                                <th class="text-start">Ciclo</th>
-                                <th>Grado</th>
-                                <th>Carrera</th>
-                                <th>Sección</th>
-                                <th>Curso</th>
-                                <th>Docente</th>
-                                <th>Vigencia</th>
-                                <th>Estado</th>
+                                <td class="text-start">@x.Ciclo</td>
+
+                                <td>@x.Grado</td>
+
+                                <td>@x.Carrera</td>
+
+                                <td>@x.Seccion</td>
+
+                                <td class="fw-semibold">
+                                    @x.Curso
+                                </td>
+
+                                <td>@x.Docente</td>
+
+                                <td>
+                                    @if (x.FechaInicioVigencia.HasValue)
+                                    {
+                                        <span>@x.FechaInicioVigencia.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Origen no reconstruible</span>
+                                    }
+                                    <span> – </span>
+                                    @(x.FechaFinVigencia?.ToString("dd/MM/yyyy HH:mm") ?? "Actual")
+                                </td>
+
+                                <td>
+                                    <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
+                                          ? "app-badge-success"
+                                          : "app-badge-danger")">
+                                        @x.Estado.GetDisplayName()
+                                    </span>
+                                </td>
+
                                 @if (mostrarAcciones)
                                 {
-                                    <th class="text-end">Acciones</th>
+                                    <td class="app-actions-cell">
+                                        <div class="app-actions app-actions-table">
+                                            @if (e && x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo)
+                                            {
+                                                <a asp-action="Editar" asp-route-id="@x.Id"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                    Editar
+                                                </a>
+                                            }
+
+                                            @if (relevar && x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo)
+                                            {
+                                                <a asp-action="ReemplazarDocente" asp-route-id="@x.Id"
+                                                   class="app-btn app-btn-soft-warning app-btn-sm">
+                                                    Reemplazar docente
+                                                </a>
+                                            }
+
+                                            @if (ce && !x.AsignacionAnteriorId.HasValue && !x.FechaFinVigencia.HasValue)
+                                            {
+                                                <form asp-action="@(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
+                                                      ? "Desactivar"
+                                                      : "Activar")" asp-route-id="@x.Id" method="post">
+                                                    @Html.AntiForgeryToken()
+
+                                                    <button class="app-btn @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
+                                                            ? "app-btn-soft-danger"
+                                                            : "app-btn-soft-success") app-btn-sm">
+                                                        @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
+                                                            ? "Desactivar"
+                                                            : "Activar")
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </td>
                                 }
                             </tr>
-                        </thead>
-
-                        <tbody>
-                            @foreach (var x in Model)
-                            {
-                                <tr>
-                                    <td class="text-start">@x.Ciclo</td>
-
-                                    <td>@x.Grado</td>
-
-                                    <td>@x.Carrera</td>
-
-                                    <td>@x.Seccion</td>
-
-                                    <td class="fw-semibold">
-                                        @x.Curso
-                                    </td>
-
-                                    <td>@x.Docente</td>
-
-                                    <td>
-                                        @if (x.FechaInicioVigencia.HasValue)
-                                        {
-                                            <span>@x.FechaInicioVigencia.Value.ToString("dd/MM/yyyy HH:mm")</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">Origen no reconstruible</span>
-                                        }
-                                        <span> – </span>
-                                        @(x.FechaFinVigencia?.ToString("dd/MM/yyyy HH:mm") ?? "Actual")
-                                    </td>
-
-                                    <td>
-                                        <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
-                                              ? "app-badge-success"
-                                              : "app-badge-danger")">
-                                            @x.Estado.GetDisplayName()
-                                        </span>
-                                    </td>
-
-                                    @if (mostrarAcciones)
-                                    {
-                                        <td class="app-actions-cell">
-                                            <div class="app-actions app-actions-table">
-                                                @if (e && x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo)
-                                                {
-                                                    <a asp-action="Editar" asp-route-id="@x.Id"
-                                                       class="app-btn app-btn-soft-secondary app-btn-sm">
-                                                        Editar
-                                                    </a>
-                                                }
-
-                                                @if (relevar && x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo)
-                                                {
-                                                    <a asp-action="ReemplazarDocente" asp-route-id="@x.Id"
-                                                       class="app-btn app-btn-soft-warning app-btn-sm">
-                                                        Reemplazar docente
-                                                    </a>
-                                                }
-
-                                                @if (ce && !x.AsignacionAnteriorId.HasValue && !x.FechaFinVigencia.HasValue)
-                                                {
-                                                    <form asp-action="@(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
-                                                          ? "Desactivar"
-                                                          : "Activar")" asp-route-id="@x.Id" method="post">
-                                                        @Html.AntiForgeryToken()
-
-                                                        <button class="app-btn @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
-                                                                ? "app-btn-soft-danger"
-                                                                : "app-btn-soft-success") app-btn-sm">
-                                                            @(x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo
-                                                                ? "Desactivar"
-                                                                : "Activar")
-                                                        </button>
-                                                    </form>
-                                                }
-                                            </div>
-                                        </td>
-                                    }
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                        }
+                    </tbody>
+                </table>
             </div>
+
         </div>
     </div>
+</div>
+<div class="d-md-none" id="asignacionesMovil">
+    <div class="mb-3">
+        <div class="d-grid">
+            <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                    aria-controls="busqueda-asignaciones-movil" data-mostrar-busqueda-asignaciones>
+                <i class="bi bi-search" aria-hidden="true"></i>
+                Buscar asignación
+            </button>
+        </div>
+        <div id="busqueda-asignaciones-movil" class="mt-2 d-none" data-contenedor-busqueda-asignaciones>
+            <input type="search" id="buscarAsignacionMovil" class="form-control"
+                   placeholder="Ciclo, grado, sección, curso o docente..." aria-label="Buscar asignaciones"
+                   autocomplete="off" />
+        </div>
+    </div>
+    <div data-lista-asignaciones-movil>
+        @foreach (var x in Model)
+        {
+            var activa = x.Estado == Proyecto_Final.Models.EstadoRegistro.Activo;
+            var vigencia = x.FechaInicioVigencia.HasValue ? $"{x.FechaInicioVigencia.Value:dd/MM/yyyy HH:mm} –      {x.FechaFinVigencia?.ToString("dd/MM/yyyy HH:mm") ?? "Actual"}" : "Origen no reconstruible";
+            <article class="card shadow-sm border-0 mb-3 asignacion-movil-item"
+                     data-busqueda="@($"{x.Ciclo} {x.Grado} {x.Carrera} {x.Seccion} {x.Curso} {x.Docente} {vigencia} {x.Estado.GetDisplayName()}")">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between gap-2">
+                        <div class="fw-bold">@x.Curso</div>
+                        <span
+                            class="app-badge @(activa ? "app-badge-success" : "app-badge-danger")">@x.Estado.GetDisplayName()
+                        </span>
+                    </div>
+                    <div class="text-muted mb-3">@x.Ciclo · @x.Grado · @x.Carrera · @x.Seccion</div>
+                    <div class="mb-2"><span class="small text-muted d-block">Docente</span>@x.Docente</div>
+                    <div class="mb-3"><span class="small text-muted d-block">Vigencia</span>@vigencia</div>
+                    <div class="d-grid gap-2">@if (e && activa) {
+                        <a asp-action="Editar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary">Editar</a>
+                    }
+                    @if (relevar && activa)
+                    {
+                        <a asp-action="ReemplazarDocente" asp-route-id="@x.Id"
+                           class="app-btn app-btn-soft-warning">Reemplazar docente</a>
+                    }
+                    @if (ce && !x.AsignacionAnteriorId.HasValue && !x.FechaFinVigencia.HasValue)
+                    {
+                        <form asp-action="@(activa ? "Desactivar" : "Activar")" asp-route-id="@x.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button
+                                class="app-btn @(activa ? "app-btn-soft-danger" : "app-btn-soft-success") w-100">@(activa
+                                ? "Desactivar" : "Activar")
+                            </button>
+                        </form>
+                    }
+                </div>
+
+            </article>
+        }
+    </div>
+    <p class="text-muted text-center py-3 d-none" data-sin-asignaciones-movil>No se encontraron asignaciones.</p>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <span class="small text-muted" data-contador-asignaciones-movil>
+        </span>
+        <div class="d-flex gap-2">
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
+                    data-anterior-asignaciones-movil>Anterior</button>
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
+                    data-siguiente-asignaciones-movil>Siguiente</button>
+        </div>
+    </div>
+
+</div>
+
+
+@section Scripts {
+    <script src="~/js/asignaciones-index.js" asp-append-version="true"></script>
+}

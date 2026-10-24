@@ -12,7 +12,7 @@
         </div>
         <a asp-action="Index" class="app-btn app-btn-soft-secondary">Volver</a>
     </div>
-    <div class="card shadow-sm border border-secondary">
+    <div class="card shadow-sm border border-secondary d-none d-md-block">
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table app-table align-middle">
@@ -40,7 +40,8 @@
                                     <tr>
                                         <td class="text-nowrap">@movimiento.FechaUtc.ToString("dd/MM/yyyy HH:mm:ss")</td>
                                         <td>@movimiento.Tipo.GetDisplayName()</td>
-                                        <td>@movimiento.EstadoAnterior.GetDisplayName() → @movimiento.EstadoNuevo.GetDisplayName()</td>
+                                        <td>@movimiento.EstadoAnterior.GetDisplayName() → @movimiento.EstadoNuevo.GetDisplayName()
+                                        </td>
                                         <td>@movimiento.Responsable</td>
                                         <td class="text-break">@(movimiento.Justificacion ?? "—")</td>
                                     </tr>
@@ -53,3 +54,53 @@
         </div>
     </div>
 </div>
+<div class="d-md-none" id="historialCiclosMovil">
+    <div class="mb-3">
+        <div class="d-grid">
+            <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                    aria-controls="busqueda-historial-ciclos-movil" data-mostrar-busqueda-historial-ciclos>
+                <i class="bi bi-search" aria-hidden="true"></i>
+                Buscar movimiento
+            </button>
+        </div>
+        <div id="busqueda-historial-ciclos-movil" class="mt-2 d-none" data-contenedor-busqueda-historial-ciclos>
+            <input type="search" id="buscarHistorialCicloMovil" class="form-control"
+                   placeholder="Fecha, movimiento, estado o responsable..." aria-label="Buscar movimientos del ciclo"
+                   autocomplete="off" />
+        </div>
+    </div>
+    <div data-lista-historial-ciclos-movil>
+        @foreach (var movimiento in Model)
+        {
+            var transicion = $"{movimiento.EstadoAnterior.GetDisplayName()} → {movimiento.EstadoNuevo.GetDisplayName()}";
+            <article class="card shadow-sm border-0 mb-3 historial-ciclo-movil-item"
+                     data-busqueda="@($"{movimiento.FechaUtc:dd/MM/yyyy HH:mm:ss} {movimiento.Tipo.GetDisplayName()} {transicion} {movimiento.Responsable} {movimiento.Justificacion}")">
+                <div class="card-body">
+                    <div class="fw-bold">@movimiento.Tipo.GetDisplayName()</div>
+                    <div class="text-muted mb-3">@movimiento.FechaUtc.ToString("dd/MM/yyyy HH:mm:ss")</div>
+                    <div class="mb-2"><span class="small text-muted d-block">Transición</span>@transicion</div>
+                    <div class="mb-2"><span class="small text-muted d-block">Responsable</span>@movimiento.Responsable</div>
+                    <div><span class="small text-muted d-block">Justificación</span>@(movimiento.Justificacion ?? "—")</div>
+                </div>
+            </article>
+        }
+    </div>
+    <p class="text-muted text-center py-3 d-none" data-sin-historial-ciclos-movil>No se encontraron movimientos.</p>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <span class="small text-muted" data-contador-historial-ciclos-movil></span>
+        <div class="d-flex gap-2">
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
+                    data-anterior-historial-ciclos-movil>
+                Anterior
+            </button>
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
+                    data-siguiente-historial-ciclos-movil>
+                Siguiente
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/ciclos-historial.js" asp-append-version="true"></script>
+}

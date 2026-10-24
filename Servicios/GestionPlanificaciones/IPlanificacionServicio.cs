@@ -6,7 +6,10 @@ namespace Proyecto_Final.Servicios.GestionPlanificaciones;
 public interface IPlanificacionServicio
 {
     Task<List<PlanificacionLista>> ObtenerTodosAsync();
+
     Task<List<PlanificacionLista>> ObtenerHistorialAsync();
+
+    Task<(Stream Stream, string Nombre)?> ObtenerArchivoParaLecturaAsync(int id);
 
     Task PrepararAsync(FormularioPlanificacion m);
 

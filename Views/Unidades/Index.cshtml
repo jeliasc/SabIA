@@ -56,11 +56,11 @@
                    data-actions-column="@(hayAcciones ? "true" : "false")">
                 <thead>
                     <tr>
-                        <th>Orden</th>
+                        <th class="text-start">Orden</th>
                         <th>Unidad</th>
                         <th>Curso</th>
                         <th>Sección</th>
-                        <th>Materiales</th>
+                        <th class="text-start">Materiales</th>
                         <th>Estado</th>
                         @if (hayAcciones)
                         {
@@ -73,7 +73,7 @@
                     @foreach (var x in Model)
                     {
                         <tr>
-                            <td>@x.Orden</td>
+                            <td class="text-start">@x.Orden</td>
 
                             <td class="fw-semibold">
                                 @x.Titulo
@@ -83,51 +83,51 @@
 
                             <td>@x.Seccion</td>
 
-                            <td>@x.Materiales</td>
+                            <td class="text-start">@x.Materiales</td>
 
                             <td>
                                 <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
                                           ? "app-badge-success"
                                           : "app-badge-secondary")">
-                                        @x.Estado.GetDisplayName()
-                                    </span>
+                                    @x.Estado.GetDisplayName()
+                                </span>
                             </td>
 
                             @if (hayAcciones)
                             {
-                            <td>
-                                <div class="app-actions app-actions-table">
-                                    @if (e)
-                                    {
-                                        <a asp-action="Editar" asp-route-id="@x.UnidadAsignacionId"
-                                           class="app-btn app-btn-soft-secondary app-btn-sm">
-                                            Editar
-                                        </a>
-                                    }
+                                <td>
+                                    <div class="app-actions app-actions-table">
+                                        @if (e)
+                                        {
+                                            <a asp-action="Editar" asp-route-id="@x.UnidadAsignacionId"
+                                               class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                Editar
+                                            </a>
+                                        }
 
-                                    @if (p)
-                                    {
-                                        <form asp-action="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
-                                              ? "Ocultar"
-                                              : "Publicar")" asp-route-id="@x.UnidadAsignacionId" method="post"
-                                              data-confirmar-accion-academica
-                                              data-confirmar-titulo="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "Ocultar unidad" : "Publicar unidad")"
-                                              data-confirmar-mensaje="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "La unidad dejará de estar disponible para los alumnos." : "La unidad quedará disponible para los alumnos autorizados.")"
-                                              data-confirmar-texto="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "Ocultar" : "Publicar")"
-                                              data-confirmar-color="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "#dc3545" : "#198754")">
-                                            @Html.AntiForgeryToken()
+                                        @if (p)
+                                        {
+                                            <form asp-action="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                                                  ? "Ocultar"
+                                                  : "Publicar")" asp-route-id="@x.UnidadAsignacionId" method="post"
+                                                  data-confirmar-accion-academica
+                                                  data-confirmar-titulo="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "Ocultar unidad" : "Publicar unidad")"
+                                                  data-confirmar-mensaje="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "La unidad dejará de estar disponible para los alumnos." : "La unidad quedará disponible para los alumnos autorizados.")"
+                                                  data-confirmar-texto="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "Ocultar" : "Publicar")"
+                                                  data-confirmar-color="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "#dc3545" : "#198754")">
+                                                @Html.AntiForgeryToken()
 
-                                            <button class="app-btn @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
-                                                    ? "app-btn-soft-danger"
-                                                    : "app-btn-soft-success") app-btn-sm">
-                                                @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
-                                                    ? "Ocultar"
-                                                    : "Publicar")
-                                            </button>
-                                        </form>
-                                    }
-                                </div>
-                            </td>
+                                                <button class="app-btn @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                                                        ? "app-btn-soft-danger"
+                                                        : "app-btn-soft-success") app-btn-sm">
+                                                    @(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
+                                                        ? "Ocultar"
+                                                        : "Publicar")
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
                             }
                         </tr>
                     }
@@ -135,11 +135,30 @@
             </table>
         </div>
     </div>
+</div>
 
-    <div class="d-md-none">
+<div class="d-md-none" id="unidadesMovil">
+    <div class="mb-3">
+        <div class="d-grid">
+            <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                    aria-controls="busqueda-unidades-movil" data-mostrar-busqueda-unidades>
+                <i class="bi bi-search" aria-hidden="true"></i>
+                Buscar unidad
+            </button>
+        </div>
+
+        <div id="busqueda-unidades-movil" class="mt-2 d-none" data-contenedor-busqueda-unidades>
+            <input type="search" id="buscarUnidadMovil" class="form-control"
+                   placeholder="Unidad, curso, sección, estado u orden..." aria-label="Buscar unidades"
+                   autocomplete="off" />
+        </div>
+    </div>
+
+    <div id="listaUnidadesMovil">
         @foreach (var x in Model)
         {
-            <div class="card border-0 shadow-sm mb-3">
+            <div class="card border-0 shadow-sm mb-3 unidad-movil-item"
+                 data-busqueda="@($"{x.Orden} {x.Titulo} {x.Curso} {x.Seccion} {x.Materiales} {x.Estado.GetDisplayName()}".ToLowerInvariant())">
                 <div class="card-body">
                     <div class="d-flex justify-content-between gap-2">
                         <div class="fw-bold">
@@ -153,8 +172,13 @@
                         </span>
                     </div>
 
-                    <div class="text-muted mb-3">
+                    <div class="text-muted mb-2">
                         @x.Curso · @x.Seccion
+                    </div>
+
+                    <div class="mb-3">
+                        <span class="text-muted">Materiales:</span>
+                        <span class="fw-medium">@x.Materiales</span>
                     </div>
 
                     @if (!soloLectura && e)
@@ -192,7 +216,28 @@
     </div>
 </div>
 
+</div>
+
+<p id="sinUnidadesMovil" class="text-muted text-center py-3 d-none">
+    No se encontraron unidades.
+</p>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+    <span id="contadorUnidadesMovil" class="small text-muted"></span>
+
+    <div class="d-flex gap-2">
+        <button type="button" id="anteriorUnidadesMovil" class="app-btn app-btn-soft-secondary app-btn-sm">
+            Anterior
+        </button>
+
+        <button type="button" id="siguienteUnidadesMovil" class="app-btn app-btn-soft-secondary app-btn-sm">
+            Siguiente
+        </button>
+    </div>
+</div>
+
 @section Scripts
 {
     <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+    <script src="~/js/unidades-index.js" asp-append-version="true"></script>
 }

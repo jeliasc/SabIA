@@ -21,6 +21,33 @@ public class PlanificacionesController(IPlanificacionServicio s) : Controller
     }
 
     [HttpGet]
+    public async Task<IActionResult> Visualizar(int id)
+    {
+        var archivo = await s.ObtenerArchivoParaLecturaAsync(id);
+
+        if (archivo == null)
+            return NotFound();
+
+        Response.Headers["Content-Disposition"] = "inline";
+
+        return File(archivo.Value.Stream, "application/pdf");
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Descargar(int id)
+    {
+        var archivo = await s.ObtenerArchivoParaLecturaAsync(id);
+
+        if (archivo == null)
+            return NotFound();
+
+        return File(
+            archivo.Value.Stream,
+            "application/pdf",
+            archivo.Value.Nombre);
+    }
+
+    [HttpGet]
     [Authorize(Policy = Permisos.Planificaciones.Crear)]
     public async Task<IActionResult> Crear()
     {

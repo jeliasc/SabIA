@@ -46,14 +46,15 @@
         }
     </div>
 
-    <div class="card shadow-sm border border-secondary">
+    <div class="card shadow-sm border border-secondary d-none d-md-block">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table app-table w-100" data-tabla-index data-actions-column="@(hayAcciones ? "true" : "false")">
+                <table class="table app-table w-100" data-tabla-index
+                       data-actions-column="@(hayAcciones ? "true" : "false")">
                     <thead>
                         <tr>
                             <th class="text-start">Ciclo</th>
-                            <th>Grado</th>
+                            <th class="text-start">Grado</th>
                             <th>Sección</th>
                             <th class="text-start">Alumnos</th>
                             <th class="text-start">Asignaciones</th>
@@ -71,7 +72,7 @@
                             var activa = x.Estado == EstadoRegistro.Activo;
 
                             <tr>
-                                <td>@x.Ciclo</td>
+                                <td class="text-start">@x.Ciclo</td>
 
                                 <td>@x.Grado</td>
 
@@ -93,31 +94,31 @@
 
                                 @if (hayAcciones)
                                 {
-                                <td class="app-actions-cell">
-                                    <div class="app-actions app-actions-table">
-                                        @if (editar)
-                                        {
-                                            <a asp-action="Editar" asp-route-id="@x.Id"
-                                               class="app-btn app-btn-soft-secondary app-btn-sm">
-                                                Editar
-                                            </a>
-                                        }
+                                    <td class="app-actions-cell">
+                                        <div class="app-actions app-actions-table">
+                                            @if (editar)
+                                            {
+                                                <a asp-action="Editar" asp-route-id="@x.Id"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                    Editar
+                                                </a>
+                                            }
 
-                                        @if (estado)
-                                        {
-                                            <form asp-action="CambiarEstado" asp-route-id="@x.Id" asp-route-activar="@(!activa)"
-                                                  method="post" class="m-0">
-                                                @Html.AntiForgeryToken()
+                                            @if (estado)
+                                            {
+                                                <form asp-action="CambiarEstado" asp-route-id="@x.Id" asp-route-activar="@(!activa)"
+                                                      method="post" class="m-0">
+                                                    @Html.AntiForgeryToken()
 
-                                                <button type="submit" class="app-btn @(activa
-                                                            ? "app-btn-soft-danger"
-                                                            : "app-btn-soft-success") app-btn-sm">
-                                                    @(activa ? "Desactivar" : "Activar")
-                                                </button>
-                                            </form>
-                                        }
-                                    </div>
-                                </td>
+                                                    <button type="submit" class="app-btn @(activa
+                                                                ? "app-btn-soft-danger"
+                                                                : "app-btn-soft-success") app-btn-sm">
+                                                        @(activa ? "Desactivar" : "Activar")
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </td>
                                 }
                             </tr>
                         }
@@ -127,3 +128,72 @@
         </div>
     </div>
 </div>
+<div class="d-md-none" id="seccionesMovil">
+    <div class="mb-3">
+        <div class="d-grid">
+            <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                    aria-controls="busqueda-secciones-movil" data-mostrar-busqueda-secciones>
+                <i class="bi bi-search" aria-hidden="true"></i>
+                Buscar sección
+            </button>
+        </div>
+        <div id="busqueda-secciones-movil" class="mt-2 d-none" data-contenedor-busqueda-secciones>
+            <input type="search" id="buscarSeccionMovil" class="form-control"
+                   placeholder="Ciclo, grado, sección o estado..." aria-label="Buscar secciones" autocomplete="off" />
+        </div>
+    </div>
+    <div data-lista-secciones-movil>
+        @foreach (var x in Model)
+        {
+            var activa = x.Estado == EstadoRegistro.Activo;
+            <article class="card shadow-sm border-0 mb-3 seccion-movil-item"
+                     data-busqueda="@($"{x.Ciclo} {x.Grado} {x.Nombre} {x.Alumnos} {x.Asignaciones} {(activa ? "Activa" : "Inactiva")}")">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between gap-2">
+                        <div class="fw-bold">Sección @x.Nombre</div>
+                        <span class="app-badge
+                            @(activa ? "app-badge-success" : "app-badge-danger")">@(activa ? "Activa" : "Inactiva")
+                        </span>
+                    </div>
+                    <div class="text-muted mb-3">@x.Ciclo · @x.Grado</div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6"><span class="small text-muted d-block">Alumnos</span>@x.Alumnos</div>
+                        <div class="col-6"><span class="small text-muted d-block">Asignaciones</span>@x.Asignaciones</div>
+                    </div>
+                    <div class="d-grid gap-2">
+                        @if (editar)
+                        {
+                            <a asp-action="Editar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary">Editar</a>
+                        }
+                        @if (estado)
+                        {
+                            <form asp-action="CambiarEstado" asp-route-id="@x.Id" asp-route-activar="@(!activa)" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit"
+                                        class="app-btn @(activa ? "app-btn-soft-danger" : "app-btn-soft-success") w-100">
+                                    @(activa ? "Desactivar" : "Activar")
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+    <p class="text-muted text-center py-3 d-none" data-sin-secciones-movil>No se encontraron secciones.</p>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <span class="small text-muted" data-contador-secciones-movil> </span>
+        <div class="d-flex gap-2">
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm" data-anterior-secciones-movil>
+                Anterior
+            </button>
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm" data-siguiente-secciones-movil>
+                Siguiente
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/secciones-index.js" asp-append-version="true"></script>
+}

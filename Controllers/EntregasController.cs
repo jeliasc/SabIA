@@ -4,11 +4,15 @@ using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.GestionEntregas;
 using Proyecto_Final.Servicios.GestionNotificaciones;
 using Proyecto_Final.ViewModels.Entregas;
+using Proyecto_Final.Servicios.SeguridadAcademica;
 
 namespace Proyecto_Final.Controllers;
 
 [Authorize(Policy = Permisos.Entregas.Ver)]
-public class EntregasController(IEntregaServicio s, INotificacionServicio notificaciones) : Controller
+public class EntregasController(
+    IEntregaServicio s,
+    INotificacionServicio notificaciones,
+    IAccesoAcademicoServicio acceso) : Controller
 {
     public async Task<IActionResult> Index() =>
         View(await s.ObtenerTodasAsync());
@@ -111,7 +115,18 @@ public class EntregasController(IEntregaServicio s, INotificacionServicio notifi
     [Authorize(Policy = Permisos.Entregas.Reabrir)]
     public async Task<IActionResult> Reabrir(int id)
     {
+        var docenteId = await acceso.ObtenerDocenteIdAsync();
+
+        if (!docenteId.HasValue)
+        {
+            TempData["Error"] =
+                "Acceso denegado. Para reabrir una entrega debe tener un perfil de docente autorizado.";
+
+            return RedirectToAction(nameof(Index));
+        }
+
         var modelo = await s.ObtenerParaReabrirAsync(id);
+
         return modelo == null ? NotFound() : View(modelo);
     }
 

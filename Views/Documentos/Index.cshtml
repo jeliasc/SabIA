@@ -40,7 +40,7 @@
         }
     </div>
 
-    <div class="card shadow-sm border border-secondary">
+    <div class="card shadow-sm border border-secondary d-none d-lg-block">
         <div class="card-body">
             <table class="table app-table w-100" data-tabla-index
                    data-actions-column="@(hayAcciones ? "true" : "false")">
@@ -79,15 +79,15 @@
 
                             @if (hayAcciones)
                             {
-                            <td>
-                                @if (d)
-                                {
-                                    <a asp-action="Descargar" asp-route-id="@x.Id"
-                                       class="app-btn app-btn-soft-secondary app-btn-sm">
-                                        Descargar
-                                    </a>
-                                }
-                            </td>
+                                <td>
+                                    @if (d)
+                                    {
+                                        <a asp-action="Descargar" asp-route-id="@x.Id"
+                                           class="app-btn app-btn-soft-secondary app-btn-sm">
+                                            Descargar
+                                        </a>
+                                    }
+                                </td>
                             }
                         </tr>
                     }
@@ -96,3 +96,84 @@
         </div>
     </div>
 </div>
+
+<!-- Vista móvil de documentos -->
+<div class="d-lg-none" id="documentosMovil">
+
+    <div class="mb-3">
+        <div class="d-grid">
+            <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                    aria-controls="busqueda-documentos-movil" data-mostrar-busqueda-documentos>
+                <i class="bi bi-search" aria-hidden="true"></i>
+                Buscar documento
+            </button>
+        </div>
+
+        <div id="busqueda-documentos-movil" class="mt-2 d-none" data-contenedor-busqueda-documentos>
+            <input type="search" id="buscarDocumentoMovil" class="form-control"
+                   placeholder="Documento, usuario o fecha..." aria-label="Buscar documentos" autocomplete="off" />
+        </div>
+    </div>
+
+    <div id="listaDocumentosMovil">
+        @foreach (var x in Model)
+        {
+            <div class="card border-0 shadow-sm mb-3 documento-movil-item"
+                 data-busqueda="@($"{x.Nombre} {x.SubidoPor} {x.Fecha.ToLocalTime():dd/MM/yyyy HH:mm} {Math.Round(x.Tamano / 1024d, 1)}".ToLowerInvariant())">
+
+                <div class="card-body">
+                    <div class="fw-semibold mb-3">
+                        @x.Nombre
+                    </div>
+
+                    <div class="mb-2">
+                        <span class="text-muted">Subido por:</span>
+                        <span class="fw-medium">@x.SubidoPor</span>
+                    </div>
+
+                    <div class="mb-2">
+                        <span class="text-muted">Fecha:</span>
+                        <span>@x.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <span class="text-muted">Tamaño:</span>
+                        <span>@Math.Round(x.Tamano / 1024d, 1) KB</span>
+                    </div>
+
+                    @if (d)
+                    {
+                        <div class="d-grid">
+                            <a asp-action="Descargar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary app-btn-sm">
+                                Descargar
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <p id="sinDocumentosMovil" class="text-muted text-center py-3 d-none">
+        No se encontraron documentos.
+    </p>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <span id="contadorDocumentosMovil" class="small text-muted"></span>
+
+        <div class="d-flex gap-2">
+            <button type="button" id="anteriorDocumentosMovil" class="app-btn app-btn-soft-secondary app-btn-sm">
+                Anterior
+            </button>
+
+            <button type="button" id="siguienteDocumentosMovil" class="app-btn app-btn-soft-secondary app-btn-sm">
+                Siguiente
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="~/js/documentos-index.js" asp-append-version="true"></script>
+}

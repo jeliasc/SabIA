@@ -40,11 +40,11 @@
         }
     </div>
 
-    <div class="card shadow-sm border border-secondary">
+    <div class="card shadow-sm border border-secondary d-none d-md-block">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table app-table w-100" data-tabla-index data-actions-column="@(hayAcciones ? "true" : "false")"
-                       data-search-placeholder="Buscar por año..."
+                <table class="table app-table w-100" data-tabla-index
+                       data-actions-column="@(hayAcciones ? "true" : "false")" data-search-placeholder="Buscar por año..."
                        data-empty-message="No existen ciclos escolares registrados"
                        data-zero-message="No se encontraron ciclos escolares">
                     <thead>
@@ -74,41 +74,41 @@
                                 </td>
                                 @if (hayAcciones)
                                 {
-                                <td class="app-actions-cell">
-                                    <div class="app-actions app-actions-table flex-wrap">
-                                        @if (puedeEditar && ciclo.Estado != EstadoCicloEscolar.Cerrado)
-                                        {
-                                            <a asp-action="Editar" asp-route-id="@ciclo.Id"
-                                               class="app-btn app-btn-soft-secondary app-btn-sm">Editar</a>
-                                        }
-                                        @if (puedeActivar && ciclo.Estado == EstadoCicloEscolar.Preparacion)
-                                        {
-                                            <form asp-action="Activar" asp-route-id="@ciclo.Id" method="post" class="m-0"
-                                                  data-confirmar-accion-academica data-confirmar-titulo="Activar ciclo"
-                                                  data-confirmar-mensaje="La activación será rechazada si ya existe otro ciclo activo."
-                                                  data-confirmar-texto="Activar" data-confirmar-color="#198754">
-                                                @Html.AntiForgeryToken()
-                                                <button class="app-btn app-btn-soft-success app-btn-sm"
-                                                        type="submit">Activar</button>
-                                            </form>
-                                        }
-                                        @if (puedeCerrar && ciclo.Estado == EstadoCicloEscolar.Activo)
-                                        {
-                                            <a asp-action="RevisarCierre" asp-route-id="@ciclo.Id"
-                                               class="app-btn app-btn-soft-warning app-btn-sm">Revisar cierre</a>
-                                        }
-                                        @if (puedeReabrir && ciclo.Estado == EstadoCicloEscolar.Cerrado)
-                                        {
-                                            <a asp-action="Reabrir" asp-route-id="@ciclo.Id"
-                                               class="app-btn app-btn-soft-warning app-btn-sm">Reabrir</a>
-                                        }
-                                        @if (puedeVer)
-                                        {
-                                            <a asp-action="Historial" asp-route-id="@ciclo.Id"
-                                               class="app-btn app-btn-soft-secondary app-btn-sm">Historial</a>
-                                        }
-                                    </div>
-                                </td>
+                                    <td class="app-actions-cell">
+                                        <div class="app-actions app-actions-table flex-wrap">
+                                            @if (puedeEditar && ciclo.Estado != EstadoCicloEscolar.Cerrado)
+                                            {
+                                                <a asp-action="Editar" asp-route-id="@ciclo.Id"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">Editar</a>
+                                            }
+                                            @if (puedeActivar && ciclo.Estado == EstadoCicloEscolar.Preparacion)
+                                            {
+                                                <form asp-action="Activar" asp-route-id="@ciclo.Id" method="post" class="m-0"
+                                                      data-confirmar-accion-academica data-confirmar-titulo="Activar ciclo"
+                                                      data-confirmar-mensaje="La activación será rechazada si ya existe otro ciclo activo."
+                                                      data-confirmar-texto="Activar" data-confirmar-color="#198754">
+                                                    @Html.AntiForgeryToken()
+                                                    <button class="app-btn app-btn-soft-success app-btn-sm"
+                                                            type="submit">Activar</button>
+                                                </form>
+                                            }
+                                            @if (puedeCerrar && ciclo.Estado == EstadoCicloEscolar.Activo)
+                                            {
+                                                <a asp-action="RevisarCierre" asp-route-id="@ciclo.Id"
+                                                   class="app-btn app-btn-soft-warning app-btn-sm">Revisar cierre</a>
+                                            }
+                                            @if (puedeReabrir && ciclo.Estado == EstadoCicloEscolar.Cerrado)
+                                            {
+                                                <a asp-action="Reabrir" asp-route-id="@ciclo.Id"
+                                                   class="app-btn app-btn-soft-warning app-btn-sm">Reabrir</a>
+                                            }
+                                            @if (puedeVer)
+                                            {
+                                                <a asp-action="Historial" asp-route-id="@ciclo.Id"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">Historial</a>
+                                            }
+                                        </div>
+                                    </td>
                                 }
                             </tr>
                         }
@@ -119,7 +119,90 @@
     </div>
 </div>
 
+<div class="d-md-none" id="ciclosMovil">
+    <div class="mb-3">
+        <div class="d-grid">
+            <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                    aria-controls="busqueda-ciclos-movil" data-mostrar-busqueda-ciclos>
+                <i class="bi bi-search" aria-hidden="true"></i> Buscar ciclo
+            </button>
+        </div>
+        <div id="busqueda-ciclos-movil" class="mt-2 d-none" data-contenedor-busqueda-ciclos>
+            <input type="search" id="buscarCicloMovil" class="form-control" placeholder="Año, fecha o estado..."
+                   aria-label="Buscar ciclos escolares" autocomplete="off" />
+        </div>
+    </div>
+    <div data-lista-ciclos-movil>
+        @foreach (var ciclo in Model)
+        {
+            <article class="card shadow-sm border-0 mb-3 ciclo-movil-item"
+                     data-busqueda="@($"{ciclo.Anio} {ciclo.Inicio:dd/MM/yyyy} {ciclo.Fin:dd/MM/yyyy} {ciclo.Periodos} {ciclo.Secciones} {TextoEstado(ciclo.Estado)}")">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between gap-2">
+                        <div class="fw-bold">Ciclo @ciclo.Anio</div>
+                        <span class="app-badge @ClaseEstado(ciclo.Estado)">@TextoEstado(ciclo.Estado)</span>
+                    </div>
+                    <div class="row g-2 my-3">
+                        <div class="col-6">
+                            <span class="small text-muted d-block">Inicio</span>@ciclo.Inicio.ToString("dd/MM/yyyy")
+                        </div>
+                        <div class="col-6">
+                            <span class="small text-muted d-block">Fin</span>@ciclo.Fin.ToString("dd/MM/yyyy")
+                        </div>
+                        <div class="col-6">
+                            <span class="small text-muted d-block">Períodos</span>@ciclo.Periodos
+                        </div>
+                        <div class="col-6">
+                            <span class="small text-muted d-block">Secciones</span>@ciclo.Secciones
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2">@if (puedeEditar && ciclo.Estado != EstadoCicloEscolar.Cerrado) {
+                        <a asp-action="Editar" asp-route-id="@ciclo.Id" class="app-btn app-btn-soft-secondary">Editar</a>
+                    }
+                    @if (puedeActivar && ciclo.Estado == EstadoCicloEscolar.Preparacion)
+                    {
+                        <form asp-action="Activar" asp-route-id="@ciclo.Id" method="post" data-confirmar-accion-academica
+                              data-confirmar-titulo="Activar ciclo"
+                              data-confirmar-mensaje="La activación será rechazada si ya existe otro ciclo activo."
+                              data-confirmar-texto="Activar" data-confirmar-color="#198754">
+                            @Html.AntiForgeryToken()
+                            <button class="app-btn app-btn-soft-success w-100" type="submit">Activar</button>
+                        </form>
+                    }
+                    @if (puedeCerrar && ciclo.Estado == EstadoCicloEscolar.Activo)
+                    {
+                        <a asp-action="RevisarCierre" asp-route-id="@ciclo.Id" class="app-btn app-btn-soft-warning">Revisar
+                            cierre</a>
+                        }
+                        @if (puedeReabrir && ciclo.Estado == EstadoCicloEscolar.Cerrado)
+                        {
+                            <a asp-action="Reabrir" asp-route-id="@ciclo.Id" class="app-btn app-btn-soft-warning">Reabrir</a>
+                        }
+                        @if (puedeVer)
+                        {
+                            <a asp-action="Historial" asp-route-id="@ciclo.Id"
+                               class="app-btn app-btn-soft-secondary">Historial</a>
+                        }
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+    <p class="text-muted text-center py-3 d-none" data-sin-ciclos-movil>No se encontraron ciclos escolares.</p>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <span class="small text-muted" data-contador-ciclos-movil></span>
+        <div class="d-flex gap-2">
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
+                    data-anterior-ciclos-movil>Anterior</button>
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
+                    data-siguiente-ciclos-movil>Siguiente</button>
+        </div>
+    </div>
+</div>
+
+
 @section Scripts
 {
     <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+    <script src="~/js/ciclos-index.js" asp-append-version="true"></script>
 }

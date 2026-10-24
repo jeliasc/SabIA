@@ -209,3 +209,18 @@ Esta tabla reemplaza para cierre las menciones cronológicas que indiquen que no
 ### Integridad de artefactos de prueba
 
 `Tests/E2E` conserva sólo fuente reproducible, fixtures ficticios, `package.json` y `package-lock.json`. No forman parte del conjunto propuesto `node_modules`, `test-results`, reportes, trazas, archivos de salida ni clústeres PostgreSQL temporales; ninguno está presente entre los cambios actuales. Las cuentas y contraseñas que aparecen en el seeder son ficticias y exclusivas de la base descartable; secretos, conexiones reales y datos personales no se versionan.
+
+### Paso 8: administración académica ejecutada en navegador
+
+| Recorrido | Clasificación | Estado | Evidencia |
+| --- | --- | --- | --- |
+| Crear y activar ciclo; crear período, grado, curso y secciones | Navegador | Aprobado | `administracion-academica.spec.mjs`, Chrome; formularios y validación de fecha requerida. |
+| Crear docente y comprobar duplicidad de carnet | Navegador | Aprobado | Alta con confirmación SweetAlert2, cuenta temporal y error visible de duplicidad. |
+| Crear encargado, alumno y asociación inmediata | Navegador | Aprobado | Alta de encargado independiente y alta de alumno con encargado en línea; perfil móvil del Alumno. |
+| Asignación e inscripción inicial; duplicidad activa | Navegador | Aprobado | Asignación creada; inscripción inicial creada por el formulario de alumno y segunda inscripción activa rechazada. |
+| Seguridad transversal | Navegador/HTTP desde contexto Chrome | Aprobado | Docente denegado en creación de ciclo; POST sin antiforgery devuelve 400. |
+| Persistencia temporal | PostgreSQL temporal | Aprobado | Conteos de ciclo, período, grado, secciones, cursos, personas, asignaciones e inscripciones. |
+| Traslado, retiro y reinscripción | Navegador | Pendiente | No se declara ejecutado en esta corrida. |
+| Estadísticas, notificaciones y auditoría desde paneles | Navegador | Pendiente | Se comprobó la portada; no el recorrido completo de esos paneles. |
+
+La corrida usó el superusuario inicial ficticio para las acciones administrativas. Antes de una demostración con el perfil limitado de Coordinación, se debe comprobar separadamente que sus permisos efectivos cubran sólo las operaciones autorizadas.

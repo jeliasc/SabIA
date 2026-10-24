@@ -79,7 +79,7 @@
         </div>
     </div>
 
-    <div class="card shadow-sm border border-secondary">
+    <div class="card shadow-sm border border-secondary d-none d-md-block">
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table app-table w-100" data-tabla-index
@@ -195,8 +195,112 @@
         </div>
     </div>
 </div>
+<div class="d-md-none" id="tareasMovil">
+    <div class="mb-3">
+        <div class="d-grid">
+            <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                    aria-controls="busqueda-tareas-movil" data-mostrar-busqueda-tareas>
+                <i class="bi bi-search" aria-hidden="true"></i>
+                Buscar tarea
+            </button>
+        </div>
+        <div id="busqueda-tareas-movil" class="mt-2 d-none" data-contenedor-busqueda-tareas>
+            <input type="search" id="buscarTareaMovil" class="form-control"
+                   placeholder="Tarea, curso, sección, tipo o estado..." aria-label="Buscar tareas" autocomplete="off" />
+        </div>
+    </div>
+
+    <div data-lista-tareas-movil>
+        @foreach (var x in Model)
+        {
+            var esBorrador = x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador;
+            var esPublicada = x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada;
+            var claseEstado = esPublicada
+                ? "app-badge-success"
+                : x.Estado == Proyecto_Final.Models.EstadoTarea.Cerrada
+                    ? "app-badge-danger"
+                    : "app-badge-secondary";
+            var limite = x.Limite?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Sin límite";
+
+            <article class="card shadow-sm border-0 mb-3 tarea-movil-item"
+                     data-busqueda="@($"{x.Titulo} {x.Curso} {x.Seccion} {x.Tipo.GetDisplayName()} {limite} {x.Entregadas} {x.Pendientes} {x.Estado.GetDisplayName()}")">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between gap-2">
+                        <div class="fw-bold">@x.Titulo</div>
+                        <span class="app-badge @claseEstado">@x.Estado.GetDisplayName()</span>
+                    </div>
+                    <div class="text-muted mb-3">@x.Curso · @x.Seccion</div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <span class="small text-muted d-block">Tipo</span>
+                            @x.Tipo.GetDisplayName()
+                        </div>
+                        <div class="col-6">
+                            <span class="small text-muted d-block">Límite</span>
+                            @limite
+                        </div>
+                        <div class="col-12">
+                            <span class="small text-muted d-block">Seguimiento</span>
+                            @x.Entregadas entregadas / @x.Pendientes pendientes
+                        </div>
+                    </div>
+
+                    @if (!soloLectura)
+                    {
+                        <div class="d-grid gap-2">
+                            @if (e && esBorrador)
+                            {
+                                <a asp-action="Editar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary">Editar</a>
+                            }
+                            @if (cuest && x.Tipo == Proyecto_Final.Models.TipoTarea.Cuestionario && esBorrador)
+                            {
+                                <a asp-controller="Cuestionarios" asp-action="Configurar" asp-route-tareaId="@x.Id"
+                                   class="app-btn app-btn-soft-secondary">Continuar configuración</a>
+                            }
+                            @if (p && esBorrador)
+                            {
+                                <form asp-action="Publicar" asp-route-id="@x.Id" method="post" data-confirmar-accion-academica
+                                      data-confirmar-titulo="Publicar tarea"
+                                      data-confirmar-mensaje="La tarea se habilitará para los alumnos vigentes de la sección."
+                                      data-confirmar-texto="Publicar" data-confirmar-color="#198754">
+                                    @Html.AntiForgeryToken()
+                                    <button class="app-btn app-btn-soft-success w-100">Publicar</button>
+                                </form>
+                            }
+                            @if (cerrar && esPublicada)
+                            {
+                                <form asp-action="Cerrar" asp-route-id="@x.Id" method="post" data-confirmar-accion-academica
+                                      data-confirmar-titulo="Cerrar tarea"
+                                      data-confirmar-mensaje="Los alumnos ya no podrán realizar entregas ordinarias para esta tarea."
+                                      data-confirmar-texto="Cerrar">
+                                    @Html.AntiForgeryToken()
+                                    <button class="app-btn app-btn-soft-danger w-100">Cerrar</button>
+                                </form>
+                            }
+                        </div>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+    <p class="text-muted text-center py-3 d-none" data-sin-tareas-movil>
+        No se encontraron tareas.
+    </p>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <span class="small text-muted" data-contador-tareas-movil></span>
+        <div class="d-flex gap-2">
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm" data-anterior-tareas-movil>
+                Anterior
+            </button>
+            <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm" data-siguiente-tareas-movil>
+                Siguiente
+            </button>
+        </div>
+    </div>
+</div>
 
 @section Scripts
 {
     <script src="~/js/acciones-academicas.js" asp-append-version="true"></script>
+    <script src="~/js/tareas-index.js" asp-append-version="true"></script>
 }
