@@ -77,6 +77,7 @@ public sealed class PlanificacionLista
     public int Version { get; set; }
 
     public DateTime FechaCreacion { get; set; }
+    public bool TienePdf { get; set; }
 }
 
 public sealed class RevisarPlanificacion
@@ -88,6 +89,7 @@ public sealed class RevisarPlanificacion
     public string Docente { get; set; } = string.Empty;
 
     public string Contenido { get; set; } = string.Empty;
+    public bool TienePdf { get; set; }
 
     [StringLength(2000, ErrorMessage = "El comentario no puede superar los 2000 caracteres.")]
     public string? Observaciones { get; set; }

@@ -36,7 +36,11 @@ public sealed class EntregaServicio(
                 (historial
                     ? x.Tarea.Asignacion.DocenteId == docenteId.Value &&
                       (x.Tarea.Asignacion.Estado != EstadoRegistro.Activo ||
-                       !x.Tarea.Asignacion.Seccion.CicloEscolar.Activo)
+                       !x.Tarea.Asignacion.Seccion.CicloEscolar.Activo ||
+                       (x.Tarea.Estado == EstadoTarea.Cerrada &&
+                        !(x.Estado == EstadoEntrega.Pendiente &&
+                          x.FechaLimiteIndividual.HasValue &&
+                          x.FechaLimiteIndividual.Value >= ahora)))
                     : ((x.Tarea.Asignacion.DocenteId == docenteId.Value &&
                         x.Tarea.Asignacion.Estado == EstadoRegistro.Activo) ||
                        contexto.DelegacionesAcademicas.Any(d =>
@@ -49,6 +53,10 @@ public sealed class EntregaServicio(
                            (d.Operaciones & OperacionDelegacionAcademica.ReabrirEntregas) ==
                               OperacionDelegacionAcademica.ReabrirEntregas))) &&
                       x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
+                      (x.Tarea.Estado != EstadoTarea.Cerrada ||
+                       (x.Estado == EstadoEntrega.Pendiente &&
+                        x.FechaLimiteIndividual.HasValue &&
+                        x.FechaLimiteIndividual.Value >= ahora)) &&
                       contexto.Inscripciones.Any(inscripcion =>
                           inscripcion.AlumnoId == x.AlumnoId &&
                           inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
@@ -64,13 +72,17 @@ public sealed class EntregaServicio(
                         inscripcion.AlumnoId == alumnoId.Value &&
                         inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
                         inscripcion.CicloEscolarId == x.Tarea.Asignacion.Seccion.CicloEscolarId) &&
-                    !(x.Tarea.Asignacion.Estado == EstadoRegistro.Activo &&
-                      x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
-                      contexto.Inscripciones.Any(inscripcion =>
-                          inscripcion.AlumnoId == alumnoId.Value &&
-                          inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
-                          inscripcion.CicloEscolarId == x.Tarea.Asignacion.Seccion.CicloEscolarId &&
-                          inscripcion.Estado == EstadoInscripcion.Activa)))
+                    (x.Tarea.Asignacion.Estado != EstadoRegistro.Activo ||
+                     !x.Tarea.Asignacion.Seccion.CicloEscolar.Activo ||
+                     !contexto.Inscripciones.Any(inscripcion =>
+                         inscripcion.AlumnoId == alumnoId.Value &&
+                         inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
+                         inscripcion.CicloEscolarId == x.Tarea.Asignacion.Seccion.CicloEscolarId &&
+                         inscripcion.Estado == EstadoInscripcion.Activa) ||
+                     (x.Tarea.Estado == EstadoTarea.Cerrada &&
+                      !(x.Estado == EstadoEntrega.Pendiente &&
+                        x.FechaLimiteIndividual.HasValue &&
+                        x.FechaLimiteIndividual.Value >= ahora))))
                 : consulta.Where(x =>
                     x.AlumnoId == alumnoId.Value &&
                     (x.Tarea.Asignacion.Estado == EstadoRegistro.Activo ||
@@ -81,6 +93,10 @@ public sealed class EntregaServicio(
                         (d.Operaciones & OperacionDelegacionAcademica.ContinuarActividadesAlumnos) ==
                             OperacionDelegacionAcademica.ContinuarActividadesAlumnos)) &&
                     x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
+                    (x.Tarea.Estado != EstadoTarea.Cerrada ||
+                     (x.Estado == EstadoEntrega.Pendiente &&
+                      x.FechaLimiteIndividual.HasValue &&
+                      x.FechaLimiteIndividual.Value >= ahora)) &&
                     contexto.Inscripciones.Any(inscripcion =>
                         inscripcion.AlumnoId == alumnoId.Value &&
                         inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
@@ -91,9 +107,17 @@ public sealed class EntregaServicio(
         {
             consulta = consulta.Where(x => historial
                 ? x.Tarea.Asignacion.Estado != EstadoRegistro.Activo ||
-                  !x.Tarea.Asignacion.Seccion.CicloEscolar.Activo
+                  !x.Tarea.Asignacion.Seccion.CicloEscolar.Activo ||
+                  (x.Tarea.Estado == EstadoTarea.Cerrada &&
+                   !(x.Estado == EstadoEntrega.Pendiente &&
+                     x.FechaLimiteIndividual.HasValue &&
+                     x.FechaLimiteIndividual.Value >= ahora))
                 : x.Tarea.Asignacion.Estado == EstadoRegistro.Activo &&
-                  x.Tarea.Asignacion.Seccion.CicloEscolar.Activo);
+                  x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
+                  (x.Tarea.Estado != EstadoTarea.Cerrada ||
+                   (x.Estado == EstadoEntrega.Pendiente &&
+                    x.FechaLimiteIndividual.HasValue &&
+                    x.FechaLimiteIndividual.Value >= ahora)));
         }
         else
         {
@@ -119,6 +143,10 @@ public sealed class EntregaServicio(
                 NumeroEnvio = x.NumeroEnvio,
                 CuestionarioId = x.Tarea.Cuestionario != null ? x.Tarea.Cuestionario.Id : null,
                 PuedeEntregarse = alumnoId.HasValue &&
+                    // La resolución de cuestionarios exige publicación general.
+                    // No anunciar una reapertura individual que el servicio de cuestionarios aún no valida.
+                    (x.Tarea.Tipo != TipoTarea.Cuestionario ||
+                     x.Tarea.Estado == EstadoTarea.Publicada) &&
                     x.AlumnoId == alumnoId.Value &&
                     x.Estado == EstadoEntrega.Pendiente &&
                     !contexto.Entregas.Any(otra =>
@@ -182,12 +210,30 @@ public sealed class EntregaServicio(
                         otra.AlumnoId == x.AlumnoId &&
                         otra.NumeroEnvio > x.NumeroEnvio) &&
                     contexto.Inscripciones.Any(inscripcion =>
-                        inscripcion.AlumnoId == x.AlumnoId &&
-                        inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
-                        inscripcion.CicloEscolarId ==
-                            x.Tarea.Asignacion.Seccion.CicloEscolarId &&
-                        inscripcion.Estado == EstadoInscripcion.Activa &&
-                        inscripcion.Seccion.CicloEscolar.Activo)
+                inscripcion.AlumnoId == x.AlumnoId &&
+                inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
+                inscripcion.CicloEscolarId ==
+                    x.Tarea.Asignacion.Seccion.CicloEscolarId &&
+                inscripcion.Estado == EstadoInscripcion.Activa &&
+                inscripcion.Seccion.CicloEscolar.Activo) &&
+
+            !(x.Estado == EstadoEntrega.Pendiente &&
+                !x.FechaEntrega.HasValue &&
+                (
+                    (x.FechaLimiteIndividual.HasValue &&
+                    x.FechaLimiteIndividual.Value >= ahora)
+                    ||
+                    (
+                        !x.FechaLimiteIndividual.HasValue &&
+                        x.Tarea.Estado == EstadoTarea.Publicada &&
+                        (!x.Tarea.FechaDisponibilidad.HasValue ||
+                        x.Tarea.FechaDisponibilidad.Value <= ahora) &&
+                        (!x.Tarea.FechaLimite.HasValue ||
+                        x.Tarea.FechaLimite.Value >= ahora ||
+                        x.Tarea.PermitirEntregaTardia)
+                    )
+                )
+            )
             })
             .ToListAsync();
     }
@@ -634,12 +680,15 @@ public sealed class EntregaServicio(
     public async Task<ReabrirEntrega?> ObtenerParaReabrirAsync(int id)
     {
         var docenteId = await acceso.ObtenerDocenteIdAsync();
+
         if (!docenteId.HasValue)
         {
             return null;
         }
 
-        return await contexto.Entregas
+        var ahora = DateTime.UtcNow;
+
+        var modelo = await contexto.Entregas
             .AsNoTracking()
             .Where(x =>
                 x.Id == id &&
@@ -647,8 +696,8 @@ public sealed class EntregaServicio(
                   x.Tarea.Asignacion.Estado == EstadoRegistro.Activo) ||
                  contexto.DelegacionesAcademicas.Any(d =>
                     d.AsignacionId == x.Tarea.AsignacionId && d.DocenteId == docenteId.Value &&
-                    d.Activa && d.FechaInicioUtc <= DateTime.UtcNow &&
-                    (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= DateTime.UtcNow) &&
+                    d.Activa && d.FechaInicioUtc <= ahora &&
+                    (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= ahora) &&
                     (d.Operaciones & OperacionDelegacionAcademica.ReabrirEntregas) ==
                         OperacionDelegacionAcademica.ReabrirEntregas)) &&
                 x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
@@ -661,19 +710,38 @@ public sealed class EntregaServicio(
                 !contexto.Entregas.Any(otra =>
                     otra.TareaId == x.TareaId &&
                     otra.AlumnoId == x.AlumnoId &&
-                    otra.NumeroEnvio > x.NumeroEnvio))
-            .Select(x => new ReabrirEntrega
-            {
-                Id = x.Id,
-                Alumno = x.Alumno.Usuario.PrimerNombre + " " +
+                    otra.NumeroEnvio > x.NumeroEnvio) &&
+                !(x.Estado == EstadoEntrega.Pendiente &&
+                  !x.FechaEntrega.HasValue &&
+                  ((x.FechaLimiteIndividual.HasValue &&
+                    x.FechaLimiteIndividual.Value >= ahora) ||
+                   (!x.FechaLimiteIndividual.HasValue &&
+                    x.Tarea.Estado == EstadoTarea.Publicada &&
+                    (!x.Tarea.FechaDisponibilidad.HasValue ||
+                     x.Tarea.FechaDisponibilidad.Value <= ahora) &&
+                    (!x.Tarea.FechaLimite.HasValue ||
+                     x.Tarea.FechaLimite.Value >= ahora ||
+                     x.Tarea.PermitirEntregaTardia)))))
+
+                .Select(x => new ReabrirEntrega
+                {
+                    Id = x.Id,
+                    Alumno = x.Alumno.Usuario.PrimerNombre + " " +
                     x.Alumno.Usuario.PrimerApellido,
-                Tarea = x.Tarea.Titulo,
-                Curso = x.Tarea.Asignacion.Curso.Nombre,
-                NumeroEnvioActual = x.NumeroEnvio,
-                EstadoActual = x.Estado,
-                FechaLimite = HoraGuatemala.ParaFormulario(DateTime.UtcNow.AddDays(2))
-            })
-            .FirstOrDefaultAsync();
+                    Tarea = x.Tarea.Titulo,
+                    Curso = x.Tarea.Asignacion.Curso.Nombre,
+                    NumeroEnvioActual = x.NumeroEnvio,
+                    EstadoActual = x.Estado
+                })
+                .FirstOrDefaultAsync();
+
+        if (modelo != null)
+        {
+            modelo.FechaLimite =
+                HoraGuatemala.ParaFormulario(ahora.AddDays(2));
+        }
+
+        return modelo;
     }
 
     public async Task<ResultadoOperacion> ReabrirAsync(ReabrirEntrega modelo)
@@ -700,8 +768,18 @@ public sealed class EntregaServicio(
         try
         {
             var origen = await contexto.Entregas
-                .Include(x => x.Tarea)
-                .FirstOrDefaultAsync(x => x.Id == modelo.Id);
+            .Include(x => x.Tarea)
+                .ThenInclude(x => x.Asignacion)
+                    .ThenInclude(x => x.Seccion)
+            .FirstOrDefaultAsync(x => x.Id == modelo.Id);
+
+            if (origen?.Tarea?.Asignacion?.Seccion == null)
+            {
+                await transaccion.RollbackAsync();
+
+                return ResultadoOperacion.Error(
+                    "La entrega no existe o no está disponible.");
+            }
 
             var responsable = origen != null &&
                 await acceso.EsDocenteDeAsignacionAsync(origen.Tarea.AsignacionId);
@@ -735,6 +813,28 @@ public sealed class EntregaServicio(
                 await transaccion.RollbackAsync();
                 return ResultadoOperacion.Error(
                     "La entrega seleccionada ya tiene un intento posterior.");
+            }
+
+            // La misma regla que aplica el listado y el formulario debe
+            // verificarse dentro de la transacción para evitar POST directos.
+            var ahoraReapertura = DateTime.UtcNow;
+            var pendienteSinEnviar = origen.Estado == EstadoEntrega.Pendiente &&
+                !origen.FechaEntrega.HasValue;
+            var plazoIndividualVigente = origen.FechaLimiteIndividual.HasValue &&
+                origen.FechaLimiteIndividual.Value >= ahoraReapertura;
+            var plazoGeneralVigente = !origen.FechaLimiteIndividual.HasValue &&
+                origen.Tarea.Estado == EstadoTarea.Publicada &&
+                (!origen.Tarea.FechaDisponibilidad.HasValue ||
+                 origen.Tarea.FechaDisponibilidad.Value <= ahoraReapertura) &&
+                (!origen.Tarea.FechaLimite.HasValue ||
+                 origen.Tarea.FechaLimite.Value >= ahoraReapertura ||
+                 origen.Tarea.PermitirEntregaTardia);
+
+            if (pendienteSinEnviar && (plazoIndividualVigente || plazoGeneralVigente))
+            {
+                await transaccion.RollbackAsync();
+                return ResultadoOperacion.Error(
+                    "La entrega ya está disponible. No es necesario reabrirla.");
             }
 
             Entrega destino;
@@ -771,7 +871,7 @@ public sealed class EntregaServicio(
             await contexto.SaveChangesAsync();
             await transaccion.CommitAsync();
             return ResultadoOperacion.Correcto(
-                $"La entrega fue reabierta hasta el {fechaLimite.ToLocalTime():dd/MM/yyyy HH:mm}.");
+                $"La entrega fue reabierta hasta el {HoraGuatemala.ParaFormulario(fechaLimite):dd/MM/yyyy HH:mm}.");
         }
         catch
         {

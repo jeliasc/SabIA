@@ -59,7 +59,9 @@ public sealed class PlanificacionServicio(
                 Curso = x.Asignaciones.Select(a => a.Asignacion.Curso.Nombre).FirstOrDefault() ?? "Sin asignación",
                 Estado = x.Estado,
                 Version = x.NumeroVersion,
-                FechaCreacion = x.FechaCreacion
+                FechaCreacion = x.FechaCreacion,
+                TienePdf = x.Archivos.Any(a =>
+                    a.Archivo.TipoMime == "application/pdf")
             })
             .ToListAsync();
 
@@ -75,7 +77,9 @@ public sealed class PlanificacionServicio(
                 Curso = x.Asignaciones.Select(a => a.Asignacion.Curso.Nombre).FirstOrDefault() ?? "Sin asignación",
                 Estado = x.Estado,
                 Version = x.NumeroVersion,
-                FechaCreacion = x.FechaCreacion
+                FechaCreacion = x.FechaCreacion,
+                TienePdf = x.Archivos.Any(a =>
+                    a.Archivo.TipoMime == "application/pdf")
             })
             .ToListAsync();
 
@@ -406,8 +410,14 @@ public sealed class PlanificacionServicio(
             {
                 Id = x.Id,
                 Titulo = x.Titulo,
-                Docente = x.Docente.Usuario.PrimerNombre + " " + x.Docente.Usuario.PrimerApellido,
-                Contenido = x.Detalles.OrderBy(d => d.Orden).Select(d => d.Contenido).FirstOrDefault() ?? string.Empty
+                Docente = x.Docente.Usuario.PrimerNombre + " " +
+                          x.Docente.Usuario.PrimerApellido,
+                Contenido = x.Detalles
+                    .OrderBy(d => d.Orden)
+                    .Select(d => d.Contenido)
+                    .FirstOrDefault() ?? string.Empty,
+                TienePdf = x.Archivos.Any(a =>
+                    a.Archivo.TipoMime == "application/pdf")
             })
             .FirstOrDefaultAsync();
     }
@@ -462,6 +472,8 @@ public sealed class PlanificacionServicio(
 
     public async Task<int?> ObtenerArchivoPdfIdAsync(int id)
     {
+        if (!acceso.TienePermiso(Seguridad.Permisos.Planificaciones.Ver))
+            return null;
         var vigentes = await ConsultaPermitidaAsync();
         var historicas = await ConsultaPermitidaAsync(historial: true);
         var planificacionesPermitidas = vigentes.Select(x => x.Id)
@@ -476,6 +488,41 @@ public sealed class PlanificacionServicio(
             .OrderByDescending(x => x.Archivo.FechaCreacion)
             .Select(x => (int?)x.ArchivoId)
             .FirstOrDefaultAsync();
+    }
+
+    public async Task<(Stream Stream, string Nombre)?>
+    ObtenerArchivoParaLecturaAsync(int id)
+    {
+        // Comprobar que la planificación pertenece al ámbito autorizado.
+        var archivoId = await ObtenerArchivoPdfIdAsync(id);
+
+        if (!archivoId.HasValue)
+            return null;
+
+        // Recuperar los metadatos del PDF autorizado.
+        var archivo = await contexto.Archivos
+            .AsNoTracking()
+            .Where(x =>
+                x.Id == archivoId.Value &&
+                x.TipoMime == "application/pdf")
+            .Select(x => new
+            {
+                x.NombreOriginal,
+                x.ClaveAlmacenamiento
+            })
+            .FirstOrDefaultAsync();
+
+        if (archivo is null)
+            return null;
+
+        // Abrir el archivo desde el almacenamiento privado.
+        var stream = await archivosFisicos.AbrirLecturaAsync(
+            archivo.ClaveAlmacenamiento);
+
+        if (stream is null)
+            return null;
+
+        return (stream, archivo.NombreOriginal);
     }
 
     private async Task<ResultadoOperacion?> ValidarAcademicoAsync(FormularioPlanificacion modelo)

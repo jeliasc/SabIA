@@ -29,9 +29,11 @@ public sealed class TareaServicio(
             q = q.Where(x =>
                 x.Asignacion.DocenteId == d.Value &&
                 (historial
-                    ? x.Asignacion.Estado != EstadoRegistro.Activo ||
+                    ? x.Estado == EstadoTarea.Cerrada ||
+                      x.Asignacion.Estado != EstadoRegistro.Activo ||
                       !x.Asignacion.Seccion.CicloEscolar.Activo
-                    : x.Asignacion.Estado == EstadoRegistro.Activo &&
+                    : x.Estado != EstadoTarea.Cerrada &&
+                      x.Asignacion.Estado == EstadoRegistro.Activo &&
                       x.Asignacion.Seccion.CicloEscolar.Activo)
             );
         }
@@ -74,9 +76,11 @@ public sealed class TareaServicio(
         else if (acceso.EsOperadorInstitucional)
         {
             q = q.Where(x => historial
-                ? x.Asignacion.Estado != EstadoRegistro.Activo ||
+                ? x.Estado == EstadoTarea.Cerrada ||
+                  x.Asignacion.Estado != EstadoRegistro.Activo ||
                   !x.Asignacion.Seccion.CicloEscolar.Activo
-                : x.Asignacion.Estado == EstadoRegistro.Activo &&
+                : x.Estado != EstadoTarea.Cerrada &&
+                  x.Asignacion.Estado == EstadoRegistro.Activo &&
                   x.Asignacion.Seccion.CicloEscolar.Activo);
         }
         else

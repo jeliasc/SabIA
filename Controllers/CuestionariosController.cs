@@ -5,6 +5,7 @@ using Proyecto_Final.Servicios.GestionCuestionarios;
 using Proyecto_Final.Servicios.GestionNotificaciones;
 using Proyecto_Final.Servicios.InteligenciaArtificial;
 using Proyecto_Final.ViewModels.Cuestionarios;
+using Proyecto_Final.Servicios.SeguridadAcademica;
 
 namespace Proyecto_Final.Controllers;
 
@@ -12,7 +13,8 @@ namespace Proyecto_Final.Controllers;
 public class CuestionariosController(
     ICuestionarioServicio s,
     INotificacionServicio notificaciones,
-    IIaServicio ia) : Controller
+    IIaServicio ia,
+    IAccesoAcademicoServicio acceso) : Controller
 {
     public async Task<IActionResult> Index() =>
         View(await s.ObtenerTodosAsync());
@@ -116,9 +118,29 @@ public class CuestionariosController(
     [Authorize(Policy = Permisos.Cuestionarios.Resolver)]
     public async Task<IActionResult> Resolver(int id)
     {
+        var alumnoId = await acceso.ObtenerAlumnoIdAsync();
+
+        if (!alumnoId.HasValue)
+        {
+            TempData["Error"] =
+                "Acceso denegado. Para resolver cuestionarios debe tener un perfil de alumno e inscripción vigente.";
+
+            return RedirectToAction(nameof(Index));
+        }
+
         var m = await s.ObtenerInicioAsync(id);
-        if (m == null) return NotFound();
+
+        if (m == null)
+        {
+            TempData["Error"] =
+                "No puede resolver este cuestionario. La actividad puede estar cerrada, " +
+                "fuera del período de disponibilidad o no corresponder a su inscripción académica.";
+
+            return RedirectToAction(nameof(Index));
+        }
+
         await notificaciones.RegistrarVisualizacionActividadAsync(m.TareaId);
+
         return View(m);
     }
 
