@@ -1,7 +1,9 @@
 @model Proyecto_Final.ViewModels.Entregas.CalificarEntrega
+@using System.Globalization
 
 @{
     ViewData["Title"] = "Calificar entrega";
+    var punteoMaximo = Model.PunteoMaximo.ToString("0.00", CultureInfo.InvariantCulture);
 }
 
 <div class="container-fluid">
@@ -23,11 +25,13 @@
     {
         <div class="mb-3">
             <label class="form-label" for="selector-intento-calificar">Seleccionar intento</label>
-            <select id="selector-intento-calificar" class="form-select" onchange="location.href = '@Url.Action("Calificar", "Entregas")/' + this.value">
+            <select id="selector-intento-calificar" class="form-select">
                 @foreach (var intento in Model.Intentos)
                 {
-                    <option value="@intento.Id" selected="@(intento.Id == Model.Id)">
-                        Intento @intento.NumeroEnvio — @(intento.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Pendiente")
+                    <option value="@Url.Action("Calificar", "Entregas", new { id = intento.Id })"
+                            selected="@(intento.Id == Model.Id)">
+                        Intento @intento.NumeroEnvio — @(intento.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ??
+                                                                                                        "Pendiente")
                     </option>
                 }
             </select>
@@ -43,51 +47,49 @@
             <form method="post">
                 @Html.AntiForgeryToken()
 
-                <input asp-for="Id"
-                       type="hidden" />
+                <input asp-for="Id" type="hidden" />
 
-                <input asp-for="PunteoMaximo"
-                       type="hidden" />
+                <input asp-for="PunteoMaximo" type="hidden" />
 
-                <div asp-validation-summary="ModelOnly"
-                     class="text-danger">
-                </div>
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
                 <div class="mb-3">
-                    <label asp-for="Calificacion"
-                           class="form-label">
+                    <label asp-for="Calificacion" class="form-label">
                         Calificación (máximo @Model.PunteoMaximo)
                     </label>
 
-                    <input asp-for="Calificacion"
-                           class="form-control" />
+                    <input asp-for="Calificacion" class="form-control"
+                           type="number" min="0"
+                           max="@punteoMaximo"
+                           step="0.01" inputmode="decimal"
+                           data-val="true"
+                           data-val-number="Ingrese una calificación válida."
+                           data-val-range="La calificación debe estar entre 0 y @punteoMaximo."
+                           data-val-range-min="0"
+                           data-val-range-max="@punteoMaximo" />
+
+                    <span asp-validation-for="Calificacion" class="text-danger"></span>
                 </div>
 
                 <div class="mb-3">
-                    <label asp-for="Retroalimentacion"
-                           class="form-label">
+                    <label asp-for="Retroalimentacion" class="form-label">
                         Retroalimentación
                     </label>
 
-                    <textarea asp-for="Retroalimentacion"
-                              class="form-control"
-                              rows="5">
+                    <textarea asp-for="Retroalimentacion" class="form-control" rows="5">
                     </textarea>
                 </div>
 
                 <div class="form-check mb-4">
-                    <input asp-for="Devolver"
-                           class="form-check-input" />
+                    <input asp-for="Devolver" class="form-check-input" />
 
-                    <label asp-for="Devolver"
-                           class="form-check-label">
+                    <label asp-for="Devolver" class="form-check-label">
                         Devolver al alumno para corrección
                     </label>
                 </div>
 
                 <div class="d-flex justify-content-end gap-2">
-                    <a asp-action="Index"
-                       class="app-btn app-btn-secondary">
+                    <a asp-action="Index" class="app-btn app-btn-secondary">
                         Cancelar
                     </a>
 
@@ -99,3 +101,15 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        document.getElementById('selector-intento-calificar')?.addEventListener('change', function () {
+            if (this.value) {
+                window.location.assign(this.value);
+            }
+        });
+    </script>
+}

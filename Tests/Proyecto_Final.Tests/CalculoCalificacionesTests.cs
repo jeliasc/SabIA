@@ -1,10 +1,27 @@
 using Proyecto_Final.Models;
+using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.GestionCalificaciones;
 
 namespace Proyecto_Final.Tests;
 
 public sealed class CalculoCalificacionesTests
 {
+    [Theory]
+    [InlineData(CriterioCalificacionIntentos.MejorNota, 8)]
+    [InlineData(CriterioCalificacionIntentos.UltimoIntento, 8)]
+    [InlineData(CriterioCalificacionIntentos.Promedio, 8)]
+    public void CriterioIntentos_ExcluyeCeroAdministrativo(
+        CriterioCalificacionIntentos criterio, decimal esperado)
+    {
+        var resultado = CalculoCriterioCalificacion.Aplicar(criterio,
+        [
+            (1, 10, (decimal?)0, true),
+            (2, 11, (decimal?)8, false)
+        ]);
+
+        Assert.Equal(esperado, resultado);
+    }
+
     [Fact]
     public void MetodologiaInstitucional_CalculaSumasTotalYValoresAbacus()
     {

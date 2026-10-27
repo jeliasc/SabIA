@@ -25,4 +25,8 @@ public interface ITareaServicio
     Task<ResultadoOperacion> PublicarAsync(int id);
 
     Task<ResultadoOperacion> CerrarAsync(int id);
+    Task<CerrarTarea?> ObtenerParaCerrarAsync(int id);
+    Task<ResultadoOperacion> CerrarAsync(CerrarTarea modelo);
+    Task<ReabrirTarea?> ObtenerParaReabrirAsync(int id);
+    Task<ResultadoOperacion> ReabrirAsync(ReabrirTarea modelo);
 }

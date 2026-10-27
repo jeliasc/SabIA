@@ -9,23 +9,42 @@
         Editar tarea
     </h2>
 
+    @if (Model.EstadoActual == Proyecto_Final.Models.EstadoTarea.Publicada)
+    {
+        <div class="app-alert app-alert-info mb-3">
+            La tarea permanece publicada. Puede corregir título, instrucciones y fechas; los cambios estructurales se
+            validan al guardar.
+            @if (Model.TieneRegistrosAcademicos)
+            {
+                <span> Ya existen registros académicos, por lo que punteo, intentos, entrega tardía y adjuntos permanecen
+                    protegidos.
+                </span>
+            }
+            @if (Model.TieneReaperturas)
+            {
+                <span> Las fechas están protegidas mientras haya reaperturas registradas.</span>
+            }
+        </div>
+    }
+
     <div class="card shadow-sm border-0">
         <div class="card-body p-4">
-            <form method="post"
-                  enctype="multipart/form-data">
+            <form method="post" enctype="multipart/form-data" novalidate data-formulario-tarea>
                 @Html.AntiForgeryToken()
                 @Html.HiddenFor(m => m.Id)
 
                 <partial name="Formulario" model="Model" />
 
                 <div class="d-flex justify-content-end gap-2 mt-4">
-                    <a asp-action="Index"
-                       class="app-btn app-btn-secondary">
+                    <a asp-action="Index" class="app-btn app-btn-secondary">
                         Cancelar
                     </a>
 
-                    <button class="app-btn app-btn-soft-primary">
-                        Guardar borrador
+                    <button type="submit" class="app-btn app-btn-soft-primary" data-accion-tarea>
+                        <span data-texto-accion-tarea>
+                            @(Model.EstadoActual == Proyecto_Final.Models.EstadoTarea.Publicada ? "Guardar cambios" :
+                            "Guardar borrador")
+                        </span>
                     </button>
                 </div>
             </form>
@@ -36,4 +55,5 @@
 @section Scripts
 {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/tareas-formulario.js" asp-append-version="true"></script>
 }

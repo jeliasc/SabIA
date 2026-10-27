@@ -32,10 +32,18 @@
                             @switch (Model.ModalidadTiempo)
                             {
                                 case ModalidadTiempoCuestionario.TiempoGeneral:
-                                    <text>Tiempo total: @Duracion(Model.TiempoGeneralSegundos ?? 0). Al terminar el tiempo el cuestionario se envía solo.</text>
+                                    <text>
+                                        Tiempo total: @Duracion(Model.TiempoGeneralSegundos ?? 0).
+                                        Al terminar el tiempo el
+                                        cuestionario se envía solo.
+                                    </text>
                                     break;
                                 case ModalidadTiempoCuestionario.TiempoPorPregunta:
-                                    <text>Cada pregunta tiene su propio tiempo@(Model.TiempoPorPreguntaSegundos.HasValue ? $" (normalmente {Duracion(Model.TiempoPorPreguntaSegundos.Value)})" : ""). Al terminar, pasa a la siguiente.</text>
+                                    <text>
+                                        Cada pregunta tiene su propio tiempo@(Model.TiempoPorPreguntaSegundos.HasValue ? $" (normalmente {Duracion(Model.TiempoPorPreguntaSegundos.Value)})" : "").
+                                        Al terminar,
+                                        pasa a la siguiente.
+                                    </text>
                                     break;
                                 default:
                                     <text>Sin límite de tiempo.</text>
@@ -55,6 +63,13 @@
                             Intentos utilizados: @Model.IntentosUsados
                             de @(Model.MaximoIntentos == 0 ? "ilimitados" : Model.MaximoIntentos.ToString())
                         </li>
+                        @if (Model.OportunidadAutorizada)
+                        {
+                            <li class="mt-2 text-success">
+                                <i class="bi bi-check-circle me-2"></i>
+                                Cuenta con una oportunidad adicional autorizada por su docente.
+                            </li>
+                        }
                     </ul>
 
                     @if (Model.PlazoVencido && !Model.IntentoEnCursoId.HasValue)

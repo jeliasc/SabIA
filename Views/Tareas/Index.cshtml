@@ -26,17 +26,26 @@
         Permisos.Tareas.Cerrar
     )).Succeeded;
 
+    var reabrir = (await A.AuthorizeAsync(
+        User,
+        Permisos.Entregas.Reabrir
+    )).Succeeded;
+
     var cuest = (await A.AuthorizeAsync(
         User,
         Permisos.Cuestionarios.Crear
     )).Succeeded;
 
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
-    var hayAcciones = !soloLectura && Model.Any(x =>
-        (x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador && (e || p)) ||
-        (x.Tipo == Proyecto_Final.Models.TipoTarea.Cuestionario &&
-         x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador && cuest) ||
-        (x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada && cerrar));
+    var hayAcciones = Model.Any(x => soloLectura
+        ? x.Estado == Proyecto_Final.Models.EstadoTarea.Cerrada &&
+          x.PuedeReabrirse && reabrir
+        : (x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador && (e || p)) ||
+          (x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada && e) ||
+          (x.Tipo == Proyecto_Final.Models.TipoTarea.Cuestionario &&
+           x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador && cuest) ||
+          (x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada && cerrar) ||
+          (x.PuedeReabrirse && reabrir));
 }
 
 <div class="container-fluid">
@@ -92,7 +101,8 @@
                             <th>Tipo</th>
                             <th>Límite</th>
                             <th>Seguimiento</th>
-                            <th>Estado</th>
+                            <th>Estado administrativo</th>
+                            <th>Disponibilidad</th>
                             @if (hayAcciones)
                             {
                                 <th>Acciones</th>
@@ -131,12 +141,30 @@
                                         @x.Estado.GetDisplayName()
                                     </span>
                                 </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(x.IndicadorDisponibilidad))
+                                    {
+                                        var claseDisponibilidad = x.IndicadorDisponibilidad == "Disponible"
+                                            ? "app-badge-success"
+                                            : x.IndicadorDisponibilidad == "Reabierta"
+                                                ? "app-badge-warning"
+                                                : x.IndicadorDisponibilidad == "Plazo vencido" || x.IndicadorDisponibilidad == "Cerrada"
+                                                    ? "app-badge-danger"
+                                                    : "app-badge-secondary";
+                                        <span class="app-badge @claseDisponibilidad">@x.IndicadorDisponibilidad</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Consulta histórica</span>
+                                    }
+                                </td>
                                 @if (hayAcciones)
                                 {
                                     <td>
                                         <div class="app-actions app-actions-table">
                                             @if (e &&
-                                                x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador)
+                                                (x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador ||
+                                                 x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada))
                                             {
                                                 <a asp-action="Editar" asp-route-id="@x.Id"
                                                    class="app-btn app-btn-soft-secondary app-btn-sm">
@@ -172,16 +200,15 @@
                                             @if (cerrar &&
                                                 x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada)
                                             {
-                                                <form asp-action="Cerrar" asp-route-id="@x.Id" method="post"
-                                                      data-confirmar-accion-academica data-confirmar-titulo="Cerrar tarea"
-                                                      data-confirmar-mensaje="Los alumnos ya no podrán realizar entregas ordinarias para esta tarea."
-                                                      data-confirmar-texto="Cerrar">
-                                                    @Html.AntiForgeryToken()
+                                                <a asp-action="Cerrar" asp-route-id="@x.Id"
+                                                   class="app-btn app-btn-soft-danger app-btn-sm">Cerrar</a>
+                                            }
 
-                                                    <button class="app-btn app-btn-soft-danger app-btn-sm">
-                                                        Cerrar
-                                                    </button>
-                                                </form>
+                                            @if (reabrir && x.PuedeReabrirse &&
+                                                (!soloLectura || x.Estado == Proyecto_Final.Models.EstadoTarea.Cerrada))
+                                            {
+                                                <a asp-action="Reabrir" asp-route-id="@x.Id"
+                                                   class="app-btn app-btn-soft-warning app-btn-sm">Reabrir para todos</a>
                                             }
                                         </div>
                                     </td>
@@ -221,6 +248,9 @@
                     ? "app-badge-danger"
                     : "app-badge-secondary";
             var limite = x.Limite?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Sin límite";
+            var disponibilidad = string.IsNullOrWhiteSpace(x.IndicadorDisponibilidad)
+                ? "Consulta histórica"
+                : x.IndicadorDisponibilidad;
 
             <article class="card shadow-sm border-0 mb-3 tarea-movil-item"
                      data-busqueda="@($"{x.Titulo} {x.Curso} {x.Seccion} {x.Tipo.GetDisplayName()} {limite} {x.Entregadas} {x.Pendientes} {x.Estado.GetDisplayName()}")">
@@ -243,12 +273,18 @@
                             <span class="small text-muted d-block">Seguimiento</span>
                             @x.Entregadas entregadas / @x.Pendientes pendientes
                         </div>
+                        <div class="col-12">
+                            <span class="small text-muted d-block">Disponibilidad</span>
+                            @disponibilidad
+                        </div>
                     </div>
 
-                    @if (!soloLectura)
+                    @if (!soloLectura ||
+                         (reabrir && x.PuedeReabrirse &&
+                          x.Estado == Proyecto_Final.Models.EstadoTarea.Cerrada))
                     {
                         <div class="d-grid gap-2">
-                            @if (e && esBorrador)
+                            @if (e && (esBorrador || esPublicada))
                             {
                                 <a asp-action="Editar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary">Editar</a>
                             }
@@ -269,13 +305,15 @@
                             }
                             @if (cerrar && esPublicada)
                             {
-                                <form asp-action="Cerrar" asp-route-id="@x.Id" method="post" data-confirmar-accion-academica
-                                      data-confirmar-titulo="Cerrar tarea"
-                                      data-confirmar-mensaje="Los alumnos ya no podrán realizar entregas ordinarias para esta tarea."
-                                      data-confirmar-texto="Cerrar">
-                                    @Html.AntiForgeryToken()
-                                    <button class="app-btn app-btn-soft-danger w-100">Cerrar</button>
-                                </form>
+                                <a asp-action="Cerrar" asp-route-id="@x.Id"
+                                   class="app-btn app-btn-soft-danger w-100">Cerrar</a>
+                            }
+                            @if (reabrir && x.PuedeReabrirse &&
+                                (!soloLectura || x.Estado == Proyecto_Final.Models.EstadoTarea.Cerrada))
+                            {
+                                <a asp-action="Reabrir" asp-route-id="@x.Id" class="app-btn app-btn-soft-warning">Reabrir para
+                                    todos
+                                </a>
                             }
                         </div>
                     }

@@ -23,6 +23,14 @@ public interface IEntregaServicio
         CalificarEntrega m
     );
 
+    Task<CalificarCeroEntrega?> ObtenerParaCalificarCeroAsync(int id);
+
+    Task<ResultadoOperacion> CalificarCeroAsync(CalificarCeroEntrega m);
+
+    Task<RectificarCeroAdministrativo?> ObtenerParaRectificarCeroAsync(int id);
+
+    Task<ResultadoOperacion> RectificarCeroAsync(RectificarCeroAdministrativo m);
+
     Task<ReabrirEntrega?> ObtenerParaReabrirAsync(int id);
 
     Task<ResultadoOperacion> ReabrirAsync(ReabrirEntrega m);

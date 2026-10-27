@@ -880,11 +880,24 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Property<DateTime?>("FechaLimiteIndividual")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("FechaRectificacionAdministrativa")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int?>("InscripcionId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("MotivoRectificacionAdministrativa")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.Property<int>("NumeroEnvio")
                         .HasColumnType("integer");
+
+                    b.Property<int?>("OrigenCalificacionAdministrativa")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RectificadoPorUsuarioId")
+                        .HasColumnType("text");
 
                     b.Property<string>("Retroalimentacion")
                         .HasColumnType("text");
@@ -898,6 +911,10 @@ namespace Proyecto_Final.Data.Migraciones
 
                     b.HasIndex("CalificadoPorUsuarioId");
 
+                    b.HasIndex("OrigenCalificacionAdministrativa");
+
+                    b.HasIndex("RectificadoPorUsuarioId");
+
                     b.HasIndex("InscripcionId", "AlumnoId");
 
                     b.HasIndex("TareaId", "AlumnoId", "NumeroEnvio")
@@ -910,6 +927,8 @@ namespace Proyecto_Final.Data.Migraciones
                     b.ToTable("Entregas", t =>
                         {
                             t.HasCheckConstraint("CK_Entregas_Calificacion", "\"Calificacion\" IS NULL OR \"Calificacion\" >= 0");
+
+                            t.HasCheckConstraint("CK_Entregas_CalificacionAdministrativa", "\"OrigenCalificacionAdministrativa\" IS NULL OR (\"OrigenCalificacionAdministrativa\" IN (1, 2) AND \"FechaEntrega\" IS NULL AND ((\"Calificacion\" = 0 AND \"Estado\" = 2) OR (\"Calificacion\" IS NULL AND \"Estado\" = 6 AND \"FechaRectificacionAdministrativa\" IS NOT NULL AND \"MotivoRectificacionAdministrativa\" IS NOT NULL AND \"RectificadoPorUsuarioId\" IS NOT NULL)))");
 
                             t.HasCheckConstraint("CK_Entregas_NumeroEnvio", "\"NumeroEnvio\" >= 1");
                         });
@@ -1160,9 +1179,16 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Property<int>("PreguntaActual")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("ReaperturaEntregaId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AlumnoId");
+
+                    b.HasIndex("ReaperturaEntregaId")
+                        .IsUnique()
+                        .HasFilter("\"ReaperturaEntregaId\" IS NOT NULL");
 
                     b.HasIndex("CuestionarioId", "InscripcionId")
                         .IsUnique()
@@ -1737,6 +1763,9 @@ namespace Proyecto_Final.Data.Migraciones
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AutorizaOportunidadAdicional")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("EntregaId")
                         .HasColumnType("integer");
 
@@ -1765,6 +1794,74 @@ namespace Proyecto_Final.Data.Migraciones
                         {
                             t.HasCheckConstraint("CK_ReaperturasEntregas_Fechas", "\"FechaLimite\" > \"FechaReapertura\"");
                         });
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.ReaperturaTarea", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Alcance")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaLimite")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaReapertura")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ReabiertaPorUsuarioId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("TareaId")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TokenSolicitud")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReabiertaPorUsuarioId");
+
+                    b.HasIndex("TareaId", "TokenSolicitud")
+                        .IsUnique();
+
+                    b.ToTable("ReaperturasTareas", t =>
+                        {
+                            t.HasCheckConstraint("CK_ReaperturasTareas_Fechas", "\"FechaLimite\" > \"FechaReapertura\"");
+                        });
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.ReaperturaTareaAlumno", b =>
+                {
+                    b.Property<int>("ReaperturaTareaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("AlumnoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("EntregaId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("OportunidadAdicional")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("ReaperturaTareaId", "AlumnoId");
+
+                    b.HasIndex("AlumnoId");
+
+                    b.HasIndex("EntregaId");
+
+                    b.ToTable("ReaperturasTareasAlumnos");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.RegistroAuditoria", b =>
@@ -2276,6 +2373,9 @@ namespace Proyecto_Final.Data.Migraciones
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("CriterioCalificacionEntrega")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Estado")
                         .HasColumnType("integer");
 
@@ -2344,7 +2444,7 @@ namespace Proyecto_Final.Data.Migraciones
                         {
                             t.HasCheckConstraint("CK_Tareas_Fechas", "\"FechaDisponibilidad\" IS NULL OR \"FechaLimite\" IS NULL OR \"FechaDisponibilidad\" <= \"FechaLimite\"");
 
-                            t.HasCheckConstraint("CK_Tareas_MaximoIntentosEntrega", "(\"Tipo\" = 1 AND (\"MaximoIntentosEntrega\" IS NULL OR \"MaximoIntentosEntrega\" IN (1, 2, 3))) OR (\"Tipo\" <> 1 AND \"MaximoIntentosEntrega\" IS NULL)");
+                            t.HasCheckConstraint("CK_Tareas_MaximoIntentosEntrega", "(\"Tipo\" = 1 AND (\"MaximoIntentosEntrega\" IS NULL OR \"MaximoIntentosEntrega\" IN (1, 2, 3)) AND (\"CriterioCalificacionEntrega\" IS NULL OR \"CriterioCalificacionEntrega\" IN (1, 2, 3))) OR (\"Tipo\" <> 1 AND \"MaximoIntentosEntrega\" IS NULL AND \"CriterioCalificacionEntrega\" IS NULL)");
 
                             t.HasCheckConstraint("CK_Tareas_NumeroVersion", "\"NumeroVersion\" >= 1");
 
@@ -2937,6 +3037,11 @@ namespace Proyecto_Final.Data.Migraciones
                         .HasForeignKey("CalificadoPorUsuarioId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Proyecto_Final.Models.Usuario", "RectificadoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("RectificadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Proyecto_Final.Models.Tarea", "Tarea")
                         .WithMany("Entregas")
                         .HasForeignKey("TareaId")
@@ -2954,6 +3059,8 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("CalificadoPorUsuario");
 
                     b.Navigation("Inscripcion");
+
+                    b.Navigation("RectificadoPorUsuario");
 
                     b.Navigation("Tarea");
                 });
@@ -3088,6 +3195,11 @@ namespace Proyecto_Final.Data.Migraciones
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Proyecto_Final.Models.ReaperturaEntrega", "ReaperturaEntrega")
+                        .WithMany()
+                        .HasForeignKey("ReaperturaEntregaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Proyecto_Final.Models.Inscripcion", "Inscripcion")
                         .WithMany()
                         .HasForeignKey("InscripcionId", "AlumnoId")
@@ -3099,6 +3211,8 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Cuestionario");
 
                     b.Navigation("Inscripcion");
+
+                    b.Navigation("ReaperturaEntrega");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.Material", b =>
@@ -3334,6 +3448,51 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Entrega");
 
                     b.Navigation("ReabiertaPorUsuario");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.ReaperturaTarea", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.Usuario", "ReabiertaPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("ReabiertaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Tarea", "Tarea")
+                        .WithMany("Reaperturas")
+                        .HasForeignKey("TareaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ReabiertaPorUsuario");
+
+                    b.Navigation("Tarea");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.ReaperturaTareaAlumno", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.Alumno", "Alumno")
+                        .WithMany()
+                        .HasForeignKey("AlumnoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Entrega", "Entrega")
+                        .WithMany()
+                        .HasForeignKey("EntregaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Proyecto_Final.Models.ReaperturaTarea", "ReaperturaTarea")
+                        .WithMany("Alumnos")
+                        .HasForeignKey("ReaperturaTareaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Alumno");
+
+                    b.Navigation("Entrega");
+
+                    b.Navigation("ReaperturaTarea");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.RegistroAuditoria", b =>
@@ -3785,6 +3944,11 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("RespuestasAceptadas");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.ReaperturaTarea", b =>
+                {
+                    b.Navigation("Alumnos");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.RelevoAsignacion", b =>
                 {
                     b.Navigation("Delegaciones");
@@ -3802,6 +3966,8 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Cuestionario");
 
                     b.Navigation("Entregas");
+
+                    b.Navigation("Reaperturas");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.Unidad", b =>

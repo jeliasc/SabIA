@@ -1,0 +1,36 @@
+@model Proyecto_Final.ViewModels.Entregas.RectificarCeroAdministrativo
+
+@{
+    ViewData["Title"] = "Rectificar cero administrativo";
+}
+
+<div class="container-fluid">
+    <h2 class="fw-bold mb-1">Rectificar cero administrativo</h2>
+    <p class="text-muted mb-4">@Model.Alumno · @Model.Tarea · @Model.Curso</p>
+    <div class="app-alert app-alert-warning mb-4">
+        Esta acción anula la nota administrativa sin crear una entrega ni autorizar una nueva oportunidad.
+        Para que el alumno entregue deberá usar una reapertura autorizada.
+    </div>
+    <div class="card border-0 shadow-sm"><div class="card-body p-4">
+        <form method="post" data-confirmar-accion-academica
+              data-confirmar-titulo="Rectificar cero administrativo"
+              data-confirmar-mensaje="La nota cero dejará de ser efectiva y se conservará el historial."
+              data-confirmar-texto="Rectificar" data-confirmar-color="#b7791f">
+            @Html.AntiForgeryToken()
+            <input asp-for="Id" type="hidden" />
+            <input asp-for="Origen" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="mb-4">
+                <label asp-for="Motivo" class="form-label">Motivo de la rectificación</label>
+                <textarea asp-for="Motivo" class="form-control" rows="4"></textarea>
+                <span asp-validation-for="Motivo" class="text-danger"></span>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <a asp-action="Detalle" asp-route-id="@Model.Id" class="app-btn app-btn-secondary">Cancelar</a>
+                <button type="submit" class="app-btn app-btn-warning">Rectificar cero</button>
+            </div>
+        </form>
+    </div></div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

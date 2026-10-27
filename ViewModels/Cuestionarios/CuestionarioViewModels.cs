@@ -120,10 +120,12 @@ public sealed class InicioCuestionario
 
     public bool PlazoVencido { get; set; }
 
+    public bool OportunidadAutorizada { get; set; }
+
     public bool PuedeIniciar =>
         IntentoEnCursoId.HasValue ||
         (!PlazoVencido && CantidadPreguntas > 0 &&
-         (MaximoIntentos == 0 || IntentosUsados < MaximoIntentos));
+         (MaximoIntentos == 0 || IntentosUsados < MaximoIntentos || OportunidadAutorizada));
 }
 
 // Intento en curso. En modo navegable se envían todas las preguntas;
@@ -224,6 +226,17 @@ public sealed class ResultadoIntento
     public bool MostrarRespuestasCorrectas { get; set; }
 
     public List<DetalleRespuestaIntento> Detalle { get; set; } = [];
+}
+
+public sealed class AccesoRespuestasEntrega
+{
+    public int? IntentoId { get; set; }
+
+    public int? CuestionarioId { get; set; }
+
+    public bool EsAlumno { get; set; }
+
+    public bool RespuestasRestringidas { get; set; }
 }
 
 public sealed class DetalleRespuestaIntento

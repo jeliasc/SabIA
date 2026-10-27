@@ -99,6 +99,9 @@ public class Contexto
     public DbSet<ReaperturaEntrega> ReaperturasEntregas =>
         Set<ReaperturaEntrega>();
 
+    public DbSet<ReaperturaTarea> ReaperturasTareas => Set<ReaperturaTarea>();
+    public DbSet<ReaperturaTareaAlumno> ReaperturasTareasAlumnos => Set<ReaperturaTareaAlumno>();
+
     public DbSet<EntregaArchivo> EntregasArchivos =>
         Set<EntregaArchivo>();
 
@@ -1012,7 +1015,7 @@ public class Contexto
         builder.Entity<Tarea>()
             .ToTable(tabla => tabla.HasCheckConstraint(
                 "CK_Tareas_MaximoIntentosEntrega",
-                "(\"Tipo\" = 1 AND (\"MaximoIntentosEntrega\" IS NULL OR \"MaximoIntentosEntrega\" IN (1, 2, 3))) OR (\"Tipo\" <> 1 AND \"MaximoIntentosEntrega\" IS NULL)"));
+                "(\"Tipo\" = 1 AND (\"MaximoIntentosEntrega\" IS NULL OR \"MaximoIntentosEntrega\" IN (1, 2, 3)) AND (\"CriterioCalificacionEntrega\" IS NULL OR \"CriterioCalificacionEntrega\" IN (1, 2, 3))) OR (\"Tipo\" <> 1 AND \"MaximoIntentosEntrega\" IS NULL AND \"CriterioCalificacionEntrega\" IS NULL)"));
 
         builder.Entity<Entrega>()
             .HasOne(e => e.Alumno)
@@ -1025,6 +1028,27 @@ public class Contexto
             .WithMany()
             .HasForeignKey(e => e.CalificadoPorUsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Entrega>()
+            .HasOne(e => e.RectificadoPorUsuario)
+            .WithMany()
+            .HasForeignKey(e => e.RectificadoPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Entrega>()
+            .HasIndex(e => e.OrigenCalificacionAdministrativa);
+
+        builder.Entity<Entrega>()
+            .ToTable(tabla => tabla.HasCheckConstraint(
+                "CK_Entregas_CalificacionAdministrativa",
+                "\"OrigenCalificacionAdministrativa\" IS NULL OR " +
+                "(\"OrigenCalificacionAdministrativa\" IN (1, 2) AND " +
+                "\"FechaEntrega\" IS NULL AND " +
+                "((\"Calificacion\" = 0 AND \"Estado\" = 2) OR " +
+                "(\"Calificacion\" IS NULL AND \"Estado\" = 6 AND " +
+                "\"FechaRectificacionAdministrativa\" IS NOT NULL AND " +
+                "\"MotivoRectificacionAdministrativa\" IS NOT NULL AND " +
+                "\"RectificadoPorUsuarioId\" IS NOT NULL)))"));
 
         builder.Entity<Entrega>()
             .HasOne(e => e.Inscripcion)
@@ -1056,6 +1080,37 @@ public class Contexto
                 reapertura.EntregaId,
                 reapertura.FechaReapertura
             });
+
+        builder.Entity<ReaperturaTarea>()
+            .ToTable(tabla => tabla.HasCheckConstraint(
+                "CK_ReaperturasTareas_Fechas", "\"FechaLimite\" > \"FechaReapertura\""));
+
+        builder.Entity<ReaperturaTarea>()
+            .HasOne(x => x.Tarea).WithMany(x => x.Reaperturas)
+            .HasForeignKey(x => x.TareaId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ReaperturaTarea>()
+            .HasOne(x => x.ReabiertaPorUsuario).WithMany()
+            .HasForeignKey(x => x.ReabiertaPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ReaperturaTarea>()
+            .HasIndex(x => new { x.TareaId, x.TokenSolicitud })
+            .IsUnique();
+
+        builder.Entity<ReaperturaTareaAlumno>()
+            .HasKey(x => new { x.ReaperturaTareaId, x.AlumnoId });
+
+        builder.Entity<ReaperturaTareaAlumno>()
+            .HasOne(x => x.ReaperturaTarea).WithMany(x => x.Alumnos)
+            .HasForeignKey(x => x.ReaperturaTareaId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ReaperturaTareaAlumno>()
+            .HasOne(x => x.Alumno).WithMany().HasForeignKey(x => x.AlumnoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ReaperturaTareaAlumno>()
+            .HasOne(x => x.Entrega).WithMany().HasForeignKey(x => x.EntregaId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Archivos de entregas
 
@@ -1187,6 +1242,17 @@ public class Contexto
             .WithMany()
             .HasForeignKey(i => new { i.InscripcionId, i.AlumnoId })
             .HasPrincipalKey(i => new { i.Id, i.AlumnoId })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<IntentoCuestionario>()
+            .HasIndex(i => i.ReaperturaEntregaId)
+            .IsUnique()
+            .HasFilter("\"ReaperturaEntregaId\" IS NOT NULL");
+
+        builder.Entity<IntentoCuestionario>()
+            .HasOne(i => i.ReaperturaEntrega)
+            .WithMany()
+            .HasForeignKey(i => i.ReaperturaEntregaId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Respuestas de alumnos

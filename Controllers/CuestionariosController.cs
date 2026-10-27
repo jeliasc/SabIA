@@ -288,15 +288,28 @@ public class CuestionariosController(
     [HttpGet]
     public async Task<IActionResult> RespuestasEntrega(int id)
     {
-        var (intentoId, cuestionarioId) = await s.ObtenerIntentoDeEntregaAsync(id);
+        var accesoRespuestas = await s.ObtenerRespuestasDeEntregaAsync(id);
+        if (accesoRespuestas is null)
+            return NotFound();
 
-        if (intentoId.HasValue)
-            return RedirectToAction(nameof(RevisarIntento), new { id = intentoId });
+        if (accesoRespuestas.RespuestasRestringidas)
+        {
+            TempData["Error"] =
+                "El docente configuró este cuestionario para no mostrar el detalle de las respuestas";
+            return RedirectToAction("Detalle", "Entregas", new { id });
+        }
 
-        if (cuestionarioId.HasValue)
+        if (accesoRespuestas.IntentoId.HasValue)
+            return RedirectToAction(accesoRespuestas.EsAlumno
+                ? nameof(Resultado)
+                : nameof(RevisarIntento), new { id = accesoRespuestas.IntentoId });
+
+        if (accesoRespuestas.CuestionarioId.HasValue)
         {
             TempData["Informacion"] = "El alumno todavía no ha iniciado el cuestionario.";
-            return RedirectToAction(nameof(Resultados), new { id = cuestionarioId });
+            return accesoRespuestas.EsAlumno
+                ? RedirectToAction("Detalle", "Entregas", new { id })
+                : RedirectToAction(nameof(Resultados), new { id = accesoRespuestas.CuestionarioId });
         }
 
         return NotFound();

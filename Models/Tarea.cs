@@ -37,6 +37,10 @@ public class Tarea
     // límite válido.
     public int? MaximoIntentosEntrega { get; set; }
 
+    // Nulo identifica tareas de archivo anteriores a esta configuración; su
+    // comportamiento histórico conserva el último intento calificado.
+    public CriterioCalificacionIntentos? CriterioCalificacionEntrega { get; set; }
+
     public DateTime FechaCreacion { get; set; }
     public DateTime? FechaPublicacion { get; set; }
     public DateTime? FechaCierre { get; set; }
@@ -54,6 +58,9 @@ public class Tarea
 
     public ICollection<Entrega> Entregas { get; set; } =
         new List<Entrega>();
+
+    public ICollection<ReaperturaTarea> Reaperturas { get; set; } =
+        new List<ReaperturaTarea>();
 
     public Guid GrupoVersionId { get; set; }
 

@@ -24,11 +24,14 @@
         const archivo = formulario.querySelector("[data-archivo-tarea]");
         const contenedorIntentos = formulario.querySelector("[data-intentos-entrega]");
         const intentos = formulario.querySelector("[data-maximo-intentos-entrega]");
+        const contenedorCriterio = formulario.querySelector("[data-criterio-calificacion-entrega]");
+        const criterio = formulario.querySelector("select[data-criterio-calificacion-entrega]");
         const boton = formulario.querySelector("[data-accion-tarea]");
         const textoBoton = formulario.querySelector("[data-texto-accion-tarea]");
+        const esEdicion = Boolean(formulario.querySelector('input[name="Id"]'));
 
         if (!tipo || !contenedorAdjunto || !archivo || !contenedorIntentos ||
-            !intentos || !boton || !textoBoton) {
+            !intentos || !contenedorCriterio || !criterio || !boton || !textoBoton) {
             return;
         }
 
@@ -37,11 +40,21 @@
                 tipo.value,
                 tipo.dataset.tipoCuestionario);
 
-            contenedorAdjunto.hidden = !estado.mostrarAdjunto;
+            // VISIBILIDAD SEGÚN TIPO DE TAREA
+            contenedorAdjunto.classList.toggle("d-none", estado.esCuestionario);
             archivo.disabled = estado.esCuestionario;
-            contenedorIntentos.hidden = estado.esCuestionario;
+
+            contenedorIntentos.classList.toggle("d-none", estado.esCuestionario);
             intentos.disabled = estado.esCuestionario;
-            textoBoton.textContent = estado.textoAccion;
+
+            const usaVariosIntentos = !estado.esCuestionario && intentos.value !== "1";
+
+            contenedorCriterio.classList.toggle("d-none", !usaVariosIntentos);
+            criterio.disabled = !usaVariosIntentos;
+
+            if (!esEdicion) {
+                textoBoton.textContent = estado.textoAccion;
+            }
 
             if (estado.esCuestionario) {
                 archivo.value = "";
@@ -49,13 +62,39 @@
         };
 
         tipo.addEventListener("change", actualizar);
+        intentos.addEventListener("change", actualizar);
+
+        const restaurarBoton = () => {
+            formulario.dataset.enviando = "false";
+            boton.disabled = false;
+            boton.removeAttribute("aria-busy");
+        };
+
+        formulario.addEventListener("invalid", restaurarBoton, true);
         formulario.addEventListener("submit", (evento) => {
             actualizar();
 
-            if (!evento.defaultPrevented && formulario.checkValidity()) {
-                boton.disabled = true;
-                boton.setAttribute("aria-busy", "true");
+            // jQuery Validate es quien pinta los mensajes unobtrusive. La
+            // comprobación nativa conserva compatibilidad de teclado y campos
+            // HTML5. Sólo se bloquea después de que ambas validaciones pasen.
+            const jquery = window.jQuery;
+            const validoUnobtrusive = !jquery || jquery(formulario).valid();
+            const validoNativo = formulario.checkValidity();
+            if (evento.defaultPrevented || !validoUnobtrusive || !validoNativo) {
+                evento.preventDefault();
+                restaurarBoton();
+                formulario.querySelector(":invalid")?.focus();
+                return;
             }
+
+            if (formulario.dataset.enviando === "true") {
+                evento.preventDefault();
+                return;
+            }
+
+            formulario.dataset.enviando = "true";
+            boton.disabled = true;
+            boton.setAttribute("aria-busy", "true");
         });
 
         actualizar();

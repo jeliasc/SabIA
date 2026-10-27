@@ -29,7 +29,12 @@ public class EntregasController(
     public async Task<IActionResult> Entregar(int id)
     {
         var m = await s.ObtenerParaEntregarAsync(id);
-        if (m == null) return NotFound();
+        if (m == null)
+        {
+            TempData["Error"] =
+                "No puede realizar esta entrega. La actividad puede estar cerrada, fuera de plazo o no corresponder a su inscripción activa.";
+            return RedirectToAction(nameof(Index));
+        }
         await notificaciones.RegistrarVisualizacionActividadAsync(m.TareaId);
         return View(m);
     }
@@ -95,6 +100,7 @@ public class EntregasController(
     {
         if (!ModelState.IsValid)
         {
+            await RecuperarContextoCalificacionAsync(m);
             return View(m);
         }
 
@@ -103,12 +109,70 @@ public class EntregasController(
         if (!r.Exitoso)
         {
             Err(r);
+            await RecuperarContextoCalificacionAsync(m);
             return View(m);
         }
 
         TempData["Exito"] = r.Mensaje;
 
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Permisos.Entregas.Calificar)]
+    public async Task<IActionResult> CalificarCero(int id)
+    {
+        var m = await s.ObtenerParaCalificarCeroAsync(id);
+        return m is null ? NotFound() : View(m);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Permisos.Entregas.Calificar)]
+    public async Task<IActionResult> CalificarCero(CalificarCeroEntrega m)
+    {
+        if (!ModelState.IsValid)
+            return View(m);
+
+        var r = await s.CalificarCeroAsync(m);
+        if (!r.Exitoso)
+        {
+            Err(r);
+            var recuperado = await s.ObtenerParaCalificarCeroAsync(m.Id);
+            return recuperado is null ? NotFound() : View(recuperado);
+        }
+
+        TempData["Exito"] = r.Mensaje;
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Permisos.Entregas.Calificar)]
+    public async Task<IActionResult> RectificarCero(int id)
+    {
+        var modelo = await s.ObtenerParaRectificarCeroAsync(id);
+        return modelo is null ? NotFound() : View(modelo);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Permisos.Entregas.Calificar)]
+    public async Task<IActionResult> RectificarCero(RectificarCeroAdministrativo m)
+    {
+        if (!ModelState.IsValid)
+        {
+            await RehidratarRectificacionAsync(m);
+            return View(m);
+        }
+        var resultado = await s.RectificarCeroAsync(m);
+        if (!resultado.Exitoso)
+        {
+            Err(resultado);
+            await RehidratarRectificacionAsync(m);
+            return View(m);
+        }
+        TempData["Exito"] = resultado.Mensaje;
+        return RedirectToAction(nameof(Detalle), new { id = m.Id });
     }
 
     [HttpGet]
@@ -209,5 +273,34 @@ public class EntregasController(
                 ModelState.AddModelError(e.Key, e.Value);
             }
         }
+    }
+
+    private async Task RecuperarContextoCalificacionAsync(CalificarEntrega modelo)
+    {
+        var recuperado = await s.ObtenerParaCalificarAsync(modelo.Id);
+        if (recuperado == null)
+        {
+            return;
+        }
+
+        modelo.Alumno = recuperado.Alumno;
+        modelo.Tarea = recuperado.Tarea;
+        modelo.PunteoMaximo = recuperado.PunteoMaximo;
+        modelo.ComentarioAlumno = recuperado.ComentarioAlumno;
+        modelo.FechaEntrega = recuperado.FechaEntrega;
+        modelo.TareaId = recuperado.TareaId;
+        modelo.AlumnoId = recuperado.AlumnoId;
+        modelo.InscripcionId = recuperado.InscripcionId;
+        modelo.Intentos = recuperado.Intentos;
+    }
+
+    private async Task RehidratarRectificacionAsync(RectificarCeroAdministrativo modelo)
+    {
+        var original = await s.ObtenerParaRectificarCeroAsync(modelo.Id);
+        if (original is null) return;
+        modelo.Alumno = original.Alumno;
+        modelo.Tarea = original.Tarea;
+        modelo.Curso = original.Curso;
+        modelo.Origen = original.Origen;
     }
 }

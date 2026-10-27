@@ -114,6 +114,14 @@ public sealed class TareasControllerTests
             Task.FromResult(ResultadoOperacion.Error("No usado."));
         public Task<ResultadoOperacion> CerrarAsync(int id) =>
             Task.FromResult(ResultadoOperacion.Error("No usado."));
+        public Task<CerrarTarea?> ObtenerParaCerrarAsync(int id) =>
+            Task.FromResult<CerrarTarea?>(null);
+        public Task<ResultadoOperacion> CerrarAsync(CerrarTarea modelo) =>
+            Task.FromResult(ResultadoOperacion.Error("No usado."));
+        public Task<ReabrirTarea?> ObtenerParaReabrirAsync(int id) =>
+            Task.FromResult<ReabrirTarea?>(null);
+        public Task<ResultadoOperacion> ReabrirAsync(ReabrirTarea modelo) =>
+            Task.FromResult(ResultadoOperacion.Error("No usado."));
     }
 
     private sealed class AutorizacionPrueba(bool autorizado) : IAuthorizationService

@@ -17,7 +17,8 @@
             Asignación
         </label>
 
-        <select asp-for="AsignacionId" class="form-select" data-select-busqueda>
+        <select asp-for="AsignacionId" class="form-select" data-select-busqueda
+                data-val-required="Seleccione una asignación.">
             <option value="">Seleccione...</option>
 
             @foreach (var x in Model.Asignaciones)
@@ -27,6 +28,7 @@
                 </option>
             }
         </select>
+        <span asp-validation-for="AsignacionId" class="text-danger"></span>
     </div>
 
     <div class="col-md-6">
@@ -44,6 +46,7 @@
                 </option>
             }
         </select>
+        <span asp-validation-for="UnidadAsignacionId" class="text-danger"></span>
     </div>
 
     <div class="col-md-3">
@@ -51,17 +54,29 @@
             Tipo
         </label>
 
-        <select asp-for="Tipo"
-                class="form-select"
-                data-tipo-tarea
-                data-tipo-cuestionario="@((int)TipoTarea.Cuestionario)">
-            <option value="@((int)TipoTarea.Archivo)">Entrega de archivo</option>
-            @if (puedeCrearCuestionario)
-            {
-                <option value="@((int)TipoTarea.Cuestionario)">Cuestionario</option>
-            }
-        </select>
-        <span asp-validation-for="Tipo" class="text-danger"></span>
+        @if (esCreacion)
+        {
+            <select asp-for="Tipo" class="form-select" data-tipo-tarea
+                    data-tipo-cuestionario="@((int)TipoTarea.Cuestionario)">
+                <option value="@((int)TipoTarea.Archivo)">Entrega de archivo</option>
+                @if (puedeCrearCuestionario)
+                {
+                    <option value="@((int)TipoTarea.Cuestionario)">Cuestionario</option>
+                }
+            </select>
+            <span asp-validation-for="Tipo" class="text-danger"></span>
+        }
+        else
+        {
+            <input type="hidden" name="Tipo" id="Tipo" value="@((int)Model.Tipo)" data-tipo-tarea
+                   data-tipo-cuestionario="@((int)TipoTarea.Cuestionario)" />
+
+            <input class="form-control" readonly value="@(esCuestionario ? "Cuestionario" : "Entrega de archivo")" />
+
+            <div class="form-text">
+                El tipo de una tarea creada no puede modificarse.
+            </div>
+        }
     </div>
 
     <div class="col-md-7">
@@ -70,6 +85,7 @@
         </label>
 
         <input asp-for="Titulo" class="form-control" />
+        <span asp-validation-for="Titulo" class="text-danger"></span>
     </div>
 
     <div class="col-md-2">
@@ -78,6 +94,7 @@
         </label>
 
         <input asp-for="PunteoMaximo" class="form-control" />
+        <span asp-validation-for="PunteoMaximo" class="text-danger"></span>
     </div>
 
     <div class="col-12">
@@ -87,6 +104,7 @@
 
         <textarea asp-for="Instrucciones" class="form-control" rows="5">
         </textarea>
+        <span asp-validation-for="Instrucciones" class="text-danger"></span>
     </div>
 
     <div class="col-md-6">
@@ -95,6 +113,7 @@
         </label>
 
         <input asp-for="FechaDisponibilidad" type="datetime-local" class="form-control" />
+        <span asp-validation-for="FechaDisponibilidad" class="text-danger"></span>
     </div>
 
     <div class="col-md-6">
@@ -103,17 +122,15 @@
         </label>
 
         <input asp-for="FechaLimite" type="datetime-local" class="form-control" />
+        <span asp-validation-for="FechaLimite" class="text-danger"></span>
     </div>
 
-    <div class="col-md-8" data-adjunto-tarea hidden="@(esCuestionario ? "hidden" : null)">
+    <div class="col-md-8 @(esCuestionario ? "d-none" : "")" data-adjunto-tarea>
         <label asp-for="Archivo" class="form-label">
             Archivo adjunto (opcional)
         </label>
 
-        <input asp-for="Archivo"
-               type="file"
-               class="form-control"
-               data-archivo-tarea
+        <input asp-for="Archivo" type="file" class="form-control" data-archivo-tarea
                disabled="@(esCuestionario ? "disabled" : null)" />
     </div>
 
@@ -127,7 +144,7 @@
         </div>
     </div>
 
-    <div class="col-md-4" data-intentos-entrega hidden="@(esCuestionario ? "hidden" : null)">
+    <div class="col-md-4 @(esCuestionario ? "d-none" : "")" data-intentos-entrega>
         <label asp-for="MaximoIntentosEntrega" class="form-label">Intentos permitidos</label>
         <select asp-for="MaximoIntentosEntrega" class="form-select" data-maximo-intentos-entrega
                 disabled="@(esCuestionario ? "disabled" : null)">
@@ -137,5 +154,15 @@
             <option value="">Intentos ilimitados</option>
         </select>
         <span asp-validation-for="MaximoIntentosEntrega" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4 @(esCuestionario || Model.MaximoIntentosEntrega == 1 ? "d-none" : "")"
+         data-criterio-calificacion-entrega>
+        <label asp-for="CriterioCalificacionEntrega" class="form-label">Criterio de calificación</label>
+        <select asp-for="CriterioCalificacionEntrega" class="form-select"
+                asp-items="Html.GetEnumSelectList<CriterioCalificacionIntentos>()" data-criterio-calificacion-entrega
+                disabled="@(esCuestionario || Model.MaximoIntentosEntrega == 1 ? "disabled" : null)">
+        </select>
+        <span asp-validation-for="CriterioCalificacionEntrega" class="text-danger"></span>
     </div>
 </div>

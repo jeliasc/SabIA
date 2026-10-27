@@ -14,6 +14,7 @@
         <div class="card-body p-4">
             <form method="post"
                   enctype="multipart/form-data"
+                  novalidate
                   data-formulario-tarea>
                 @Html.AntiForgeryToken()
                 <input asp-for="TokenCreacion" type="hidden" />
@@ -26,7 +27,7 @@
                         Cancelar
                     </a>
 
-                    <button class="app-btn app-btn-soft-primary"
+                    <button type="submit" class="app-btn app-btn-soft-primary"
                             data-accion-tarea>
                         <span data-texto-accion-tarea>
                             @(esCuestionario ? "Configurar cuestionario" : "Guardar borrador")
