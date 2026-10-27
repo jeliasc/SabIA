@@ -17,6 +17,10 @@ public class IntentoCuestionario
     public int? InscripcionId { get; set; }
     public Inscripcion? Inscripcion { get; set; }
 
+    // Una autorización excepcional puede consumirse en un único intento.
+    public int? ReaperturaEntregaId { get; set; }
+    public ReaperturaEntrega? ReaperturaEntrega { get; set; }
+
     [Range(1, int.MaxValue)]
     public int NumeroIntento { get; set; }
 

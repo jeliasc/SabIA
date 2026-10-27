@@ -100,8 +100,231 @@ public sealed class CuestionarioServicioTests
     }
 
     // -----------------------------------------------------------------
+    // Listados vigentes e historial
+    // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Listado_CierreManualTrasladaCuestionarioAHistorialYReaperturaLoDevuelveAVigentes()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, _ => { });
+        var servicio = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: null));
+
+        Assert.Single(await servicio.ObtenerTodosAsync());
+        Assert.Empty(await servicio.ObtenerHistorialAsync());
+
+        var tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
+        tarea.Estado = EstadoTarea.Cerrada;
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        contexto.ChangeTracker.Clear();
+
+        Assert.Empty(await servicio.ObtenerTodosAsync());
+        var historico = Assert.Single(await servicio.ObtenerHistorialAsync());
+        Assert.Equal(EstadoTarea.Cerrada, historico.EstadoTarea);
+
+        tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
+        tarea.Estado = EstadoTarea.Publicada;
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        contexto.ChangeTracker.Clear();
+
+        Assert.Single(await servicio.ObtenerTodosAsync());
+        Assert.Empty(await servicio.ObtenerHistorialAsync());
+    }
+
+    [Fact]
+    public async Task Listado_CuestionarioCerradoRespetaContextoDeDocenteAlumnoYOperador()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, _ => { }, estadoTarea: EstadoTarea.Cerrada);
+
+        var docente = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: null));
+        var alumno = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: 1));
+        var operador = new CuestionarioServicio(contexto, new AccesoOperadorPrueba());
+        var alumnoAjeno = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: 2));
+
+        Assert.Empty(await docente.ObtenerTodosAsync());
+        Assert.Single(await docente.ObtenerHistorialAsync());
+        Assert.Empty(await alumno.ObtenerTodosAsync());
+        Assert.Single(await alumno.ObtenerHistorialAsync());
+        Assert.Empty(await operador.ObtenerTodosAsync());
+        Assert.Single(await operador.ObtenerHistorialAsync());
+        Assert.Empty(await alumnoAjeno.ObtenerTodosAsync());
+        Assert.Empty(await alumnoAjeno.ObtenerHistorialAsync());
+    }
+
+    [Fact]
+    public async Task Listado_AsignacionInactivaOCicloFinalizadoSeMantienenEnHistorial()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, _ => { });
+        var servicio = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: null));
+
+        var asignacion = await contexto.Asignaciones.SingleAsync(TestContext.Current.CancellationToken);
+        asignacion.Estado = EstadoRegistro.Inactivo;
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        contexto.ChangeTracker.Clear();
+
+        Assert.Empty(await servicio.ObtenerTodosAsync());
+        Assert.Single(await servicio.ObtenerHistorialAsync());
+
+        asignacion = await contexto.Asignaciones.SingleAsync(TestContext.Current.CancellationToken);
+        asignacion.Estado = EstadoRegistro.Activo;
+        var ciclo = await contexto.CiclosEscolares.SingleAsync(TestContext.Current.CancellationToken);
+        ciclo.Activo = false;
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        contexto.ChangeTracker.Clear();
+
+        Assert.Empty(await servicio.ObtenerTodosAsync());
+        Assert.Single(await servicio.ObtenerHistorialAsync());
+    }
+
+    [Fact]
+    public async Task Listado_FechaLimiteVencidaNoTrasladaCuestionarioVigenteAHistorial()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, _ => { });
+        var tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
+        tarea.FechaLimite = DateTime.UtcNow.AddMinutes(-1);
+        tarea.PermitirEntregaTardia = false;
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        contexto.ChangeTracker.Clear();
+
+        var alumno = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: 1));
+
+        Assert.Single(await alumno.ObtenerTodosAsync());
+        Assert.Empty(await alumno.ObtenerHistorialAsync());
+    }
+
+    [Fact]
+    public async Task Listado_DelegacionVigentePermiteConsultarCuestionarioCerradoEnHistorial()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, _ => { }, estadoTarea: EstadoTarea.Cerrada);
+        var usuarioDelegado = Usuario("delegado");
+        var docenteDelegado = new Docente { Id = 2, Usuario = usuarioDelegado, Carnet = "D-2" };
+        var relevo = new RelevoAsignacion
+        {
+            Id = 1,
+            AsignacionAnteriorId = 1,
+            AsignacionNuevaId = 1,
+            DocenteAnteriorId = 1,
+            DocenteSustitutoId = 2,
+            Tipo = TipoRelevoAsignacion.Excepcional,
+            FechaEfectivaUtc = DateTime.UtcNow,
+            Motivo = "Cobertura temporal",
+            UsuarioResponsableId = "docente",
+            FechaRegistroUtc = DateTime.UtcNow,
+            ConsecuenciasConfirmadas = true
+        };
+        contexto.AddRange(usuarioDelegado, docenteDelegado, relevo);
+        contexto.DelegacionesAcademicas.Add(new DelegacionAcademica
+        {
+            RelevoAsignacionId = relevo.Id,
+            AsignacionId = 1,
+            DocenteId = docenteDelegado.Id,
+            Operaciones = OperacionDelegacionAcademica.RevisarCuestionarios,
+            FechaInicioUtc = DateTime.UtcNow.AddMinutes(-1),
+            CreadaPorUsuarioId = "docente",
+            FechaCreacionUtc = DateTime.UtcNow,
+            Activa = true
+        });
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        contexto.ChangeTracker.Clear();
+
+        var delegado = new CuestionarioServicio(contexto, new AccesoDelegadoPrueba());
+
+        Assert.Empty(await delegado.ObtenerTodosAsync());
+        Assert.Single(await delegado.ObtenerHistorialAsync());
+    }
+
+    [Fact]
+    public async Task Cuestionario_CerradoSinEntregaTardia_BloqueaInicioYPostDeInicio()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, _ => { }, estadoTarea: EstadoTarea.Cerrada);
+        var servicio = CrearServicioAlumno(contexto);
+
+        Assert.Null(await servicio.ObtenerInicioAsync(CuestionarioId));
+        var resultado = await servicio.IniciarAsync(CuestionarioId);
+
+        Assert.False(resultado.Exitoso);
+        Assert.Empty(await contexto.IntentosCuestionarios.ToListAsync(
+            TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Cuestionario_CerradoConEntregaTardia_PermiteInicioPeroBloqueaFinalizacionTrasCambio()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, _ => { }, estadoTarea: EstadoTarea.Cerrada);
+        var tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
+        tarea.PermitirEntregaTardia = true;
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        contexto.ChangeTracker.Clear();
+
+        var servicio = CrearServicioAlumno(contexto);
+        Assert.NotNull(await servicio.ObtenerInicioAsync(CuestionarioId));
+        var inicio = await servicio.IniciarAsync(CuestionarioId);
+        Assert.True(inicio.Exitoso, inicio.Mensaje);
+
+        tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
+        tarea.PermitirEntregaTardia = false;
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var finalizar = await servicio.FinalizarAsync(new FinalizarIntento
+        {
+            IntentoId = inicio.Datos
+        });
+
+        Assert.True(finalizar.Exitoso, finalizar.Mensaje);
+        Assert.Equal(EstadoIntentoCuestionario.Expirado,
+            (await contexto.IntentosCuestionarios.FindAsync(
+                [inicio.Datos], TestContext.Current.CancellationToken))!.Estado);
+    }
+
+    // -----------------------------------------------------------------
     // Modo navegable
     // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Iniciar_ReaperturaIndividualTrasAgotarLimite_ConsumeAutorizacionUnaVez()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, c => c.MaximoIntentos = 1);
+        var cuestionario = await contexto.Cuestionarios.SingleAsync(TestContext.Current.CancellationToken);
+        var entrega = await contexto.Entregas.SingleAsync(TestContext.Current.CancellationToken);
+        entrega.NumeroEnvio = 2;
+        contexto.IntentosCuestionarios.Add(new IntentoCuestionario
+        {
+            Cuestionario = cuestionario,
+            AlumnoId = 1,
+            InscripcionId = 1,
+            NumeroIntento = 1,
+            Estado = EstadoIntentoCuestionario.Finalizado,
+            FechaInicio = DateTime.UtcNow.AddMinutes(-10),
+            FechaFinalizacion = DateTime.UtcNow.AddMinutes(-5),
+            OrdenPreguntas = "10",
+            Calificacion = 50
+        });
+        contexto.ReaperturasEntregas.Add(new ReaperturaEntrega
+        {
+            Entrega = entrega,
+            FechaReapertura = DateTime.UtcNow.AddMinutes(-1),
+            FechaLimite = DateTime.UtcNow.AddDays(1),
+            AutorizaOportunidadAdicional = true,
+            Motivo = "Autorización individual de prueba.",
+            ReabiertaPorUsuarioId = "docente"
+        });
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var servicio = CrearServicioAlumno(contexto);
+        var resultado = await servicio.IniciarAsync(CuestionarioId);
+
+        Assert.True(resultado.Exitoso, resultado.Mensaje);
+        var nuevo = await contexto.IntentosCuestionarios
+            .SingleAsync(x => x.Id == resultado.Datos, TestContext.Current.CancellationToken);
+        Assert.NotNull(nuevo.ReaperturaEntregaId);
+    }
 
     [Fact]
     public async Task Navegable_GuardaCorrigeYCalificaConRespuestaDirectaSinTildes()
@@ -360,6 +583,50 @@ public sealed class CuestionarioServicioTests
     }
 
     [Fact]
+    public async Task FinalizadorVencidos_RespetaVencimientoIndividualSinTiempoPropio()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, c => c.ModalidadTiempo = ModalidadTiempoCuestionario.SinLimite);
+        var servicio = CrearServicioAlumno(contexto);
+        var intentoId = (await servicio.IniciarAsync(CuestionarioId)).Datos;
+        var entrega = await contexto.Entregas.SingleAsync(TestContext.Current.CancellationToken);
+        entrega.FechaLimiteIndividual = DateTime.UtcNow.AddMinutes(-2);
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        contexto.ChangeTracker.Clear();
+
+        var segundoPlano = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: null));
+        var cantidad = await segundoPlano.FinalizarVencidosAsync(
+            DateTime.UtcNow, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, cantidad);
+        var intento = await contexto.IntentosCuestionarios.SingleAsync(
+            x => x.Id == intentoId, TestContext.Current.CancellationToken);
+        Assert.Equal(EstadoIntentoCuestionario.Expirado, intento.Estado);
+    }
+
+    [Fact]
+    public async Task FinalizadorVencidos_NoFinalizaAutorizacionIndividualVigente()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, c => c.ModalidadTiempo = ModalidadTiempoCuestionario.SinLimite);
+        var servicio = CrearServicioAlumno(contexto);
+        var intentoId = (await servicio.IniciarAsync(CuestionarioId)).Datos;
+        var entrega = await contexto.Entregas.SingleAsync(TestContext.Current.CancellationToken);
+        entrega.FechaLimiteIndividual = DateTime.UtcNow.AddMinutes(2);
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        contexto.ChangeTracker.Clear();
+
+        var segundoPlano = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: null));
+        var cantidad = await segundoPlano.FinalizarVencidosAsync(
+            DateTime.UtcNow, TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, cantidad);
+        var intento = await contexto.IntentosCuestionarios.SingleAsync(
+            x => x.Id == intentoId, TestContext.Current.CancellationToken);
+        Assert.Equal(EstadoIntentoCuestionario.EnCurso, intento.Estado);
+    }
+
+    [Fact]
     public async Task Resultado_MuestraRetroalimentacionSoloSiEstaHabilitada()
     {
         await using var contexto = CrearContexto();
@@ -390,6 +657,70 @@ public sealed class CuestionarioServicioTests
     // -----------------------------------------------------------------
     // Revisión del docente
     // -----------------------------------------------------------------
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task RespuestasDesdeEntrega_AlumnoRespetaLasDosConfiguraciones(
+        bool mostrarResultados, bool mostrarRespuestas)
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, c =>
+        {
+            c.MostrarResultadosAlFinalizar = mostrarResultados;
+            c.MostrarRespuestasCorrectas = mostrarRespuestas;
+        });
+        var alumno = CrearServicioAlumno(contexto);
+        var intentoId = (await alumno.IniciarAsync(CuestionarioId)).Datos;
+        await alumno.FinalizarAsync(new FinalizarIntento
+        {
+            IntentoId = intentoId,
+            Respuestas = [Unica(OpcionIncorrectaUnica)]
+        });
+        var entregaId = await contexto.Entregas
+            .Where(x => x.TareaId == 1 && x.AlumnoId == 1)
+            .Select(x => x.Id)
+            .SingleAsync(TestContext.Current.CancellationToken);
+
+        var accesoAlumno = await alumno.ObtenerRespuestasDeEntregaAsync(entregaId);
+
+        Assert.NotNull(accesoAlumno);
+        Assert.True(accesoAlumno!.EsAlumno);
+        Assert.Equal(!mostrarRespuestas, accesoAlumno.RespuestasRestringidas);
+        Assert.Equal(mostrarRespuestas ? intentoId : null, accesoAlumno.IntentoId);
+
+        var resultado = await alumno.ObtenerResultadoAsync(intentoId);
+        Assert.NotNull(resultado);
+        Assert.Equal(mostrarResultados, resultado!.MostrarResultados);
+        Assert.Equal(mostrarRespuestas, resultado.MostrarRespuestasCorrectas);
+        Assert.Equal(mostrarRespuestas ? 3 : 0, resultado.Detalle.Count);
+    }
+
+    [Fact]
+    public async Task RespuestasDesdeEntrega_BloqueaAlumnoAjenoYConservaRevisionDocente()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarAsync(contexto, c => c.MostrarRespuestasCorrectas = false);
+        var alumno = CrearServicioAlumno(contexto);
+        var intentoId = (await alumno.IniciarAsync(CuestionarioId)).Datos;
+        await alumno.FinalizarAsync(new FinalizarIntento { IntentoId = intentoId });
+        var entregaId = await contexto.Entregas
+            .Where(x => x.TareaId == 1 && x.AlumnoId == 1)
+            .Select(x => x.Id)
+            .SingleAsync(TestContext.Current.CancellationToken);
+
+        var ajeno = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: 2));
+        Assert.Null(await ajeno.ObtenerRespuestasDeEntregaAsync(entregaId));
+
+        var docente = new CuestionarioServicio(contexto, new AccesoPrueba(alumnoId: null));
+        var accesoDocente = await docente.ObtenerRespuestasDeEntregaAsync(entregaId);
+        Assert.NotNull(accesoDocente);
+        Assert.False(accesoDocente!.EsAlumno);
+        Assert.False(accesoDocente.RespuestasRestringidas);
+        Assert.Equal(intentoId, accesoDocente.IntentoId);
+    }
 
     [Fact]
     public async Task Revision_DocenteVeResultadosYAlumnoNo()
@@ -693,6 +1024,22 @@ public sealed class CuestionarioServicioTests
         public Task<int?> ObtenerAlumnoIdAsync() => Task.FromResult(alumnoId);
         public Task<bool> EsDocenteDeAsignacionAsync(int asignacionId) => Task.FromResult(!alumnoId.HasValue);
         public Task<bool> AlumnoPerteneceAsignacionAsync(int asignacionId) => Task.FromResult(alumnoId.HasValue);
+        public Task<bool> PuedeConsultarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(true);
+        public Task<bool> PuedeConsultarAsignacionHistoricaAsync(int asignacionId) => Task.FromResult(true);
+        public Task<bool> PuedeGestionarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(true);
+    }
+
+    private sealed class AccesoOperadorPrueba : IAccesoAcademicoServicio
+    {
+        public string? UsuarioId => "operador";
+        public bool EsOperadorInstitucional => true;
+        public bool TienePermiso(string permiso) => true;
+        public Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync() =>
+            Task.FromResult(new ContextoAcademicoUsuario(null, null));
+        public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult<int?>(null);
+        public Task<int?> ObtenerAlumnoIdAsync() => Task.FromResult<int?>(null);
+        public Task<bool> EsDocenteDeAsignacionAsync(int asignacionId) => Task.FromResult(false);
+        public Task<bool> AlumnoPerteneceAsignacionAsync(int asignacionId) => Task.FromResult(false);
         public Task<bool> PuedeConsultarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(true);
         public Task<bool> PuedeConsultarAsignacionHistoricaAsync(int asignacionId) => Task.FromResult(true);
         public Task<bool> PuedeGestionarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(true);

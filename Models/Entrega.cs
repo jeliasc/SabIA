@@ -36,6 +36,16 @@ public class Entrega
     public string? CalificadoPorUsuarioId { get; set; }
     public Usuario? CalificadoPorUsuario { get; set; }
 
+    public OrigenCalificacionAdministrativa? OrigenCalificacionAdministrativa { get; set; }
+
+    public DateTime? FechaRectificacionAdministrativa { get; set; }
+
+    [StringLength(1000)]
+    public string? MotivoRectificacionAdministrativa { get; set; }
+
+    public string? RectificadoPorUsuarioId { get; set; }
+    public Usuario? RectificadoPorUsuario { get; set; }
+
     public DateTime? FechaLimiteIndividual { get; set; }
 
     public ICollection<EntregaArchivo> Archivos { get; set; } = new List<EntregaArchivo>();

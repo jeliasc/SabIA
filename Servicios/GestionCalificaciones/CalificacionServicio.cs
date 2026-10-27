@@ -409,6 +409,7 @@ public sealed class CalificacionServicio(
             .ToListAsync();
         var entregas = await contexto.Entregas.AsNoTracking()
             .Where(x => tareasIds.Contains(x.TareaId) && alumnosIds.Contains(x.AlumnoId))
+            .Include(x => x.Tarea)
             .ToListAsync();
 
         var libro = new LibroCalificaciones
@@ -473,15 +474,11 @@ public sealed class CalificacionServicio(
                 }
                 else
                 {
-                    nota = entregas
-                        .Where(x => x.Calificacion.HasValue &&
+                    nota = CalcularNotaEntrega(entregas
+                        .Where(x =>
                             x.TareaId == actividad.TareaId &&
                             x.AlumnoId == alumno.AlumnoId &&
-                            (x.InscripcionId == alumno.InscripcionId || !x.InscripcionId.HasValue))
-                        .OrderByDescending(x => x.InscripcionId == alumno.InscripcionId)
-                        .ThenByDescending(x => x.NumeroEnvio)
-                        .Select(x => x.Calificacion)
-                        .FirstOrDefault();
+                            (x.InscripcionId == alumno.InscripcionId || !x.InscripcionId.HasValue)));
                 }
                 fila.Calificaciones.Add(new CeldaCalificacion
                 {
@@ -1170,14 +1167,24 @@ public sealed class CalificacionServicio(
                 .OrderByDescending(x => x.InscripcionId == inscripcionId)
                 .Select(x => x.Nota)
                 .FirstOrDefaultAsync();
-        return await contexto.Entregas.AsNoTracking()
-            .Where(x => x.Calificacion.HasValue &&
+        var entregas = await contexto.Entregas.AsNoTracking()
+            .Include(x => x.Tarea)
+            .Where(x =>
                 x.TareaId == actividad.TareaId && x.AlumnoId == alumnoId &&
                 (x.InscripcionId == inscripcionId || !x.InscripcionId.HasValue))
-            .OrderByDescending(x => x.InscripcionId == inscripcionId)
-            .ThenByDescending(x => x.NumeroEnvio)
-            .Select(x => x.Calificacion)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
+        return CalcularNotaEntrega(entregas);
+    }
+
+    private static decimal? CalcularNotaEntrega(IEnumerable<Entrega> entregas)
+    {
+        var intentos = entregas.ToList();
+        return intentos.Count == 0
+            ? null
+            : CalculoCriterioCalificacion.Aplicar(
+                intentos[0].Tarea.CriterioCalificacionEntrega,
+                intentos.Select(x => (x.NumeroEnvio, x.Id, x.Calificacion,
+                    x.OrigenCalificacionAdministrativa.HasValue)));
     }
 
     private async Task<decimal?> ActualizarNotaOrigenAsync(SolicitudCorreccionCalificacion solicitud)
@@ -1212,6 +1219,7 @@ public sealed class CalificacionServicio(
 
         var entrega = await contexto.Entregas
             .Where(x => x.Calificacion.HasValue &&
+                !x.OrigenCalificacionAdministrativa.HasValue &&
                 x.TareaId == actividad.TareaId && x.AlumnoId == solicitud.AlumnoId &&
                 (x.InscripcionId == solicitud.InscripcionId || !x.InscripcionId.HasValue))
             .OrderByDescending(x => x.InscripcionId == solicitud.InscripcionId)

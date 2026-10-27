@@ -11,5 +11,7 @@ public enum EstadoEntrega
     [Display(Name = "Pendiente")]
     Pendiente = 4,
     [Display(Name = "Tardía")]
-    Tardia = 5
+    Tardia = 5,
+    [Display(Name = "Cero administrativo rectificado")]
+    CeroAdministrativoRectificado = 6
 }

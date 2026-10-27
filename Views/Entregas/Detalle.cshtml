@@ -2,82 +2,328 @@
 
 @{
     ViewData["Title"] = "Historial de intentos";
+
     var seleccionado = Model.Intentos.FirstOrDefault(x => x.Id == Model.EntregaSeleccionadaId)
         ?? Model.Intentos.FirstOrDefault();
+    var requiereAclaracionEstadoActual = Model.TieneCalificacionPrevia ||
+        (Model.TieneIntentoPendienteEvaluacion &&
+         Model.EstadoActual is Proyecto_Final.Models.EstadoEntrega.Enviada or
+             Proyecto_Final.Models.EstadoEntrega.Tardia);
 }
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
         <div>
-            <h2 class="fw-bold mb-1">Historial de intentos</h2>
-            <p class="text-muted mb-0">@Model.Tarea</p>
+            <h2 class="fw-bold mb-1">Actividad e historial</h2>
+            <p class="text-muted mb-0">@Model.Tarea · @Model.Curso</p>
         </div>
+
         <a asp-action="Index" class="app-btn app-btn-secondary">Volver</a>
     </div>
 
     @if (Model.CalificacionEfectiva.HasValue)
     {
         <div class="app-alert app-alert-info mb-3">
-            Calificación efectiva: <strong>@Model.CalificacionEfectiva / @Model.PunteoMaximo</strong>.
-            @if (Model.TieneIntentoPendienteEvaluacion)
+            Calificación efectiva:
+            <strong>@Model.CalificacionEfectiva / @Model.PunteoMaximo</strong>.
+
+            @if (requiereAclaracionEstadoActual)
             {
-                <span> Existe un intento más reciente pendiente de evaluación.</span>
+                <span>
+                    Estado del intento actual:
+                    <strong>@Model.EstadoIntentoActual</strong>.
+
+                    @if (Model.TieneCalificacionPrevia)
+                    {
+                        <text>Con calificación previa.</text>
+                    }
+                </span>
             }
         </div>
     }
 
+    @if (!Model.CalificacionEfectiva.HasValue && requiereAclaracionEstadoActual)
+    {
+        <div class="app-alert app-alert-info mb-3">
+            Estado del intento actual:
+            <strong>@Model.EstadoIntentoActual</strong>.
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <span class="small text-muted d-block">Alumno</span>
+                    @Model.Alumno
+                </div>
+
+                <div class="col-md-3">
+                    <span class="small text-muted d-block">Estado administrativo</span>
+                    @Model.EstadoTarea.GetDisplayName()
+                </div>
+
+                <div class="col-md-3">
+                    <span class="small text-muted d-block">Plazo efectivo</span>
+                    @(Model.FechaLimiteEfectiva?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Sin límite")
+                </div>
+
+                <div class="col-md-6">
+                    <span class="small text-muted d-block">Disponible desde</span>
+                    @(Model.FechaDisponibilidad?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Inmediata")
+                </div>
+
+                <div class="col-md-6">
+                    <span class="small text-muted d-block">Intentos</span>
+
+                    @Model.IntentosOrdinariosUsados ordinarios usados de
+                    @(Model.IntentosPermitidos is null or 0
+                        ? "ilimitados"
+                        : Model.IntentosPermitidos)
+
+                    @if (Model.OportunidadesAdicionales > 0)
+                    {
+                        <span class="text-muted">
+                            · @Model.OportunidadesAdicionales oportunidad(es) extraordinaria(s):
+                            @Model.OportunidadesAdicionalesConsumidas consumida(s)
+
+                            @if (Model.OportunidadesAdicionalesVigentes > 0)
+                            {
+                                <text>, @Model.OportunidadesAdicionalesVigentes vigente(s)</text>
+                            }
+
+                            @if (Model.OportunidadesAdicionalesVencidas > 0)
+                            {
+                                <text>, @Model.OportunidadesAdicionalesVencidas vencida(s)</text>
+                            }
+                        </span>
+                    }
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Instrucciones))
+            {
+                <hr />
+
+                <div class="fw-semibold">Instrucciones</div>
+                <div class="white-space-pre-line">@Model.Instrucciones</div>
+            }
+
+            @if (Model.ArchivosApoyo.Count > 0)
+            {
+                <hr />
+
+                <div class="fw-semibold mb-2">Archivos de apoyo</div>
+
+                @foreach (var archivo in Model.ArchivosApoyo)
+                {
+                    <a asp-action="ArchivoTarea" asp-route-id="@archivo.Id"
+                       class="app-btn app-btn-soft-secondary app-btn-sm me-2 mb-2">
+                        @archivo.Nombre
+                    </a>
+                }
+            }
+        </div>
+    </div>
+
     <div class="card border-0 shadow-sm">
         <div class="card-body p-4">
-            <label class="form-label" for="selector-intento">Seleccionar intento</label>
+            <label class="form-label" for="selector-intento">
+                Seleccionar intento
+            </label>
+
             <select id="selector-intento" class="form-select mb-4" data-selector-intento>
                 @foreach (var intento in Model.Intentos)
                 {
                     <option value="@intento.Id" selected="@(intento.Id == seleccionado?.Id)">
-                        Intento @intento.NumeroEnvio — @(intento.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Pendiente")
+                        Intento @intento.NumeroEnvio —
+                        @(intento.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Pendiente")
                     </option>
                 }
             </select>
 
             @foreach (var intento in Model.Intentos)
             {
+                var esIntentoVigente = intento.Id == Model.Intentos.FirstOrDefault()?.Id;
+
                 <section data-intento-id="@intento.Id" hidden="@(intento.Id == seleccionado?.Id ? null : "hidden")">
+
                     <h3 class="h5">Intento @intento.NumeroEnvio</h3>
+
                     <dl class="row mb-3">
-                        <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">@intento.Estado.GetDisplayName()</dd>
-                        <dt class="col-sm-3">Fecha de entrega</dt><dd class="col-sm-9">@(intento.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Pendiente")</dd>
-                        @if (intento.Calificacion.HasValue) { <dt class="col-sm-3">Calificación</dt><dd class="col-sm-9">@intento.Calificacion / @Model.PunteoMaximo</dd> }
-                        @if (!string.IsNullOrWhiteSpace(intento.Retroalimentacion)) { <dt class="col-sm-3">Retroalimentación</dt><dd class="col-sm-9 white-space-pre-line">@intento.Retroalimentacion</dd> }
-                        @if (!string.IsNullOrWhiteSpace(intento.MotivoReapertura)) { <dt class="col-sm-3">Reapertura</dt><dd class="col-sm-9">@intento.MotivoReapertura</dd> }
+                        <dt class="col-sm-3">Estado del intento</dt>
+                        <dd class="col-sm-9">
+                            @(esIntentoVigente
+                                ? Model.EstadoIntentoActual
+                                : intento.Estado.GetDisplayName())
+
+                            @if (esIntentoVigente && Model.TieneCalificacionPrevia)
+                            {
+                                <span class="small text-muted d-block">Con calificación previa.</span>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-3">Fecha de entrega</dt>
+                        <dd class="col-sm-9">
+                            @(intento.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Pendiente")
+                        </dd>
+
+                        @if (intento.Calificacion.HasValue)
+                        {
+                            <dt class="col-sm-3">Calificación</dt>
+                            <dd class="col-sm-9">
+                                @intento.Calificacion / @Model.PunteoMaximo
+                            </dd>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(intento.Retroalimentacion))
+                        {
+                            <dt class="col-sm-3">Retroalimentación</dt>
+                            <dd class="col-sm-9 white-space-pre-line">
+                                @intento.Retroalimentacion
+                            </dd>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(intento.MotivoReapertura))
+                        {
+                            <dt class="col-sm-3">Reapertura</dt>
+                            <dd class="col-sm-9">@intento.MotivoReapertura</dd>
+                        }
                     </dl>
+
+                    @if (intento.PuedeCalificarse || esIntentoVigente)
+                    {
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            @if (Model.PuedeEntregarse && esIntentoVigente)
+                            {
+                                @if (Model.Tipo == Proyecto_Final.Models.TipoTarea.Cuestionario &&
+                                     Model.CuestionarioId.HasValue)
+                                {
+                                    var enCurso = Model.IntentosCuestionario.FirstOrDefault(x => x.EnCurso);
+
+                                    <a asp-controller="Cuestionarios" asp-action="Resolver" asp-route-id="@Model.CuestionarioId"
+                                       class="app-btn app-btn-soft-primary app-btn-sm">
+                                        @(enCurso is null ? "Resolver cuestionario" : "Continuar cuestionario")
+                                    </a>
+                                }
+                                else
+                                {
+                                    <a asp-action="Entregar" asp-route-id="@intento.Id" class="app-btn app-btn-soft-primary app-btn-sm">
+                                        Entregar tarea
+                                    </a>
+                                }
+                            }
+
+                            @if (intento.PuedeCalificarse)
+                            {
+                                <a asp-action="Calificar" asp-route-id="@intento.Id"
+                                   class="app-btn app-btn-soft-secondary app-btn-sm">
+                                    @(intento.Calificacion.HasValue ? "Modificar calificación" : "Calificar")
+                                </a>
+                            }
+
+                            @if (Model.PuedeCalificarseConCero &&
+                                 Model.EntregaCalificableConCeroId == intento.Id)
+                            {
+                                <a asp-action="CalificarCero" asp-route-id="@intento.Id"
+                                   class="app-btn app-btn-soft-danger app-btn-sm">
+                                    Calificar con cero
+                                </a>
+                            }
+
+                            @if (intento.PuedeRectificarseCero)
+                            {
+                                <a asp-action="RectificarCero" asp-route-id="@intento.Id"
+                                   class="app-btn app-btn-soft-warning app-btn-sm">
+                                    Rectificar cero
+                                </a>
+                            }
+
+                            @if (Model.PuedeReabrirse && esIntentoVigente)
+                            {
+                                <a asp-action="Reabrir" asp-route-id="@intento.Id" class="app-btn app-btn-soft-warning app-btn-sm">
+                                    Reabrir entrega
+                                </a>
+                            }
+
+                            @if (Model.Tipo == Proyecto_Final.Models.TipoTarea.Cuestionario &&
+                                 Model.PuedeVerRespuestasCuestionario &&
+                                 intento.Estado != Proyecto_Final.Models.EstadoEntrega.Pendiente)
+                            {
+                                <a asp-controller="Cuestionarios" asp-action="RespuestasEntrega" asp-route-id="@intento.Id"
+                                   class="app-btn app-btn-soft-secondary app-btn-sm">
+                                    Ver respuestas
+                                </a>
+                            }
+                        </div>
+                    }
+
                     @if (intento.Archivos.Count > 0)
                     {
                         <div class="fw-semibold mb-2">Archivos</div>
+
                         <div class="d-flex flex-column gap-2">
                             @foreach (var archivo in intento.Archivos)
                             {
                                 <div class="d-flex flex-wrap align-items-center gap-2">
                                     <span>@archivo.Nombre</span>
+
                                     @if (archivo.PuedeVisualizar)
                                     {
-                                        <a asp-action="VisualizarArchivo" asp-route-id="@archivo.Id" target="_blank" rel="noopener" class="app-btn app-btn-soft-secondary app-btn-sm"><i class="bi bi-eye"></i> Visualizar</a>
+                                        <a asp-action="VisualizarArchivo" asp-route-id="@archivo.Id" target="_blank" rel="noopener"
+                                           class="app-btn app-btn-soft-secondary app-btn-sm">
+                                            <i class="bi bi-eye"></i>
+                                            Visualizar
+                                        </a>
                                     }
-                                    <a asp-action="Archivo" asp-route-id="@archivo.Id" class="app-btn app-btn-soft-primary app-btn-sm"><i class="bi bi-download"></i> Descargar</a>
+
+                                    <a asp-action="Archivo" asp-route-id="@archivo.Id"
+                                       class="app-btn app-btn-soft-primary app-btn-sm">
+                                        <i class="bi bi-download"></i>
+                                        Descargar
+                                    </a>
                                 </div>
                             }
                         </div>
                     }
                 </section>
             }
+
+            @if (Model.IntentosCuestionario.Count > 0)
+            {
+                <hr />
+
+                <h3 class="h5">Intentos de cuestionario</h3>
+
+                <div class="table-responsive">
+                    <table class="table app-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Intento</th>
+                                <th>Estado</th>
+                                <th>Inicio</th>
+                                <th>Resultado</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var intento in Model.IntentosCuestionario)
+                            {
+                                <tr>
+                                    <td>@intento.NumeroIntento</td>
+                                    <td>@intento.Estado.GetDisplayName()</td>
+                                    <td>@intento.FechaInicio.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td>@(intento.Calificacion?.ToString() ?? "Pendiente")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
         </div>
     </div>
 </div>
 
 @section Scripts {
-    <script>
-        document.querySelector('[data-selector-intento]')?.addEventListener('change', function () {
-            document.querySelectorAll('[data-intento-id]').forEach(function (elemento) {
-                elemento.hidden = elemento.dataset.intentoId !== this.value;
-            }, this);
-        });
-    </script>
+    <script src="~/js/entregas-detalle.js" asp-append-version="true"></script>
 }

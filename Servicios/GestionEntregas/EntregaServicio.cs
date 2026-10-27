@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using System.Data;
+using System.Globalization;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Archivos;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.GestionAsignaciones;
 using Proyecto_Final.Servicios.SeguridadAcademica;
+using Proyecto_Final.Seguridad;
 using Proyecto_Final.ViewModels.Entregas;
 
 namespace Proyecto_Final.Servicios.GestionEntregas;
@@ -34,13 +36,19 @@ public sealed class EntregaServicio(
         {
             consulta = consulta.Where(x =>
                 (historial
-                    ? x.Tarea.Asignacion.DocenteId == docenteId.Value &&
+                    ? (x.Tarea.Asignacion.DocenteId == docenteId.Value ||
+                       contexto.DelegacionesAcademicas.Any(d =>
+                          d.AsignacionId == x.Tarea.AsignacionId &&
+                          d.DocenteId == docenteId.Value && d.Activa &&
+                          d.FechaInicioUtc <= ahora &&
+                          (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= ahora) &&
+                          ((d.Operaciones & OperacionDelegacionAcademica.CalificarEntregas) ==
+                              OperacionDelegacionAcademica.CalificarEntregas ||
+                           (d.Operaciones & OperacionDelegacionAcademica.ReabrirEntregas) ==
+                              OperacionDelegacionAcademica.ReabrirEntregas))) &&
                       (x.Tarea.Asignacion.Estado != EstadoRegistro.Activo ||
                        !x.Tarea.Asignacion.Seccion.CicloEscolar.Activo ||
-                       (x.Tarea.Estado == EstadoTarea.Cerrada &&
-                        !(x.Estado == EstadoEntrega.Pendiente &&
-                          x.FechaLimiteIndividual.HasValue &&
-                          x.FechaLimiteIndividual.Value >= ahora)))
+                       x.Tarea.Estado == EstadoTarea.Cerrada)
                     : ((x.Tarea.Asignacion.DocenteId == docenteId.Value &&
                         x.Tarea.Asignacion.Estado == EstadoRegistro.Activo) ||
                        contexto.DelegacionesAcademicas.Any(d =>
@@ -53,10 +61,7 @@ public sealed class EntregaServicio(
                            (d.Operaciones & OperacionDelegacionAcademica.ReabrirEntregas) ==
                               OperacionDelegacionAcademica.ReabrirEntregas))) &&
                       x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
-                      (x.Tarea.Estado != EstadoTarea.Cerrada ||
-                       (x.Estado == EstadoEntrega.Pendiente &&
-                        x.FechaLimiteIndividual.HasValue &&
-                        x.FechaLimiteIndividual.Value >= ahora)) &&
+                      x.Tarea.Estado != EstadoTarea.Cerrada &&
                       contexto.Inscripciones.Any(inscripcion =>
                           inscripcion.AlumnoId == x.AlumnoId &&
                           inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
@@ -79,10 +84,7 @@ public sealed class EntregaServicio(
                          inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
                          inscripcion.CicloEscolarId == x.Tarea.Asignacion.Seccion.CicloEscolarId &&
                          inscripcion.Estado == EstadoInscripcion.Activa) ||
-                     (x.Tarea.Estado == EstadoTarea.Cerrada &&
-                      !(x.Estado == EstadoEntrega.Pendiente &&
-                        x.FechaLimiteIndividual.HasValue &&
-                        x.FechaLimiteIndividual.Value >= ahora))))
+                     x.Tarea.Estado == EstadoTarea.Cerrada))
                 : consulta.Where(x =>
                     x.AlumnoId == alumnoId.Value &&
                     (x.Tarea.Asignacion.Estado == EstadoRegistro.Activo ||
@@ -93,10 +95,7 @@ public sealed class EntregaServicio(
                         (d.Operaciones & OperacionDelegacionAcademica.ContinuarActividadesAlumnos) ==
                             OperacionDelegacionAcademica.ContinuarActividadesAlumnos)) &&
                     x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
-                    (x.Tarea.Estado != EstadoTarea.Cerrada ||
-                     (x.Estado == EstadoEntrega.Pendiente &&
-                      x.FechaLimiteIndividual.HasValue &&
-                      x.FechaLimiteIndividual.Value >= ahora)) &&
+                    x.Tarea.Estado != EstadoTarea.Cerrada &&
                     contexto.Inscripciones.Any(inscripcion =>
                         inscripcion.AlumnoId == alumnoId.Value &&
                         inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
@@ -108,28 +107,25 @@ public sealed class EntregaServicio(
             consulta = consulta.Where(x => historial
                 ? x.Tarea.Asignacion.Estado != EstadoRegistro.Activo ||
                   !x.Tarea.Asignacion.Seccion.CicloEscolar.Activo ||
-                  (x.Tarea.Estado == EstadoTarea.Cerrada &&
-                   !(x.Estado == EstadoEntrega.Pendiente &&
-                     x.FechaLimiteIndividual.HasValue &&
-                     x.FechaLimiteIndividual.Value >= ahora))
+                  x.Tarea.Estado == EstadoTarea.Cerrada
                 : x.Tarea.Asignacion.Estado == EstadoRegistro.Activo &&
                   x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
-                  (x.Tarea.Estado != EstadoTarea.Cerrada ||
-                   (x.Estado == EstadoEntrega.Pendiente &&
-                    x.FechaLimiteIndividual.HasValue &&
-                    x.FechaLimiteIndividual.Value >= ahora)));
+                  x.Tarea.Estado != EstadoTarea.Cerrada);
         }
         else
         {
             consulta = consulta.Where(_ => false);
         }
 
-        return await consulta
+        var entregas = await consulta
             .OrderBy(x => x.Estado == EstadoEntrega.Pendiente ? 0 : 1)
             .ThenByDescending(x => x.FechaEntrega)
             .Select(x => new EntregaLista
             {
                 Id = x.Id,
+                TareaId = x.TareaId,
+                AlumnoId = x.AlumnoId,
+                InscripcionId = x.InscripcionId,
                 Alumno = x.Alumno.Usuario.PrimerNombre + " " +
                     x.Alumno.Usuario.PrimerApellido,
                 Tarea = x.Tarea.Titulo,
@@ -139,14 +135,19 @@ public sealed class EntregaServicio(
                 FechaEntrega = x.FechaEntrega,
                 Estado = x.Estado,
                 Calificacion = x.Calificacion,
+                OrigenCalificacionAdministrativa = x.OrigenCalificacionAdministrativa,
                 PunteoMaximo = x.Tarea.PunteoMaximo,
                 NumeroEnvio = x.NumeroEnvio,
+                IntentosPermitidos = x.Tarea.Tipo == TipoTarea.Archivo
+                    ? x.Tarea.MaximoIntentosEntrega
+                    : x.Tarea.Cuestionario!.MaximoIntentos,
                 CuestionarioId = x.Tarea.Cuestionario != null ? x.Tarea.Cuestionario.Id : null,
                 PuedeEntregarse = alumnoId.HasValue &&
-                    // La resolución de cuestionarios exige publicación general.
-                    // No anunciar una reapertura individual que el servicio de cuestionarios aún no valida.
+                    // Una reapertura individual vigente también habilita el cuestionario.
                     (x.Tarea.Tipo != TipoTarea.Cuestionario ||
-                     x.Tarea.Estado == EstadoTarea.Publicada) &&
+                     x.Tarea.Estado == EstadoTarea.Publicada ||
+                     (x.FechaLimiteIndividual.HasValue &&
+                      x.FechaLimiteIndividual.Value >= ahora)) &&
                     x.AlumnoId == alumnoId.Value &&
                     x.Estado == EstadoEntrega.Pendiente &&
                     !contexto.Entregas.Any(otra =>
@@ -159,14 +160,17 @@ public sealed class EntregaServicio(
                         inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
                         inscripcion.Estado == EstadoInscripcion.Activa &&
                         inscripcion.Seccion.CicloEscolar.Activo) &&
-                    (x.FechaLimiteIndividual.HasValue
-                        ? x.FechaLimiteIndividual >= ahora
-                        : x.Tarea.Estado == EstadoTarea.Publicada &&
-                          (!x.Tarea.FechaDisponibilidad.HasValue ||
-                           x.Tarea.FechaDisponibilidad <= ahora) &&
-                          (!x.Tarea.FechaLimite.HasValue ||
-                           x.Tarea.FechaLimite >= ahora ||
-                           x.Tarea.PermitirEntregaTardia)),
+                    ((x.FechaLimiteIndividual.HasValue &&
+                      x.FechaLimiteIndividual >= ahora &&
+                      x.Reaperturas.Any(r => r.FechaLimite >= ahora)) ||
+                     (x.Tarea.Estado == EstadoTarea.Publicada &&
+                      (!x.Tarea.FechaDisponibilidad.HasValue ||
+                       x.Tarea.FechaDisponibilidad <= ahora) &&
+                      (!x.Tarea.FechaLimite.HasValue ||
+                       x.Tarea.FechaLimite >= ahora ||
+                       x.Tarea.PermitirEntregaTardia)) ||
+                     (x.Tarea.Estado == EstadoTarea.Cerrada &&
+                      x.Tarea.PermitirEntregaTardia)),
                 PuedeCalificarse = docenteId.HasValue &&
                     ((x.Tarea.Asignacion.DocenteId == docenteId.Value &&
                       x.Tarea.Asignacion.Estado == EstadoRegistro.Activo) ||
@@ -183,11 +187,7 @@ public sealed class EntregaServicio(
                         inscripcion.AlumnoId == x.AlumnoId &&
                         inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
                         inscripcion.CicloEscolarId == x.Tarea.Asignacion.Seccion.CicloEscolarId &&
-                        inscripcion.Estado == EstadoInscripcion.Activa) &&
-                    !contexto.Entregas.Any(otra =>
-                        otra.TareaId == x.TareaId &&
-                        otra.AlumnoId == x.AlumnoId &&
-                        otra.NumeroEnvio > x.NumeroEnvio),
+                        inscripcion.Estado == EstadoInscripcion.Activa),
                 PuedeReabrirse = docenteId.HasValue &&
                 ((x.Tarea.Asignacion.DocenteId == docenteId.Value &&
                   x.Tarea.Asignacion.Estado == EstadoRegistro.Activo) ||
@@ -236,6 +236,53 @@ public sealed class EntregaServicio(
             )
             })
             .ToListAsync();
+
+        // Una actividad se identifica por tarea, alumno e inscripción. Los
+        // intentos pertenecen a ese contexto y se consultan desde el detalle,
+        // por lo que no deben multiplicar filas del listado.
+        // Las filas filtradas autorizan los contextos; el resumen consulta su
+        // historial completo para que los intentos cerrados no desaparezcan.
+        var resumenes = await ObtenerResumenesIntentosAsync(
+            entregas.Select(x => x.Id), ahora);
+
+        return entregas
+            .GroupBy(x => new { x.TareaId, x.AlumnoId, x.InscripcionId })
+            .Select(grupo =>
+            {
+                var vigente = grupo
+                    .OrderByDescending(x => x.NumeroEnvio)
+                    .ThenByDescending(x => x.Id)
+                    .First();
+                var resumen = resumenes[ClaveContexto(vigente.TareaId,
+                    vigente.AlumnoId, vigente.InscripcionId)];
+                vigente.CantidadIntentos = resumen.IntentosOrdinariosUsados;
+                // Estos valores tambiÃ©n son histÃ³ricos: no se pueden derivar
+                // del subconjunto visible (por ejemplo, cuando sÃ³lo queda una
+                // reapertura pendiente). El detalle usa esta misma regla.
+                vigente.FechaEntrega = resumen.UltimaFechaEntrega;
+                var intentoActualTieneCalificacion = vigente.Calificacion.HasValue;
+                vigente.EsCeroAdministrativoSinEntrega =
+                    vigente.Estado == EstadoEntrega.Calificada &&
+                    !vigente.FechaEntrega.HasValue && vigente.Calificacion == 0 &&
+                    vigente.OrigenCalificacionAdministrativa.HasValue;
+                vigente.Calificacion = resumen.CalificacionEfectiva;
+                vigente.TieneIntentoPendienteEvaluacion =
+                    resumen.TieneIntentoPendienteEvaluacion;
+                vigente.TieneCalificacionPrevia =
+                    resumen.CalificacionEfectiva.HasValue && !intentoActualTieneCalificacion;
+                vigente.EntregaCalificableId = grupo.Any(x => x.PuedeCalificarse)
+                    ? resumen.EntregaPendienteEvaluacionId
+                    : null;
+                vigente.PuedeCalificarse = vigente.EntregaCalificableId.HasValue;
+                vigente.OportunidadesAdicionales = resumen.OportunidadesAutorizadas;
+                vigente.OportunidadesAdicionalesConsumidas = resumen.OportunidadesConsumidas;
+                vigente.OportunidadesAdicionalesVigentes = resumen.OportunidadesVigentes;
+                vigente.OportunidadesAdicionalesVencidas = resumen.OportunidadesVencidas;
+                return vigente;
+            })
+            .OrderBy(x => x.Estado == EstadoEntrega.Pendiente ? 0 : 1)
+            .ThenByDescending(x => x.FechaEntrega)
+            .ToList();
     }
 
     public async Task<EntregarTarea?> ObtenerParaEntregarAsync(int id)
@@ -266,14 +313,17 @@ public sealed class EntregaServicio(
                         x.Tarea.Asignacion.Seccion.CicloEscolarId &&
                     inscripcion.Estado == EstadoInscripcion.Activa &&
                     inscripcion.Seccion.CicloEscolar.Activo) &&
-                (x.FechaLimiteIndividual.HasValue
-                    ? x.FechaLimiteIndividual >= ahora
-                    : x.Tarea.Estado == EstadoTarea.Publicada &&
-                      (!x.Tarea.FechaDisponibilidad.HasValue ||
-                       x.Tarea.FechaDisponibilidad <= ahora) &&
-                      (!x.Tarea.FechaLimite.HasValue ||
-                       x.Tarea.FechaLimite >= ahora ||
-                       x.Tarea.PermitirEntregaTardia)))
+                ((x.FechaLimiteIndividual.HasValue &&
+                  x.FechaLimiteIndividual >= ahora &&
+                  x.Reaperturas.Any(r => r.FechaLimite >= ahora)) ||
+                 (x.Tarea.Estado == EstadoTarea.Publicada &&
+                  (!x.Tarea.FechaDisponibilidad.HasValue ||
+                   x.Tarea.FechaDisponibilidad <= ahora) &&
+                  (!x.Tarea.FechaLimite.HasValue ||
+                   x.Tarea.FechaLimite >= ahora ||
+                   x.Tarea.PermitirEntregaTardia)) ||
+                 (x.Tarea.Estado == EstadoTarea.Cerrada &&
+                  x.Tarea.PermitirEntregaTardia)))
             .Select(x => new EntregarTarea
             {
                 Id = x.Id,
@@ -297,6 +347,7 @@ public sealed class EntregaServicio(
 
     public async Task<DetalleEntrega?> ObtenerDetalleAsync(int id)
     {
+        var ahora = DateTime.UtcNow;
         var seleccionada = await contexto.Entregas
             .AsNoTracking()
             .Include(x => x.Tarea)
@@ -320,7 +371,9 @@ public sealed class EntregaServicio(
                 NumeroEnvio = x.NumeroEnvio,
                 Estado = x.Estado,
                 FechaEntrega = x.FechaEntrega,
+                FechaLimiteIndividual = x.FechaLimiteIndividual,
                 Calificacion = x.Calificacion,
+                OrigenCalificacionAdministrativa = x.OrigenCalificacionAdministrativa,
                 ComentarioAlumno = x.ComentarioAlumno,
                 Retroalimentacion = x.Retroalimentacion,
                 MotivoReapertura = x.Reaperturas
@@ -339,21 +392,115 @@ public sealed class EntregaServicio(
             })
             .ToListAsync();
 
-        var ultimoCalificado = entregas
-            .Where(x => x.Calificacion.HasValue)
-            .OrderByDescending(x => x.NumeroEnvio)
-            .FirstOrDefault();
+        var ultima = entregas.FirstOrDefault();
+        if (ultima is null)
+            return null;
+
+        var informacion = await contexto.Entregas.AsNoTracking()
+            .Where(x => x.Id == id)
+            .Select(x => new
+            {
+                Alumno = x.Alumno.Usuario.PrimerNombre + " " +
+                    x.Alumno.Usuario.PrimerApellido,
+                Curso = x.Tarea.Asignacion.Curso.Nombre,
+                x.Tarea.Tipo,
+                CuestionarioId = x.Tarea.Cuestionario == null
+                    ? (int?)null
+                    : x.Tarea.Cuestionario.Id,
+                x.Tarea.Estado,
+                x.Tarea.Instrucciones,
+                x.Tarea.FechaDisponibilidad,
+                x.Tarea.FechaLimite,
+                x.Tarea.MaximoIntentosEntrega,
+                MaximoIntentosCuestionario = x.Tarea.Cuestionario == null
+                    ? (int?)null
+                    : x.Tarea.Cuestionario.MaximoIntentos,
+                MostrarRespuestasCorrectas = x.Tarea.Cuestionario != null &&
+                    x.Tarea.Cuestionario.MostrarRespuestasCorrectas,
+                Archivos = x.Tarea.Archivos.Select(a => new ArchivoTareaApoyo
+                {
+                    Id = a.ArchivoId,
+                    Nombre = a.Archivo.NombreOriginal
+                }).ToList()
+            })
+            .FirstAsync();
+
+        var intentosCuestionario = informacion.Tipo == TipoTarea.Cuestionario
+            ? await contexto.IntentosCuestionarios.AsNoTracking()
+                .Where(x => x.Cuestionario.TareaId == seleccionada.TareaId &&
+                    x.AlumnoId == seleccionada.AlumnoId &&
+                    x.InscripcionId == seleccionada.InscripcionId)
+                .OrderByDescending(x => x.NumeroIntento)
+                .Select(x => new IntentoCuestionarioDetalle
+                {
+                    Id = x.Id,
+                    NumeroIntento = x.NumeroIntento,
+                    Estado = x.Estado,
+                    FechaInicio = x.FechaInicio,
+                    FechaFinalizacion = x.FechaFinalizacion,
+                    Calificacion = x.Calificacion
+                })
+                .ToListAsync()
+            : [];
+
+        var resumenes = await ObtenerResumenesIntentosAsync([id], ahora);
+        var resumen = resumenes[ClaveContexto(seleccionada.TareaId,
+            seleccionada.AlumnoId, seleccionada.InscripcionId)];
+
+        // Estas consultas reutilizan las mismas autorizaciones del POST y no
+        // crean oportunidades: sólo determinan qué controles pueden mostrarse.
+        var puedeEntregarse = await ObtenerParaEntregarAsync(ultima.Id) is not null;
+        foreach (var intento in entregas.Where(x => x.Estado != EstadoEntrega.Pendiente))
+            intento.PuedeCalificarse = await ObtenerParaCalificarAsync(intento.Id) is not null;
+        foreach (var intento in entregas.Where(x =>
+                     x.OrigenCalificacionAdministrativa.HasValue))
+            intento.PuedeRectificarseCero =
+                await ObtenerParaRectificarCeroAsync(intento.Id) is not null;
+        var puedeCalificarse = entregas.Any(x => x.PuedeCalificarse);
+        var puedeReabrirse = await ObtenerParaReabrirAsync(ultima.Id) is not null;
+        var calificacionCero = await ObtenerParaCalificarCeroAsync(ultima.Id);
+        var perfil = await acceso.ObtenerContextoUsuarioAsync();
 
         return new DetalleEntrega
         {
             EntregaSeleccionadaId = id,
-            Alumno = seleccionada.AlumnoId.ToString(),
+            Alumno = informacion.Alumno,
             Tarea = seleccionada.Tarea.Titulo,
+            Curso = informacion.Curso,
+            Tipo = informacion.Tipo,
+            CuestionarioId = informacion.CuestionarioId,
+            EstadoTarea = informacion.Estado,
+            Instrucciones = informacion.Instrucciones,
+            FechaDisponibilidad = informacion.FechaDisponibilidad,
+            FechaLimiteEfectiva = ultima.FechaLimiteIndividual ?? informacion.FechaLimite,
             PunteoMaximo = seleccionada.Tarea.PunteoMaximo,
-            CalificacionEfectiva = ultimoCalificado?.Calificacion,
-            TieneIntentoPendienteEvaluacion = entregas.Any(x =>
-                x.FechaEntrega.HasValue && !x.Calificacion.HasValue),
-            Intentos = entregas
+            CalificacionEfectiva = resumen.CalificacionEfectiva,
+            TieneIntentoPendienteEvaluacion = resumen.TieneIntentoPendienteEvaluacion,
+            EstadoActual = ultima.Estado,
+            TieneCalificacionPrevia = resumen.CalificacionEfectiva.HasValue &&
+                !ultima.Calificacion.HasValue,
+            CalificadoSinEntrega = ultima.Estado == EstadoEntrega.Calificada &&
+            !ultima.FechaEntrega.HasValue &&
+            ultima.Calificacion == 0 &&
+            ultima.OrigenCalificacionAdministrativa.HasValue,
+            IntentosPermitidos = informacion.Tipo == TipoTarea.Archivo
+                ? informacion.MaximoIntentosEntrega
+                : informacion.MaximoIntentosCuestionario,
+            IntentosOrdinariosUsados = resumen.IntentosOrdinariosUsados,
+            OportunidadesAdicionales = resumen.OportunidadesAutorizadas,
+            OportunidadesAdicionalesConsumidas = resumen.OportunidadesConsumidas,
+            OportunidadesAdicionalesVigentes = resumen.OportunidadesVigentes,
+            OportunidadesAdicionalesVencidas = resumen.OportunidadesVencidas,
+            PuedeEntregarse = puedeEntregarse,
+            PuedeCalificarse = puedeCalificarse,
+            PuedeReabrirse = puedeReabrirse,
+            PuedeCalificarseConCero = calificacionCero is not null,
+            EntregaCalificableConCeroId = calificacionCero?.Id,
+            PuedeVerRespuestasCuestionario = informacion.Tipo == TipoTarea.Cuestionario &&
+                (!perfil.AlumnoId.HasValue || informacion.MostrarRespuestasCorrectas),
+            ArchivosApoyo = informacion.Archivos,
+            Intentos = entregas,
+            IntentosCuestionario = intentosCuestionario
         };
     }
 
@@ -370,11 +517,14 @@ public sealed class EntregaServicio(
 
         var entrega = await contexto.Entregas
             .Include(x => x.Tarea)
+                .ThenInclude(x => x.Asignacion)
+                    .ThenInclude(x => x.Seccion)
+                        .ThenInclude(x => x.CicloEscolar)
             .FirstOrDefaultAsync(x =>
                 x.Id == modelo.Id && x.AlumnoId == alumnoId.Value,
                 cancellationToken);
 
-        if (entrega == null ||
+        if (entrega == null || entrega.Tarea.Tipo != TipoTarea.Archivo ||
             entrega.Estado != EstadoEntrega.Pendiente ||
             !await acceso.AlumnoPerteneceAsignacionAsync(
                 entrega.Tarea.AsignacionId))
@@ -383,22 +533,53 @@ public sealed class EntregaServicio(
         }
 
         var ahora = DateTime.UtcNow;
-        var reaperturaVigente =
-            entrega.FechaLimiteIndividual.HasValue &&
-            entrega.FechaLimiteIndividual.Value >= ahora;
-
-        if (!reaperturaVigente &&
-            (entrega.Tarea.Estado != EstadoTarea.Publicada ||
-             (entrega.Tarea.FechaDisponibilidad.HasValue &&
-              entrega.Tarea.FechaDisponibilidad.Value > ahora)))
+        var existeIntentoPosterior = await contexto.Entregas.AnyAsync(otra =>
+            otra.TareaId == entrega.TareaId &&
+            otra.AlumnoId == entrega.AlumnoId &&
+            otra.InscripcionId == entrega.InscripcionId &&
+            otra.NumeroEnvio > entrega.NumeroEnvio,
+            cancellationToken);
+        if (existeIntentoPosterior)
         {
-            return ResultadoOperacion.Error("La entrega no está disponible.");
+            return ResultadoOperacion.Error("Este intento ya fue reemplazado por uno más reciente.");
+        }
+
+        var inscripcionVigente = await contexto.Inscripciones.AnyAsync(inscripcion =>
+            inscripcion.AlumnoId == alumnoId.Value &&
+            inscripcion.SeccionId == entrega.Tarea.Asignacion.SeccionId &&
+            inscripcion.CicloEscolarId == entrega.Tarea.Asignacion.Seccion.CicloEscolarId &&
+            inscripcion.Estado == EstadoInscripcion.Activa &&
+            inscripcion.Seccion.CicloEscolar.Activo,
+            cancellationToken);
+        if (!inscripcionVigente)
+        {
+            return ResultadoOperacion.Error("No tiene una inscripción activa para realizar esta entrega.");
+        }
+
+        var reaperturaVigente = entrega.FechaLimiteIndividual.HasValue &&
+            entrega.FechaLimiteIndividual.Value >= ahora &&
+            await contexto.ReaperturasEntregas.AnyAsync(r =>
+                r.EntregaId == entrega.Id && r.FechaLimite >= ahora,
+                cancellationToken);
+        var entregaTardiaCerrada = entrega.Tarea.Estado == EstadoTarea.Cerrada &&
+            entrega.Tarea.PermitirEntregaTardia;
+
+        if (!reaperturaVigente && !entregaTardiaCerrada &&
+            entrega.Tarea.Estado != EstadoTarea.Publicada)
+        {
+            return ResultadoOperacion.Error("La actividad está cerrada y no admite nuevas entregas.");
+        }
+
+        if (!reaperturaVigente && !entregaTardiaCerrada &&
+            entrega.Tarea.FechaDisponibilidad.HasValue &&
+            entrega.Tarea.FechaDisponibilidad.Value > ahora)
+        {
+            return ResultadoOperacion.Error("La actividad todavía no está disponible.");
         }
 
         if (entrega.FechaLimiteIndividual.HasValue && !reaperturaVigente)
         {
-            return ResultadoOperacion.Error(
-                "El plazo individual de esta entrega ya venció.");
+            return ResultadoOperacion.Error("La autorización individual de esta entrega no está vigente.");
         }
 
         var tardia = !reaperturaVigente &&
@@ -523,6 +704,7 @@ public sealed class EntregaServicio(
             .Where(x =>
                 x.Id == id &&
                 x.Estado != EstadoEntrega.Pendiente &&
+                !x.OrigenCalificacionAdministrativa.HasValue &&
                 ((x.Tarea.Asignacion.DocenteId == docenteId.Value &&
                   x.Tarea.Asignacion.Estado == EstadoRegistro.Activo) ||
                  contexto.DelegacionesAcademicas.Any(d =>
@@ -559,6 +741,7 @@ public sealed class EntregaServicio(
         {
             modelo.Intentos = await contexto.Entregas.AsNoTracking()
                 .Where(x => x.TareaId == modelo.TareaId &&
+                    x.Estado != EstadoEntrega.Pendiente &&
                     (modelo.InscripcionId.HasValue
                         ? x.InscripcionId == modelo.InscripcionId
                         : x.AlumnoId == modelo.AlumnoId && !x.InscripcionId.HasValue))
@@ -592,7 +775,8 @@ public sealed class EntregaServicio(
             .FirstOrDefaultAsync(x => x.Id == modelo.Id);
 
         if (entrega?.Tarea?.Asignacion?.Seccion == null ||
-            entrega.Estado == EstadoEntrega.Pendiente)
+            entrega.Estado == EstadoEntrega.Pendiente ||
+            entrega.OrigenCalificacionAdministrativa.HasValue)
         {
             return ResultadoOperacion.Error(
                 "La entrega no está disponible para calificar.");
@@ -632,7 +816,7 @@ public sealed class EntregaServicio(
         {
             return ResultadoOperacion.Validacion(
                 nameof(modelo.Calificacion),
-                $"La calificación debe estar entre 0 y {entrega.Tarea.PunteoMaximo}.");
+                $"La calificación debe estar entre 0 y {entrega.Tarea.PunteoMaximo.ToString("0.00", CultureInfo.InvariantCulture)}.");
         }
 
         await using var transaccion = await contexto.Database.BeginTransactionAsync();
@@ -673,6 +857,292 @@ public sealed class EntregaServicio(
         catch
         {
             await transaccion.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<CalificarCeroEntrega?> ObtenerParaCalificarCeroAsync(int id)
+    {
+        if (!acceso.TienePermiso(Permisos.Entregas.Calificar))
+            return null;
+
+        var docenteId = await acceso.ObtenerDocenteIdAsync();
+        if (!docenteId.HasValue)
+            return null;
+
+        var ahora = DateTime.UtcNow;
+        return await contexto.Entregas
+            .AsNoTracking()
+            .Where(x =>
+                x.Id == id &&
+                x.Estado == EstadoEntrega.Pendiente &&
+                !x.FechaEntrega.HasValue &&
+                !x.Calificacion.HasValue &&
+                x.Tarea.Estado != EstadoTarea.Borrador &&
+                ((x.Tarea.Asignacion.DocenteId == docenteId.Value &&
+                  x.Tarea.Asignacion.Estado == EstadoRegistro.Activo) ||
+                 contexto.DelegacionesAcademicas.Any(d =>
+                    d.AsignacionId == x.Tarea.AsignacionId &&
+                    d.DocenteId == docenteId.Value && d.Activa &&
+                    d.FechaInicioUtc <= ahora &&
+                    (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= ahora) &&
+                    (d.Operaciones & OperacionDelegacionAcademica.CalificarEntregas) ==
+                        OperacionDelegacionAcademica.CalificarEntregas)) &&
+                x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
+                contexto.Inscripciones.Any(inscripcion =>
+                    inscripcion.AlumnoId == x.AlumnoId &&
+                    inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
+                    inscripcion.CicloEscolarId == x.Tarea.Asignacion.Seccion.CicloEscolarId &&
+                    inscripcion.Estado == EstadoInscripcion.Activa) &&
+                !contexto.Entregas.Any(otra =>
+                    otra.TareaId == x.TareaId &&
+                    otra.AlumnoId == x.AlumnoId &&
+                    otra.InscripcionId == x.InscripcionId &&
+                    otra.Id != x.Id &&
+                    (otra.FechaEntrega.HasValue || otra.Calificacion.HasValue)) &&
+                !contexto.Entregas.Any(otra =>
+                    otra.TareaId == x.TareaId &&
+                    otra.AlumnoId == x.AlumnoId &&
+                    otra.InscripcionId == x.InscripcionId &&
+                    otra.NumeroEnvio > x.NumeroEnvio) &&
+                !contexto.IntentosCuestionarios.Any(intento =>
+                    intento.Cuestionario.TareaId == x.TareaId &&
+                    intento.AlumnoId == x.AlumnoId &&
+                    intento.InscripcionId == x.InscripcionId))
+            .Select(x => new CalificarCeroEntrega
+            {
+                Id = x.Id,
+                Alumno = x.Alumno.Usuario.PrimerNombre + " " +
+                    x.Alumno.Usuario.PrimerApellido,
+                Tarea = x.Tarea.Titulo,
+                Curso = x.Tarea.Asignacion.Curso.Nombre,
+                Tipo = x.Tarea.Tipo
+            })
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<ResultadoOperacion> CalificarCeroAsync(CalificarCeroEntrega modelo)
+    {
+        if (!modelo.Confirmado)
+        {
+            return ResultadoOperacion.Validacion(nameof(modelo.Confirmado),
+                "Debe confirmar la calificación con cero.");
+        }
+
+        if (!acceso.TienePermiso(Permisos.Entregas.Calificar))
+        {
+            return ResultadoOperacion.Error(
+                "No tiene permiso para calificar entregas.");
+        }
+
+        var docenteId = await acceso.ObtenerDocenteIdAsync();
+        if (!docenteId.HasValue || string.IsNullOrWhiteSpace(acceso.UsuarioId))
+        {
+            return ResultadoOperacion.Error(
+                "Solo el docente responsable puede calificar esta actividad.");
+        }
+
+        await using var transaccion = await contexto.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable);
+        try
+        {
+            var entrega = await contexto.Entregas
+                .Include(x => x.Tarea)
+                    .ThenInclude(x => x.Asignacion)
+                        .ThenInclude(x => x.Seccion)
+                            .ThenInclude(x => x.CicloEscolar)
+                .FirstOrDefaultAsync(x => x.Id == modelo.Id);
+
+            if (entrega?.Tarea?.Asignacion?.Seccion is null ||
+                entrega.Estado != EstadoEntrega.Pendiente ||
+                entrega.FechaEntrega.HasValue || entrega.Calificacion.HasValue ||
+                entrega.Tarea.Estado == EstadoTarea.Borrador ||
+                entrega.Tarea.Asignacion.Estado != EstadoRegistro.Activo)
+            {
+                await transaccion.RollbackAsync();
+                return ResultadoOperacion.Error(
+                    "La actividad no está disponible para calificar con cero.");
+            }
+
+            var responsable = await acceso.EsDocenteDeAsignacionAsync(
+                entrega.Tarea.AsignacionId);
+            var delegado = delegaciones != null && await delegaciones.PuedeActuarAsync(
+                entrega.Tarea.AsignacionId, docenteId.Value,
+                OperacionDelegacionAcademica.CalificarEntregas);
+            var inscripcionVigente = await contexto.Inscripciones.AnyAsync(inscripcion =>
+                inscripcion.AlumnoId == entrega.AlumnoId &&
+                inscripcion.SeccionId == entrega.Tarea.Asignacion.SeccionId &&
+                inscripcion.CicloEscolarId == entrega.Tarea.Asignacion.Seccion.CicloEscolarId &&
+                inscripcion.Estado == EstadoInscripcion.Activa &&
+                inscripcion.Seccion.CicloEscolar.Activo);
+            var existeEvaluacion = await contexto.Entregas.AnyAsync(otra =>
+                otra.TareaId == entrega.TareaId &&
+                otra.AlumnoId == entrega.AlumnoId &&
+                otra.InscripcionId == entrega.InscripcionId &&
+                otra.Id != entrega.Id &&
+                (otra.FechaEntrega.HasValue || otra.Calificacion.HasValue));
+            var existeIntento = await contexto.IntentosCuestionarios.AnyAsync(intento =>
+                intento.Cuestionario.TareaId == entrega.TareaId &&
+                intento.AlumnoId == entrega.AlumnoId &&
+                intento.InscripcionId == entrega.InscripcionId);
+            var existePosterior = await contexto.Entregas.AnyAsync(otra =>
+                otra.TareaId == entrega.TareaId &&
+                otra.AlumnoId == entrega.AlumnoId &&
+                otra.InscripcionId == entrega.InscripcionId &&
+                otra.NumeroEnvio > entrega.NumeroEnvio);
+
+            if ((!responsable && !delegado) || !inscripcionVigente || existeEvaluacion ||
+                existeIntento || existePosterior)
+            {
+                await transaccion.RollbackAsync();
+                return ResultadoOperacion.Error(
+                    "No puede calificar con cero porque existe un intento o una calificación que debe conservarse.");
+            }
+
+            entrega.Calificacion = 0;
+            entrega.FechaCalificacion = DateTime.UtcNow;
+            entrega.CalificadoPorUsuarioId = acceso.UsuarioId;
+            entrega.Estado = EstadoEntrega.Calificada;
+            entrega.OrigenCalificacionAdministrativa =
+                OrigenCalificacionAdministrativa.ManualSinEntrega;
+
+            contexto.HistorialesCalificaciones.Add(new HistorialCalificacion
+            {
+                TipoOrigen = TipoOrigenHistorialCalificacion.Entrega,
+                EntregaId = entrega.Id,
+                NotaAnterior = null,
+                NotaNueva = 0,
+                Motivo = "Calificación administrativa manual por actividad sin entrega.",
+                FechaCambio = DateTime.UtcNow,
+                ModificadoPorUsuarioId = acceso.UsuarioId
+            });
+
+            await contexto.SaveChangesAsync();
+            await transaccion.CommitAsync();
+            return ResultadoOperacion.Correcto(
+                "La actividad fue calificada con cero sin registrar una entrega.");
+        }
+        catch (DbUpdateException)
+        {
+            await transaccion.RollbackAsync();
+            return ResultadoOperacion.Error(
+                "La calificación se procesó simultáneamente. Verifique el estado antes de intentar de nuevo.");
+        }
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<RectificarCeroAdministrativo?> ObtenerParaRectificarCeroAsync(int id)
+    {
+        if (!acceso.TienePermiso(Permisos.Entregas.Calificar))
+            return null;
+
+        var docenteId = await acceso.ObtenerDocenteIdAsync();
+        if (!docenteId.HasValue)
+            return null;
+
+        var ahora = DateTime.UtcNow;
+        return await contexto.Entregas.AsNoTracking()
+            .Where(x => x.Id == id && x.Calificacion == 0 &&
+                !x.FechaEntrega.HasValue &&
+                x.Estado == EstadoEntrega.Calificada &&
+                x.OrigenCalificacionAdministrativa.HasValue &&
+                ((x.Tarea.Asignacion.DocenteId == docenteId.Value &&
+                  x.Tarea.Asignacion.Estado == EstadoRegistro.Activo) ||
+                 contexto.DelegacionesAcademicas.Any(d =>
+                    d.AsignacionId == x.Tarea.AsignacionId &&
+                    d.DocenteId == docenteId.Value && d.Activa &&
+                    d.FechaInicioUtc <= ahora &&
+                    (!d.FechaFinUtc.HasValue || d.FechaFinUtc >= ahora) &&
+                    (d.Operaciones & OperacionDelegacionAcademica.CalificarEntregas) ==
+                        OperacionDelegacionAcademica.CalificarEntregas)) &&
+                x.Tarea.Asignacion.Seccion.CicloEscolar.Activo &&
+                contexto.Inscripciones.Any(i => i.Id == x.InscripcionId &&
+                    i.AlumnoId == x.AlumnoId && i.Estado == EstadoInscripcion.Activa))
+            .Select(x => new RectificarCeroAdministrativo
+            {
+                Id = x.Id,
+                Alumno = x.Alumno.Usuario.PrimerNombre + " " +
+                    x.Alumno.Usuario.PrimerApellido,
+                Tarea = x.Tarea.Titulo,
+                Curso = x.Tarea.Asignacion.Curso.Nombre,
+                Origen = x.OrigenCalificacionAdministrativa!.Value
+            })
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<ResultadoOperacion> RectificarCeroAsync(
+        RectificarCeroAdministrativo modelo)
+    {
+        var motivo = modelo.Motivo?.Trim();
+        if (string.IsNullOrWhiteSpace(motivo) || motivo.Length is < 10 or > 1000)
+            return ResultadoOperacion.Validacion(nameof(modelo.Motivo),
+                "El motivo debe contener entre 10 y 1000 caracteres.");
+        if (!acceso.TienePermiso(Permisos.Entregas.Calificar))
+            return ResultadoOperacion.Error("No tiene permiso para calificar entregas.");
+
+        var docenteId = await acceso.ObtenerDocenteIdAsync();
+        if (!docenteId.HasValue || string.IsNullOrWhiteSpace(acceso.UsuarioId))
+            return ResultadoOperacion.Error(
+                "Solo el docente responsable puede rectificar esta calificación.");
+
+        await using var tx = await contexto.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable);
+        try
+        {
+            var entrega = await contexto.Entregas
+                .Include(x => x.Tarea).ThenInclude(x => x.Asignacion)
+                    .ThenInclude(x => x.Seccion).ThenInclude(x => x.CicloEscolar)
+                .FirstOrDefaultAsync(x => x.Id == modelo.Id);
+            if (entrega?.Tarea?.Asignacion?.Seccion is null ||
+                entrega.Calificacion != 0 || entrega.FechaEntrega.HasValue ||
+                entrega.Estado != EstadoEntrega.Calificada ||
+                !entrega.OrigenCalificacionAdministrativa.HasValue ||
+                !entrega.Tarea.Asignacion.Seccion.CicloEscolar.Activo ||
+                (!(await acceso.EsDocenteDeAsignacionAsync(entrega.Tarea.AsignacionId)) &&
+                 !(delegaciones != null && await delegaciones.PuedeActuarAsync(
+                     entrega.Tarea.AsignacionId, docenteId.Value,
+                     OperacionDelegacionAcademica.CalificarEntregas))) ||
+                !await contexto.Inscripciones.AnyAsync(i => i.Id == entrega.InscripcionId &&
+                    i.AlumnoId == entrega.AlumnoId && i.Estado == EstadoInscripcion.Activa))
+            {
+                await tx.RollbackAsync();
+                return ResultadoOperacion.Error(
+                    "La calificación administrativa ya no puede rectificarse en este contexto.");
+            }
+
+            entrega.Calificacion = null;
+            entrega.Estado = EstadoEntrega.CeroAdministrativoRectificado;
+            entrega.FechaRectificacionAdministrativa = DateTime.UtcNow;
+            entrega.MotivoRectificacionAdministrativa = motivo;
+            entrega.RectificadoPorUsuarioId = acceso.UsuarioId;
+            contexto.HistorialesCalificaciones.Add(new HistorialCalificacion
+            {
+                TipoOrigen = TipoOrigenHistorialCalificacion.Entrega,
+                EntregaId = entrega.Id,
+                NotaAnterior = 0,
+                NotaNueva = null,
+                Motivo = motivo,
+                FechaCambio = DateTime.UtcNow,
+                ModificadoPorUsuarioId = acceso.UsuarioId
+            });
+            await contexto.SaveChangesAsync();
+            await tx.CommitAsync();
+            return ResultadoOperacion.Correcto(
+                "El cero administrativo fue rectificado. La rectificación no habilita una nueva entrega.");
+        }
+        catch (DbUpdateException)
+        {
+            await tx.RollbackAsync();
+            return ResultadoOperacion.Error(
+                "La rectificación se procesó simultáneamente. Verifique el estado antes de intentar de nuevo.");
+        }
+        catch
+        {
+            await tx.RollbackAsync();
             throw;
         }
     }
@@ -864,6 +1334,7 @@ public sealed class EntregaServicio(
                 EntregaId = destino.Id,
                 FechaReapertura = DateTime.UtcNow,
                 FechaLimite = fechaLimite,
+                AutorizaOportunidadAdicional = destino.Id != origen.Id,
                 Motivo = modelo.Motivo.Trim(),
                 ReabiertaPorUsuarioId = acceso.UsuarioId
             });
@@ -936,6 +1407,187 @@ public sealed class EntregaServicio(
             ? null
             : (stream, relacion.Archivo.TipoMime, relacion.Archivo.NombreOriginal);
     }
+    private async Task<Dictionary<string, ResumenIntentos>> ObtenerResumenesIntentosAsync(
+        IEnumerable<int> entregasDeContextosAutorizados, DateTime ahora)
+    {
+        var ids = entregasDeContextosAutorizados.Distinct().ToArray();
+        if (ids.Length == 0)
+            return [];
+
+        // La subconsulta se ancla en una fila que ya superÃ³ las reglas de
+        // acceso del listado/detalle. AsÃ­ se consulta el historial completo,
+        // pero nunca se incorporan contextos acadÃ©micos ajenos.
+        var entregas = await contexto.Entregas.AsNoTracking()
+            .Where(x => contexto.Entregas.Any(contextoAutorizado =>
+                ids.Contains(contextoAutorizado.Id) &&
+                contextoAutorizado.TareaId == x.TareaId &&
+                contextoAutorizado.AlumnoId == x.AlumnoId &&
+                contextoAutorizado.InscripcionId == x.InscripcionId))
+            .Select(x => new EntregaParaContador
+            {
+                Id = x.Id,
+                TareaId = x.TareaId,
+                AlumnoId = x.AlumnoId,
+                InscripcionId = x.InscripcionId,
+                NumeroEnvio = x.NumeroEnvio,
+                FechaEntrega = x.FechaEntrega,
+                Calificacion = x.Calificacion,
+                EsCalificacionAdministrativa = x.OrigenCalificacionAdministrativa.HasValue,
+                CriterioCalificacionEntrega = x.Tarea.CriterioCalificacionEntrega,
+                Reaperturas = x.Reaperturas
+                    .Where(r => r.AutorizaOportunidadAdicional)
+                    .Select(r => new ReaperturaParaContador
+                    {
+                        Id = r.Id,
+                        FechaLimite = r.FechaLimite
+                    }).ToList()
+            })
+            .ToListAsync();
+
+        var idsTareas = entregas.Select(x => x.TareaId).Distinct().ToArray();
+        var tareasCuestionario = await contexto.Cuestionarios.AsNoTracking()
+            .Where(x => idsTareas.Contains(x.TareaId))
+            .Select(x => x.TareaId)
+            .ToListAsync();
+
+        var intentosCuestionario = await contexto.IntentosCuestionarios.AsNoTracking()
+            .Where(x => contexto.Entregas.Any(contextoAutorizado =>
+                ids.Contains(contextoAutorizado.Id) &&
+                contextoAutorizado.TareaId == x.Cuestionario.TareaId &&
+                contextoAutorizado.AlumnoId == x.AlumnoId &&
+                contextoAutorizado.InscripcionId == x.InscripcionId))
+            .Select(x => new IntentoCuestionarioParaContador
+            {
+                TareaId = x.Cuestionario.TareaId,
+                AlumnoId = x.AlumnoId,
+                InscripcionId = x.InscripcionId,
+                ReaperturaEntregaId = x.ReaperturaEntregaId,
+                Estado = x.Estado
+            })
+            .ToListAsync();
+
+        var resultado = new Dictionary<string, ResumenIntentos>();
+        foreach (var grupo in entregas.GroupBy(x => ClaveContexto(x.TareaId,
+                     x.AlumnoId, x.InscripcionId)))
+        {
+            var clave = grupo.Key;
+            var cuestionario = intentosCuestionario.Where(x =>
+                ClaveContexto(x.TareaId, x.AlumnoId, x.InscripcionId) == clave)
+                .ToList();
+            var esCuestionario = tareasCuestionario.Contains(grupo.First().TareaId);
+            var autorizaciones = grupo.SelectMany(entrega => entrega.Reaperturas
+                .Select(reapertura => new AutorizacionExtraordinaria
+                {
+                    Id = reapertura.Id,
+                    FechaLimite = reapertura.FechaLimite,
+                    FechaEntrega = entrega.FechaEntrega
+                })).ToList();
+            var autorizacionesConsumidas = esCuestionario
+                ? cuestionario.Where(x => x.ReaperturaEntregaId.HasValue)
+                    .Select(x => x.ReaperturaEntregaId!.Value).ToHashSet()
+                : autorizaciones.Where(x => x.FechaEntrega.HasValue)
+                    .Select(x => x.Id).ToHashSet();
+
+            var ordinariosUsados = esCuestionario
+                ? cuestionario.Count(x => !x.ReaperturaEntregaId.HasValue &&
+                    x.Estado is EstadoIntentoCuestionario.Finalizado or
+                        EstadoIntentoCuestionario.Expirado)
+                : grupo.Count(x => x.FechaEntrega.HasValue &&
+                    x.Reaperturas.Count == 0);
+
+            resultado[clave] = new ResumenIntentos
+            {
+                IntentosOrdinariosUsados = ordinariosUsados,
+                UltimaFechaEntrega = grupo
+                    .Where(x => x.FechaEntrega.HasValue)
+                    .OrderByDescending(x => x.FechaEntrega)
+                    .Select(x => x.FechaEntrega)
+                    .FirstOrDefault(),
+                CalificacionEfectiva = CalcularCalificacionEfectiva(
+                    grupo.First().CriterioCalificacionEntrega, grupo),
+                EntregaPendienteEvaluacionId = grupo
+                    .Where(x => x.FechaEntrega.HasValue && !x.Calificacion.HasValue)
+                    .OrderBy(x => x.NumeroEnvio)
+                    .ThenBy(x => x.Id)
+                    .Select(x => (int?)x.Id)
+                    .FirstOrDefault(),
+                TieneIntentoPendienteEvaluacion = grupo.Any(x =>
+                    x.FechaEntrega.HasValue && !x.Calificacion.HasValue),
+                OportunidadesAutorizadas = autorizaciones.Count,
+                OportunidadesConsumidas = autorizaciones.Count(x =>
+                    autorizacionesConsumidas.Contains(x.Id)),
+                OportunidadesVigentes = autorizaciones.Count(x =>
+                    !autorizacionesConsumidas.Contains(x.Id) && x.FechaLimite >= ahora),
+                OportunidadesVencidas = autorizaciones.Count(x =>
+                    !autorizacionesConsumidas.Contains(x.Id) && x.FechaLimite < ahora)
+            };
+        }
+
+        return resultado;
+    }
+
+    private static string ClaveContexto(int tareaId, int alumnoId, int? inscripcionId) =>
+        $"{tareaId}:{alumnoId}:{inscripcionId?.ToString() ?? "sin-inscripcion"}";
+
+    private static decimal? CalcularCalificacionEfectiva(
+        CriterioCalificacionIntentos? criterioConfigurado,
+        IEnumerable<EntregaParaContador> entregas)
+    {
+        return CalculoCriterioCalificacion.Aplicar(criterioConfigurado,
+            entregas.Select(x => (x.NumeroEnvio, x.Id, x.Calificacion,
+                x.EsCalificacionAdministrativa)));
+    }
+
+
+    private sealed class EntregaParaContador
+    {
+        public int Id { get; init; }
+        public int TareaId { get; init; }
+        public int AlumnoId { get; init; }
+        public int? InscripcionId { get; init; }
+        public int NumeroEnvio { get; init; }
+        public DateTime? FechaEntrega { get; init; }
+        public decimal? Calificacion { get; init; }
+        public bool EsCalificacionAdministrativa { get; init; }
+        public CriterioCalificacionIntentos? CriterioCalificacionEntrega { get; init; }
+        public List<ReaperturaParaContador> Reaperturas { get; init; } = [];
+    }
+
+    private sealed class ReaperturaParaContador
+    {
+        public int Id { get; init; }
+        public DateTime FechaLimite { get; init; }
+    }
+
+    private sealed class IntentoCuestionarioParaContador
+    {
+        public int TareaId { get; init; }
+        public int AlumnoId { get; init; }
+        public int? InscripcionId { get; init; }
+        public int? ReaperturaEntregaId { get; init; }
+        public EstadoIntentoCuestionario Estado { get; init; }
+    }
+
+    private sealed class AutorizacionExtraordinaria
+    {
+        public int Id { get; init; }
+        public DateTime FechaLimite { get; init; }
+        public DateTime? FechaEntrega { get; init; }
+    }
+
+    private sealed class ResumenIntentos
+    {
+        public int IntentosOrdinariosUsados { get; init; }
+        public DateTime? UltimaFechaEntrega { get; init; }
+        public decimal? CalificacionEfectiva { get; init; }
+        public int? EntregaPendienteEvaluacionId { get; init; }
+        public bool TieneIntentoPendienteEvaluacion { get; init; }
+        public int OportunidadesAutorizadas { get; init; }
+        public int OportunidadesConsumidas { get; init; }
+        public int OportunidadesVigentes { get; init; }
+        public int OportunidadesVencidas { get; init; }
+    }
+
     private static bool PuedeCrearSiguienteIntentoGeneral(Entrega entrega) =>
         entrega.Tarea.Tipo == TipoTarea.Archivo &&
         (!entrega.Tarea.MaximoIntentosEntrega.HasValue ||

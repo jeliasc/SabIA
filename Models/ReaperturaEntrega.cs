@@ -14,6 +14,10 @@ public sealed class ReaperturaEntrega
 
     public DateTime FechaLimite { get; set; }
 
+    // Sólo es verdadera cuando la reapertura siguió a una entrega ya enviada;
+    // en ese caso la autorización se consume al iniciar el nuevo intento.
+    public bool AutorizaOportunidadAdicional { get; set; }
+
     [Required]
     [StringLength(500)]
     public string Motivo { get; set; } = string.Empty;

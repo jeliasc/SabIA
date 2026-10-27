@@ -24,7 +24,7 @@ public interface ICuestionarioServicio
     Task<ResultadosCuestionario?> ObtenerResultadosAsync(int id);
     Task<RevisionIntento?> ObtenerRevisionIntentoAsync(int intentoId);
     Task<ResultadoOperacion<int>> AjustarRespuestaDirectaAsync(int respuestaId, bool aceptar);
-    Task<(int? IntentoId, int? CuestionarioId)> ObtenerIntentoDeEntregaAsync(int entregaId);
+    Task<AccesoRespuestasEntrega?> ObtenerRespuestasDeEntregaAsync(int entregaId);
 
     Task<List<Proyecto_Final.ViewModels.Comunes.OpcionSeleccion>> ObtenerTareasParaImportarAsync();
     Task<ResultadoOperacion<int>> ImportarPreguntasAsync(ImportarCuestionarioIa modelo);

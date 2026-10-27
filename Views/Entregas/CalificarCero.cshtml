@@ -1,0 +1,47 @@
+@model Proyecto_Final.ViewModels.Entregas.CalificarCeroEntrega
+
+@{
+    ViewData["Title"] = "Calificar con cero";
+}
+
+<div class="container-fluid">
+    <h2 class="fw-bold mb-1">Calificar con cero</h2>
+    <p class="text-muted mb-4">@Model.Alumno · @Model.Tarea · @Model.Curso</p>
+
+    <div class="app-alert app-alert-warning mb-4">
+        Esta acción registra una calificación de cero sin crear una entrega ni un intento.
+        Solo úsela cuando el alumno no haya realizado la actividad.
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <form method="post">
+                @Html.AntiForgeryToken()
+                <input asp-for="Id" type="hidden" />
+
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="form-check mb-4">
+                    <input asp-for="Confirmado" class="form-check-input" />
+                    <label asp-for="Confirmado" class="form-check-label">
+                        Confirmo que deseo calificar con cero al alumno sin registrar una entrega.
+                    </label>
+                    <span asp-validation-for="Confirmado" class="text-danger d-block"></span>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-action="Detalle" asp-route-id="@Model.Id" class="app-btn app-btn-secondary">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="app-btn app-btn-soft-danger">
+                        Calificar con cero
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

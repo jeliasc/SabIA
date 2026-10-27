@@ -1,39 +1,30 @@
 @model IEnumerable<Proyecto_Final.ViewModels.Entregas.EntregaLista>
+
 @using Microsoft.AspNetCore.Authorization
 @using Proyecto_Final.Seguridad
+
 @inject IAuthorizationService A
 
 @{
     ViewData["Title"] = "Entregas";
-
-    var entregar = (await A.AuthorizeAsync(
-        User,
-        Permisos.Entregas.Entregar
-    )).Succeeded;
-
-    var cal = (await A.AuthorizeAsync(
-        User,
-        Permisos.Entregas.Calificar
-    )).Succeeded;
-
-    var reabrir = (await A.AuthorizeAsync(
-        User,
-        Permisos.Entregas.Reabrir
-    )).Succeeded;
 
     var puedeVer = (await A.AuthorizeAsync(
         User,
         Permisos.Entregas.Ver
     )).Succeeded;
 
+    var calificar = (await A.AuthorizeAsync(
+        User,
+        Permisos.Entregas.Calificar
+    )).Succeeded;
+
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
+
+    // El listado sólo navega; las acciones se validan y se muestran dentro
+    // del historial del contexto académico seleccionado.
     var hayAcciones = Model.Any(x =>
         puedeVer ||
-        (entregar && x.PuedeEntregarse) ||
-        (cal && (x.PuedeCalificarse ||
-                 (x.CuestionarioId.HasValue &&
-                  x.Estado != Proyecto_Final.Models.EstadoEntrega.Pendiente))) ||
-        (reabrir && x.PuedeReabrirse));
+        (calificar && x.PuedeCalificarse && x.EntregaCalificableId.HasValue));
 }
 
 <div class="container-fluid">
@@ -49,11 +40,13 @@
                 Actividades pendientes, enviadas y calificadas.
             </p>
         </div>
+
         <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-primary">
             @(soloLectura ? "Ver vigentes" : "Ver historial")
         </a>
     </div>
 
+    <!-- Vista de escritorio -->
     <div class="card shadow-sm border border-secondary d-none d-md-block">
         <div class="card-body">
             <table class="table app-table w-100" data-tabla-index
@@ -63,9 +56,11 @@
                         <th>Alumno</th>
                         <th>Tarea</th>
                         <th>Curso</th>
-                        <th>Entrega</th>
-                        <th>Estado</th>
+                        <th>Última entrega</th>
+                        <th>Intentos</th>
+                        <th>Estado de la actividad</th>
                         <th>Calificación</th>
+
                         @if (hayAcciones)
                         {
                             <th>Acciones</th>
@@ -90,15 +85,41 @@
                             </td>
 
                             <td>
-                                <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoEntrega.Calificada
-                                      ? "app-badge-success"
-                                      : x.Estado == Proyecto_Final.Models.EstadoEntrega.Devuelta
-                                        ? "app-badge-danger"
-                                        : x.Estado == Proyecto_Final.Models.EstadoEntrega.Pendiente
-                                            ? "app-badge-secondary"
-                                            : "app-badge-info")">
-                                    @x.Estado.GetDisplayName()
+                                @x.CantidadIntentos ordinarios
+                                @((x.IntentosPermitidos ?? 0) == 0
+                                    ? "(ilimitados)"
+                                    : $"de {x.IntentosPermitidos}")
+
+                                @if (x.OportunidadesAdicionales > 0)
+                                {
+                                    <span class="small text-muted">
+                                        &middot; @x.OportunidadesAdicionales autorizada(s),
+                                        @x.OportunidadesAdicionalesConsumidas consumida(s)
+
+                                        @if (x.OportunidadesAdicionalesVigentes > 0)
+                                        {
+                                            <text>, @x.OportunidadesAdicionalesVigentes vigente(s)</text>
+                                        }
+
+                                        @if (x.OportunidadesAdicionalesVencidas > 0)
+                                        {
+                                            <text>, @x.OportunidadesAdicionalesVencidas vencida(s)</text>
+                                        }
+                                    </span>
+                                }
+                            </td>
+
+                            <td>
+                                <span class="app-badge @x.ClaseEstadoActividad">
+                                    @x.EstadoActividad
                                 </span>
+
+                                @if (!string.IsNullOrWhiteSpace(x.ObservacionEstadoActividad))
+                                {
+                                    <div class="small text-muted mt-1">
+                                        @x.ObservacionEstadoActividad
+                                    </div>
+                                }
                             </td>
 
                             <td>
@@ -111,34 +132,12 @@
                             {
                                 <td>
                                     <div class="app-actions app-actions-table">
-                                        @if (entregar && x.PuedeEntregarse && x.CuestionarioId.HasValue)
+                                        @if (calificar &&
+                                             x.PuedeCalificarse &&
+                                             x.EntregaCalificableId.HasValue)
                                         {
-                                            <a asp-controller="Cuestionarios" asp-action="Resolver" asp-route-id="@x.CuestionarioId"
+                                            <a asp-action="Calificar" asp-route-id="@x.EntregaCalificableId"
                                                class="app-btn app-btn-soft-primary app-btn-sm">
-                                                Resolver
-                                            </a>
-                                        }
-                                        else if (entregar && x.PuedeEntregarse)
-                                        {
-                                            <a asp-action="Entregar" asp-route-id="@x.Id"
-                                               class="app-btn app-btn-soft-primary app-btn-sm">
-                                                Entregar
-                                            </a>
-                                        }
-
-                                        @if (cal && x.CuestionarioId.HasValue && x.Estado !=
-                                    Proyecto_Final.Models.EstadoEntrega.Pendiente)
-                                        {
-                                            <a asp-controller="Cuestionarios" asp-action="RespuestasEntrega" asp-route-id="@x.Id"
-                                               class="app-btn app-btn-soft-secondary app-btn-sm">
-                                                Ver respuestas
-                                            </a>
-                                        }
-
-                                        @if (cal && x.PuedeCalificarse)
-                                        {
-                                            <a asp-action="Calificar" asp-route-id="@x.Id"
-                                               class="app-btn app-btn-soft-secondary app-btn-sm">
                                                 Calificar
                                             </a>
                                         }
@@ -147,15 +146,7 @@
                                         {
                                             <a asp-action="Detalle" asp-route-id="@x.Id"
                                                class="app-btn app-btn-soft-secondary app-btn-sm">
-                                                Historial
-                                            </a>
-                                        }
-
-                                        @if (reabrir && x.PuedeReabrirse)
-                                        {
-                                            <a asp-action="Reabrir" asp-route-id="@x.Id"
-                                               class="app-btn app-btn-soft-danger app-btn-sm">
-                                                Reabrir
+                                                Ver actividad
                                             </a>
                                         }
                                     </div>
@@ -168,6 +159,7 @@
         </div>
     </div>
 
+    <!-- Vista móvil -->
     <div class="d-md-none" id="entregasMovil">
         <div class="mb-3">
             <div class="d-grid">
@@ -177,6 +169,7 @@
                     Buscar entrega
                 </button>
             </div>
+
             <div id="busqueda-entregas-movil" class="mt-2 d-none" data-contenedor-busqueda-entregas>
                 <input type="search" id="buscarEntregaMovil" class="form-control"
                        placeholder="Alumno, tarea, curso, estado o calificación..." aria-label="Buscar entregas"
@@ -185,25 +178,18 @@
         </div>
 
         <div data-lista-entregas-movil>
-
             @foreach (var x in Model)
             {
                 <div class="card border-0 shadow-sm mb-3 entrega-movil-item"
-                     data-busqueda="@($"{x.Alumno} {x.Tarea} {x.Curso} {x.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")} {x.Estado.GetDisplayName()} {x.Calificacion} {x.PunteoMaximo}")">
+                     data-busqueda="@($"{x.Alumno} {x.Tarea} {x.Curso} {x.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")} {x.EstadoActividad} {x.Calificacion} {x.PunteoMaximo}")">
                     <div class="card-body">
                         <div class="d-flex justify-content-between gap-2">
                             <div class="fw-bold">
                                 @x.Tarea
                             </div>
 
-                            <span class="app-badge @(x.Estado == Proyecto_Final.Models.EstadoEntrega.Calificada
-                                  ? "app-badge-success"
-                                  : x.Estado == Proyecto_Final.Models.EstadoEntrega.Devuelta
-                                    ? "app-badge-danger"
-                                    : x.Estado == Proyecto_Final.Models.EstadoEntrega.Pendiente
-                                        ? "app-badge-secondary"
-                                        : "app-badge-info")">
-                                @x.Estado.GetDisplayName()
+                            <span class="app-badge @x.ClaseEstadoActividad">
+                                @x.EstadoActividad
                             </span>
                         </div>
 
@@ -214,54 +200,72 @@
                         <div class="small mb-3">
                             @x.Alumno
                         </div>
+                        @if (!string.IsNullOrWhiteSpace(x.ObservacionEstadoActividad))
+                        {
+                            <div class="small text-muted mb-2">
+                                @x.ObservacionEstadoActividad
+                            </div>
+                        }
 
                         @if (x.FechaLimiteIndividual.HasValue)
                         {
                             <div class="small text-danger mb-3">
-                                Plazo individual: @x.FechaLimiteIndividual.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                Plazo individual:
+                                @x.FechaLimiteIndividual.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                             </div>
                         }
 
-                        @if (entregar && x.PuedeEntregarse && x.CuestionarioId.HasValue)
-                        {
-                            <a asp-controller="Cuestionarios" asp-action="Resolver" asp-route-id="@x.CuestionarioId"
-                               class="app-btn app-btn-soft-primary w-100">
-                                Resolver cuestionario
-                            </a>
-                        }
-                        else if (entregar && x.PuedeEntregarse)
-                        {
-                            <a asp-action="Entregar" asp-route-id="@x.Id" class="app-btn app-btn-soft-primary w-100">
-                                Entregar tarea
-                            </a>
-                        }
+                        <div class="small text-muted mb-3">
+                            @x.CantidadIntentos ordinarios
+                            @((x.IntentosPermitidos ?? 0) == 0
+                                ? "(ilimitados)"
+                                : $"de {x.IntentosPermitidos}")
 
-                        @if (cal && x.CuestionarioId.HasValue && x.Estado != Proyecto_Final.Models.EstadoEntrega.Pendiente)
-                        {
-                            <a asp-controller="Cuestionarios" asp-action="RespuestasEntrega" asp-route-id="@x.Id"
-                               class="app-btn app-btn-soft-secondary w-100 mt-2">
-                                Ver respuestas
-                            </a>
-                        }
+                            @if (x.OportunidadesAdicionales > 0)
+                            {
+                                <span>
+                                    &middot; @x.OportunidadesAdicionales autorizada(s),
+                                    @x.OportunidadesAdicionalesConsumidas consumida(s)
+                                </span>
 
-                        @if (cal && x.PuedeCalificarse)
+                                @if (x.OportunidadesAdicionalesVigentes > 0)
+                                {
+                                    <span>
+                                        , @x.OportunidadesAdicionalesVigentes vigente(s)
+                                    </span>
+                                }
+
+                                @if (x.OportunidadesAdicionalesVencidas > 0)
+                                {
+                                    <span>
+                                        , @x.OportunidadesAdicionalesVencidas vencida(s)
+                                    </span>
+                                }
+                            }
+                        </div>
+
+                        @if (x.Calificacion.HasValue)
                         {
-                            <a asp-action="Calificar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary w-100">
-                                Calificar
-                            </a>
+                            <div class="small mb-3">
+                                Calificación vigente:
+                                @x.Calificacion / @x.PunteoMaximo
+                            </div>
                         }
 
                         @if (puedeVer)
                         {
                             <a asp-action="Detalle" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary w-100 mt-2">
-                                Ver historial de intentos
+                                Ver actividad e historial
                             </a>
                         }
 
-                        @if (reabrir && x.PuedeReabrirse)
+                        @if (calificar &&
+                             x.PuedeCalificarse &&
+                             x.EntregaCalificableId.HasValue)
                         {
-                            <a asp-action="Reabrir" asp-route-id="@x.Id" class="app-btn app-btn-soft-danger w-100 mt-2">
-                                Reabrir entrega
+                            <a asp-action="Calificar" asp-route-id="@x.EntregaCalificableId"
+                               class="app-btn app-btn-soft-primary w-100 mt-2">
+                                Calificar
                             </a>
                         }
                     </div>
@@ -272,20 +276,24 @@
         <p class="text-muted text-center py-3 d-none" data-sin-entregas-movil>
             No se encontraron entregas.
         </p>
+
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
             <span class="small text-muted" data-contador-entregas-movil></span>
+
             <div class="d-flex gap-2">
-                <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
-                        data-anterior-entregas-movil>Anterior</button>
-                <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
-                        data-siguiente-entregas-movil>Siguiente</button>
+                <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm" data-anterior-entregas-movil>
+                    Anterior
+                </button>
+
+                <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm" data-siguiente-entregas-movil>
+                    Siguiente
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-@section Scripts
-{
+@section Scripts {
     <script src="~/js/entregas.js" asp-append-version="true"></script>
     <script src="~/js/entregas-index.js" asp-append-version="true"></script>
 }

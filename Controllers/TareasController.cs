@@ -128,15 +128,79 @@ public class TareasController(
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
+    [HttpGet]
     [Authorize(Policy = Permisos.Tareas.Cerrar)]
     public async Task<IActionResult> Cerrar(int id)
     {
-        var r = await s.CerrarAsync(id);
+        var modelo = await s.ObtenerParaCerrarAsync(id);
+        return modelo is null ? NotFound() : View(modelo);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Permisos.Tareas.Cerrar)]
+    public async Task<IActionResult> Cerrar(CerrarTarea modelo)
+    {
+        var r = await s.CerrarAsync(modelo);
+        if (!r.Exitoso && r.Errores.Count > 0)
+        {
+            foreach (var error in r.Errores)
+                ModelState.AddModelError(error.Key, error.Value);
+            var recuperado = await s.ObtenerParaCerrarAsync(modelo.Id);
+            if (recuperado is not null)
+            {
+                modelo.Titulo = recuperado.Titulo;
+                modelo.Curso = recuperado.Curso;
+                modelo.Tipo = recuperado.Tipo;
+                modelo.AlumnosSinActividad = recuperado.AlumnosSinActividad;
+                modelo.PuedeCalificarAutomaticamente = recuperado.PuedeCalificarAutomaticamente;
+            }
+            return View(modelo);
+        }
 
         TempData[r.Exitoso ? "Exito" : "Error"] = r.Mensaje;
 
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    [Authorize(Policy = Permisos.Entregas.Reabrir)]
+    public async Task<IActionResult> Reabrir(int id)
+    {
+        var modelo = await s.ObtenerParaReabrirAsync(id);
+        if (modelo is null)
+        {
+            TempData["Advertencia"] = "No puede reabrir esta actividad en su contexto académico actual.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        return View(modelo);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Permisos.Entregas.Reabrir)]
+    public async Task<IActionResult> Reabrir(ReabrirTarea modelo)
+    {
+        if (!ModelState.IsValid)
+        {
+            await RehidratarReaperturaAsync(modelo);
+            return View(modelo);
+        }
+
+        var resultado = await s.ReabrirAsync(modelo);
+        if (!resultado.Exitoso)
+        {
+            if (resultado.Errores.Count == 0)
+                ModelState.AddModelError("", resultado.Mensaje);
+            else
+                foreach (var error in resultado.Errores)
+                    ModelState.AddModelError(error.Key, error.Value);
+            await RehidratarReaperturaAsync(modelo);
+            return View(modelo);
+        }
+
+        TempData["Exito"] = resultado.Mensaje;
         return RedirectToAction(nameof(Index));
     }
 
@@ -162,4 +226,16 @@ public class TareasController(
         (await autorizacion.AuthorizeAsync(
             User,
             Permisos.Cuestionarios.Crear)).Succeeded;
+
+    private async Task RehidratarReaperturaAsync(ReabrirTarea modelo)
+    {
+        var original = await s.ObtenerParaReabrirAsync(modelo.Id);
+        if (original is null)
+            return;
+
+        modelo.Titulo = original.Titulo;
+        modelo.Curso = original.Curso;
+        modelo.Tipo = original.Tipo;
+        modelo.EstadoActual = original.EstadoActual;
+    }
 }
