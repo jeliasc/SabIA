@@ -5,6 +5,7 @@ using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Academico;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.SeguridadAcademica;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.ViewModels.Docentes;
 using Proyecto_Final.ViewModels.Usuarios;
 
@@ -15,15 +16,18 @@ public sealed class DocenteServicio : IDocenteServicio
     private readonly Contexto contexto;
     private readonly ICuentaAcademicaServicio cuentaAcademica;
     private readonly IAccesoAcademicoServicio acceso;
+    private readonly IContextoCicloEscolar? contextoCiclo;
 
     public DocenteServicio(
         Contexto contexto,
         ICuentaAcademicaServicio cuentaAcademica,
-        IAccesoAcademicoServicio acceso)
+        IAccesoAcademicoServicio acceso,
+        IContextoCicloEscolar? contextoCiclo = null)
     {
         this.contexto = contexto;
         this.cuentaAcademica = cuentaAcademica;
         this.acceso = acceso;
+        this.contextoCiclo = contextoCiclo;
     }
 
     public async Task<List<DocenteLista>> ObtenerTodosAsync()
@@ -153,14 +157,17 @@ public sealed class DocenteServicio : IDocenteServicio
             return null;
         }
 
+        var ciclo = await ObtenerCicloSeleccionadoAsync();
+        var cicloId = ciclo?.CicloEscolarId;
         modelo.Asignaciones = await ObtenerAsignacionesContextualesAsync(
             contexto.Asignaciones.AsNoTracking().Where(asignacion =>
                 asignacion.DocenteId == docenteId.Value &&
                 asignacion.Estado == EstadoRegistro.Activo &&
                 asignacion.Curso.Estado == EstadoRegistro.Activo &&
                 asignacion.Seccion.Estado == EstadoRegistro.Activo &&
-                asignacion.Seccion.CicloEscolar.Activo &&
-                asignacion.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Activo));
+                (cicloId == null || asignacion.Seccion.CicloEscolarId == cicloId.Value) &&
+                (cicloId != null || (asignacion.Seccion.CicloEscolar.Activo &&
+                    asignacion.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Activo))));
 
         return modelo;
     }
@@ -173,8 +180,13 @@ public sealed class DocenteServicio : IDocenteServicio
             return null;
         }
 
-        return await contexto.Docentes.AsNoTracking()
+        var ciclo = await ObtenerCicloSeleccionadoAsync();
+        var cicloId = ciclo?.CicloEscolarId;
+        var consulta = contexto.Docentes.AsNoTracking()
             .Where(docente => docente.Id != docenteId.Value && docente.Usuario.Activo)
+            .Where(docente => cicloId == null || contexto.Asignaciones.Any(asignacion =>
+                asignacion.DocenteId == docente.Id &&
+                asignacion.Seccion.CicloEscolarId == cicloId.Value))
             .OrderBy(docente => docente.Usuario.PrimerNombre)
             .ThenBy(docente => docente.Usuario.PrimerApellido)
             .Select(docente => new DocenteContextual
@@ -184,8 +196,8 @@ public sealed class DocenteServicio : IDocenteServicio
                     (docente.Usuario.TercerNombre == null ? "" : " " + docente.Usuario.TercerNombre) +
                     " " + docente.Usuario.PrimerApellido +
                     (docente.Usuario.SegundoApellido == null ? "" : " " + docente.Usuario.SegundoApellido)
-            })
-            .ToListAsync();
+            });
+        return await consulta.ToListAsync();
     }
 
     public async Task<IReadOnlyList<DocenteContextual>?> ObtenerDocentesDelAlumnoAsync()
@@ -197,13 +209,16 @@ public sealed class DocenteServicio : IDocenteServicio
         }
 
         var ahora = DateTime.UtcNow;
+        var ciclo = await ObtenerCicloSeleccionadoAsync();
+        var cicloId = ciclo?.CicloEscolarId;
         var filas = await contexto.Asignaciones.AsNoTracking()
             .Where(asignacion =>
                 asignacion.Docente.Usuario.Activo &&
                 asignacion.Curso.Estado == EstadoRegistro.Activo &&
                 asignacion.Seccion.Estado == EstadoRegistro.Activo &&
-                asignacion.Seccion.CicloEscolar.Activo &&
-                asignacion.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Activo &&
+                (cicloId == null || asignacion.Seccion.CicloEscolarId == cicloId.Value) &&
+                (cicloId != null || (asignacion.Seccion.CicloEscolar.Activo &&
+                    asignacion.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Activo)) &&
                 (asignacion.Estado == EstadoRegistro.Activo ||
                  contexto.DelegacionesAcademicas.Any(delegacion =>
                     delegacion.AsignacionId == asignacion.Id &&
@@ -219,8 +234,9 @@ public sealed class DocenteServicio : IDocenteServicio
                     inscripcion.CicloEscolarId == asignacion.Seccion.CicloEscolarId &&
                     inscripcion.Estado == EstadoInscripcion.Activa &&
                     inscripcion.Seccion.Estado == EstadoRegistro.Activo &&
-                    inscripcion.Seccion.CicloEscolar.Activo &&
-                    inscripcion.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Activo))
+                    (cicloId == null || inscripcion.CicloEscolarId == cicloId.Value) &&
+                    (cicloId != null || (inscripcion.Seccion.CicloEscolar.Activo &&
+                        inscripcion.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Activo))))
             .Select(asignacion => new DocenteAsignacionFila
             {
                 DocenteId = asignacion.DocenteId,
@@ -253,6 +269,9 @@ public sealed class DocenteServicio : IDocenteServicio
             })
             .ToList();
     }
+
+    private async Task<ContextoCicloEscolar?> ObtenerCicloSeleccionadoAsync() =>
+        contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
 
     private static async Task<IReadOnlyList<AsignacionDocenteContextual>>
         ObtenerAsignacionesContextualesAsync(IQueryable<Asignacion> consulta) =>

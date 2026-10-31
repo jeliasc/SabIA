@@ -95,8 +95,8 @@ public sealed class TareasControllerTests
     {
         public int Creaciones { get; private set; }
 
-        public Task<List<TareaLista>> ObtenerTodosAsync() => Task.FromResult(new List<TareaLista>());
-        public Task<List<TareaLista>> ObtenerHistorialAsync() => Task.FromResult(new List<TareaLista>());
+        public Task<List<TareaLista>> ObtenerTodosAsync(int? asignacionId = null) => Task.FromResult(new List<TareaLista>());
+        public Task<List<TareaLista>> ObtenerHistorialAsync(int? asignacionId = null) => Task.FromResult(new List<TareaLista>());
         public Task PrepararAsync(FormularioTarea m) => Task.CompletedTask;
 
         public Task<ResultadoOperacion<int>> CrearAsync(CrearTarea m, CancellationToken ct)

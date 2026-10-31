@@ -5,9 +5,9 @@ namespace Proyecto_Final.Servicios.GestionPlanificaciones;
 
 public interface IPlanificacionServicio
 {
-    Task<List<PlanificacionLista>> ObtenerTodosAsync();
+    Task<List<PlanificacionLista>> ObtenerTodosAsync(int? asignacionId = null);
 
-    Task<List<PlanificacionLista>> ObtenerHistorialAsync();
+    Task<List<PlanificacionLista>> ObtenerHistorialAsync(int? asignacionId = null);
 
     Task<(Stream Stream, string Nombre)?> ObtenerArchivoParaLecturaAsync(int id);
 

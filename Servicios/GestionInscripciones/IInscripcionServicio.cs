@@ -17,9 +17,14 @@ public interface IInscripcionServicio
         int id
     );
 
-    Task<ResultadoOperacion> TrasladarAsync(
-        TrasladarInscripcion m,
-        string usuarioId
+    Task<RevisionTrasladoInscripcion?> EvaluarTrasladoAsync(
+        TrasladarInscripcion m
+    );
+
+    Task<ResultadoOperacion> ConfirmarTrasladoAsync(
+        RevisionTrasladoInscripcion m,
+        string usuarioId,
+        string huellaRevisada
     );
 
     Task<ResultadoOperacion> CambiarEstadoAsync(

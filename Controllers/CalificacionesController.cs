@@ -70,6 +70,13 @@ public sealed class CalificacionesController(
         return modelo == null ? NotFound() : View(modelo);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> ControlTareas(int asignacionId)
+    {
+        var modelo = await servicio.ObtenerControlTareasAsync(asignacionId);
+        return modelo == null ? NotFound() : View(modelo);
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Calificaciones.Registrar)]

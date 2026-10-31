@@ -59,6 +59,12 @@ public class Contexto
     public DbSet<HistorialTraslado> HistorialTraslados =>
         Set<HistorialTraslado>();
 
+    public DbSet<ResolucionTrasladoAcademico> ResolucionesTrasladosAcademicos =>
+        Set<ResolucionTrasladoAcademico>();
+
+    public DbSet<FuenteResolucionTrasladoAcademico> FuentesResolucionesTrasladosAcademicos =>
+        Set<FuenteResolucionTrasladoAcademico>();
+
     public DbSet<Unidad> Unidades =>
         Set<Unidad>();
 
@@ -104,6 +110,12 @@ public class Contexto
 
     public DbSet<EntregaArchivo> EntregasArchivos =>
         Set<EntregaArchivo>();
+
+    public DbSet<ComentarioAcademico> ComentariosAcademicos =>
+        Set<ComentarioAcademico>();
+
+    public DbSet<ComentarioAcademicoArchivo> ComentariosAcademicosArchivos =>
+        Set<ComentarioAcademicoArchivo>();
 
     public DbSet<Cuestionario> Cuestionarios =>
         Set<Cuestionario>();
@@ -630,6 +642,58 @@ public class Contexto
                 historial.FechaTraslado
             });
 
+        // Resoluciones académicas de traslados: registran decisiones, nunca sustituyen notas.
+        builder.Entity<ResolucionTrasladoAcademico>()
+            .HasIndex(x => new { x.InscripcionId, x.CursoId, x.PeriodoId, x.Vigente })
+            .HasFilter("\"Vigente\" = TRUE AND \"Estado\" = 2")
+            .IsUnique();
+        builder.Entity<ResolucionTrasladoAcademico>()
+            .ToTable(tabla => tabla.HasCheckConstraint(
+                "CK_ResolucionesTrasladosAcademicos_Consolidacion",
+                "(\"NotaConsolidadaPropuesta\" IS NULL OR \"NotaConsolidadaPropuesta\" >= 0) AND " +
+                "(\"NotaConsolidadaAprobada\" IS NULL OR \"NotaConsolidadaAprobada\" >= 0) AND " +
+                "(\"EscalaMaximaConsolidada\" IS NULL OR \"EscalaMaximaConsolidada\" > 0) AND " +
+                "(\"Tipo\" = 3 OR (\"EscalaMaximaConsolidada\" IS NULL AND " +
+                "\"NotaConsolidadaPropuesta\" IS NULL AND \"NotaConsolidadaAprobada\" IS NULL))"));
+        builder.Entity<ResolucionTrasladoAcademico>()
+            .HasIndex(x => new { x.InscripcionId, x.CursoId, x.PeriodoId, x.Estado });
+        builder.Entity<ResolucionTrasladoAcademico>()
+            .HasOne(x => x.Inscripcion).WithMany().HasForeignKey(x => x.InscripcionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ResolucionTrasladoAcademico>()
+            .HasOne(x => x.Alumno).WithMany().HasForeignKey(x => x.AlumnoId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ResolucionTrasladoAcademico>()
+            .HasOne(x => x.CicloEscolar).WithMany().HasForeignKey(x => x.CicloEscolarId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ResolucionTrasladoAcademico>()
+            .HasOne(x => x.Periodo).WithMany().HasForeignKey(x => x.PeriodoId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ResolucionTrasladoAcademico>()
+            .HasOne(x => x.Curso).WithMany().HasForeignKey(x => x.CursoId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ResolucionTrasladoAcademico>()
+            .HasOne(x => x.CreadaPorUsuario).WithMany().HasForeignKey(x => x.CreadaPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ResolucionTrasladoAcademico>()
+            .HasOne(x => x.DecididaPorUsuario).WithMany().HasForeignKey(x => x.DecididaPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ResolucionTrasladoAcademico>()
+            .HasOne(x => x.SustituyeResolucion).WithMany().HasForeignKey(x => x.SustituyeResolucionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<FuenteResolucionTrasladoAcademico>()
+            .HasIndex(x => new { x.ResolucionTrasladoAcademicoId, x.AsignacionId, x.HistorialTrasladoId })
+            .IsUnique();
+        builder.Entity<FuenteResolucionTrasladoAcademico>()
+            .HasOne(x => x.Resolucion).WithMany(x => x.Fuentes).HasForeignKey(x => x.ResolucionTrasladoAcademicoId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<FuenteResolucionTrasladoAcademico>()
+            .HasOne(x => x.Asignacion).WithMany().HasForeignKey(x => x.AsignacionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<FuenteResolucionTrasladoAcademico>()
+            .HasOne(x => x.HistorialTraslado).WithMany().HasForeignKey(x => x.HistorialTrasladoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
 
         // Unidades
 
@@ -1132,6 +1196,27 @@ public class Contexto
             .WithMany()
             .HasForeignKey(a => a.ArchivoId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Comentarios académicos privados y sus adjuntos.
+        builder.Entity<ComentarioAcademico>()
+            .HasIndex(x => new { x.TareaId, x.AlumnoId, x.FechaCreacion, x.Id });
+        builder.Entity<ComentarioAcademico>()
+            .HasOne(x => x.Tarea).WithMany()
+            .HasForeignKey(x => x.TareaId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ComentarioAcademico>()
+            .HasOne(x => x.Alumno).WithMany()
+            .HasForeignKey(x => x.AlumnoId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ComentarioAcademico>()
+            .HasOne(x => x.AutorUsuario).WithMany()
+            .HasForeignKey(x => x.AutorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ComentarioAcademicoArchivo>()
+            .HasKey(x => new { x.ComentarioAcademicoId, x.ArchivoId });
+        builder.Entity<ComentarioAcademicoArchivo>()
+            .HasOne(x => x.ComentarioAcademico).WithMany(x => x.Archivos)
+            .HasForeignKey(x => x.ComentarioAcademicoId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ComentarioAcademicoArchivo>()
+            .HasOne(x => x.Archivo).WithMany()
+            .HasForeignKey(x => x.ArchivoId).OnDelete(DeleteBehavior.Restrict);
 
         // Cuestionarios
 

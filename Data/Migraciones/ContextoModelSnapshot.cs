@@ -517,6 +517,58 @@ namespace Proyecto_Final.Data.Migraciones
                     b.ToTable("CierresCalificaciones");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.ComentarioAcademico", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AlumnoId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("AutorUsuarioId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Contenido")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TareaId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlumnoId");
+
+                    b.HasIndex("AutorUsuarioId");
+
+                    b.HasIndex("TareaId", "AlumnoId", "FechaCreacion", "Id");
+
+                    b.ToTable("ComentariosAcademicos");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.ComentarioAcademicoArchivo", b =>
+                {
+                    b.Property<int>("ComentarioAcademicoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ArchivoId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ComentarioAcademicoId", "ArchivoId");
+
+                    b.HasIndex("ArchivoId");
+
+                    b.ToTable("ComentariosAcademicosArchivos");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.ConfiguracionEvaluacion", b =>
                 {
                     b.Property<int>("Id")
@@ -949,6 +1001,45 @@ namespace Proyecto_Final.Data.Migraciones
                     b.ToTable("EntregasArchivos");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.FuenteResolucionTrasladoAcademico", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AsignacionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Evidencia")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("HistorialTrasladoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ResolucionTrasladoAcademicoId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Rol")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AsignacionId");
+
+                    b.HasIndex("HistorialTrasladoId");
+
+                    b.HasIndex("ResolucionTrasladoAcademicoId", "AsignacionId", "HistorialTrasladoId")
+                        .IsUnique();
+
+                    b.ToTable("FuentesResolucionesTrasladosAcademicos");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.Grado", b =>
                 {
                     b.Property<int>("Id")
@@ -1056,6 +1147,9 @@ namespace Proyecto_Final.Data.Migraciones
 
                     b.Property<int>("CicloEscolarId")
                         .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("FechaEfectiva")
+                        .HasColumnType("date");
 
                     b.Property<DateTime>("FechaTraslado")
                         .HasColumnType("timestamp with time zone");
@@ -2017,6 +2111,106 @@ namespace Proyecto_Final.Data.Migraciones
                         });
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.ResolucionTrasladoAcademico", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AlumnoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CicloEscolarId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CreadaPorUsuarioId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<int>("CursoId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DecididaPorUsuarioId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<decimal?>("EscalaMaximaConsolidada")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaCreacionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaDecisionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("InscripcionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Justificacion")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<decimal?>("NotaConsolidadaAprobada")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<decimal?>("NotaConsolidadaPropuesta")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<string>("ObservacionDecision")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("PeriodoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SustituyeResolucionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Vigente")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlumnoId");
+
+                    b.HasIndex("CicloEscolarId");
+
+                    b.HasIndex("CreadaPorUsuarioId");
+
+                    b.HasIndex("CursoId");
+
+                    b.HasIndex("DecididaPorUsuarioId");
+
+                    b.HasIndex("PeriodoId");
+
+                    b.HasIndex("SustituyeResolucionId");
+
+                    b.HasIndex("InscripcionId", "CursoId", "PeriodoId", "Estado");
+
+                    b.HasIndex("InscripcionId", "CursoId", "PeriodoId", "Vigente")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ResolucionesTrasladosAcademicos_InscripcionId_CursoId_Peri~1")
+                        .HasFilter("\"Vigente\" = TRUE AND \"Estado\" = 2");
+
+                    b.ToTable("ResolucionesTrasladosAcademicos", t =>
+                        {
+                            t.HasCheckConstraint("CK_ResolucionesTrasladosAcademicos_Consolidacion", "(\"NotaConsolidadaPropuesta\" IS NULL OR \"NotaConsolidadaPropuesta\" >= 0) AND (\"NotaConsolidadaAprobada\" IS NULL OR \"NotaConsolidadaAprobada\" >= 0) AND (\"EscalaMaximaConsolidada\" IS NULL OR \"EscalaMaximaConsolidada\" > 0) AND (\"Tipo\" = 3 OR (\"EscalaMaximaConsolidada\" IS NULL AND \"NotaConsolidadaPropuesta\" IS NULL AND \"NotaConsolidadaAprobada\" IS NULL))");
+                        });
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.RespuestaAceptada", b =>
                 {
                     b.Property<int>("Id")
@@ -2900,6 +3094,52 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("ConfiguracionEvaluacion");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.ComentarioAcademico", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.Alumno", "Alumno")
+                        .WithMany()
+                        .HasForeignKey("AlumnoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Usuario", "AutorUsuario")
+                        .WithMany()
+                        .HasForeignKey("AutorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Tarea", "Tarea")
+                        .WithMany()
+                        .HasForeignKey("TareaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Alumno");
+
+                    b.Navigation("AutorUsuario");
+
+                    b.Navigation("Tarea");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.ComentarioAcademicoArchivo", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.Archivo", "Archivo")
+                        .WithMany()
+                        .HasForeignKey("ArchivoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.ComentarioAcademico", "ComentarioAcademico")
+                        .WithMany("Archivos")
+                        .HasForeignKey("ComentarioAcademicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Archivo");
+
+                    b.Navigation("ComentarioAcademico");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.ConfiguracionEvaluacion", b =>
                 {
                     b.HasOne("Proyecto_Final.Models.Usuario", "ConfiguradoPorUsuario")
@@ -3082,6 +3322,33 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Archivo");
 
                     b.Navigation("Entrega");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.FuenteResolucionTrasladoAcademico", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.Asignacion", "Asignacion")
+                        .WithMany()
+                        .HasForeignKey("AsignacionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.HistorialTraslado", "HistorialTraslado")
+                        .WithMany()
+                        .HasForeignKey("HistorialTrasladoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.ResolucionTrasladoAcademico", "Resolucion")
+                        .WithMany("Fuentes")
+                        .HasForeignKey("ResolucionTrasladoAcademicoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Asignacion");
+
+                    b.Navigation("HistorialTraslado");
+
+                    b.Navigation("Resolucion");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.HistorialCalificacion", b =>
@@ -3548,6 +3815,71 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("UsuarioResponsable");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.ResolucionTrasladoAcademico", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.Alumno", "Alumno")
+                        .WithMany()
+                        .HasForeignKey("AlumnoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.CicloEscolar", "CicloEscolar")
+                        .WithMany()
+                        .HasForeignKey("CicloEscolarId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Usuario", "CreadaPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("CreadaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Curso", "Curso")
+                        .WithMany()
+                        .HasForeignKey("CursoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Usuario", "DecididaPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("DecididaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Proyecto_Final.Models.Inscripcion", "Inscripcion")
+                        .WithMany()
+                        .HasForeignKey("InscripcionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Periodo", "Periodo")
+                        .WithMany()
+                        .HasForeignKey("PeriodoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.ResolucionTrasladoAcademico", "SustituyeResolucion")
+                        .WithMany()
+                        .HasForeignKey("SustituyeResolucionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Alumno");
+
+                    b.Navigation("CicloEscolar");
+
+                    b.Navigation("CreadaPorUsuario");
+
+                    b.Navigation("Curso");
+
+                    b.Navigation("DecididaPorUsuario");
+
+                    b.Navigation("Inscripcion");
+
+                    b.Navigation("Periodo");
+
+                    b.Navigation("SustituyeResolucion");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.RespuestaAceptada", b =>
                 {
                     b.HasOne("Proyecto_Final.Models.Pregunta", "Pregunta")
@@ -3883,6 +4215,11 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Movimientos");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.ComentarioAcademico", b =>
+                {
+                    b.Navigation("Archivos");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.ConfiguracionEvaluacion", b =>
                 {
                     b.Navigation("Actividades");
@@ -3952,6 +4289,11 @@ namespace Proyecto_Final.Data.Migraciones
             modelBuilder.Entity("Proyecto_Final.Models.RelevoAsignacion", b =>
                 {
                     b.Navigation("Delegaciones");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.ResolucionTrasladoAcademico", b =>
+                {
+                    b.Navigation("Fuentes");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.RespuestaAlumno", b =>

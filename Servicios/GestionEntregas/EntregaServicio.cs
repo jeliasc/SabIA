@@ -6,6 +6,7 @@ using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Archivos;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.GestionAsignaciones;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.ViewModels.Entregas;
@@ -16,18 +17,27 @@ public sealed class EntregaServicio(
     Contexto contexto,
     IArchivoFisicoServicio fisico,
     IAccesoAcademicoServicio acceso,
-    IDelegacionAcademicaServicio? delegaciones = null) : IEntregaServicio
+    IDelegacionAcademicaServicio? delegaciones = null,
+    IContextoCicloEscolar? contextoCiclo = null) : IEntregaServicio
 {
-    public async Task<List<EntregaLista>> ObtenerTodasAsync() =>
-        await ObtenerListadoAsync(historial: false);
+    public async Task<List<EntregaLista>> ObtenerTodasAsync(int? asignacionId = null) =>
+        await ObtenerListadoAsync(historial: false, asignacionId);
 
-    public async Task<List<EntregaLista>> ObtenerHistorialAsync() =>
-        await ObtenerListadoAsync(historial: true);
+    public async Task<List<EntregaLista>> ObtenerHistorialAsync(int? asignacionId = null) =>
+        await ObtenerListadoAsync(historial: true, asignacionId);
 
-    private async Task<List<EntregaLista>> ObtenerListadoAsync(bool historial)
+    private async Task<List<EntregaLista>> ObtenerListadoAsync(bool historial, int? asignacionId = null)
     {
         var ahora = DateTime.UtcNow;
         var consulta = contexto.Entregas.AsNoTracking().AsQueryable();
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        var consultaHistorial = historial || ciclo?.EsHistorico == true;
+        if (contextoCiclo is not null)
+            consulta = ciclo!.CicloEscolarId.HasValue
+                ? consulta.Where(x => x.Tarea.Asignacion.Seccion.CicloEscolarId == ciclo.CicloEscolarId.Value)
+                : consulta.Where(_ => false);
+        if (asignacionId.HasValue)
+            consulta = consulta.Where(x => x.Tarea.AsignacionId == asignacionId.Value);
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var docenteId = perfil.DocenteId;
         var alumnoId = perfil.AlumnoId;
@@ -35,7 +45,7 @@ public sealed class EntregaServicio(
         if (docenteId.HasValue)
         {
             consulta = consulta.Where(x =>
-                (historial
+                (consultaHistorial
                     ? (x.Tarea.Asignacion.DocenteId == docenteId.Value ||
                        contexto.DelegacionesAcademicas.Any(d =>
                           d.AsignacionId == x.Tarea.AsignacionId &&
@@ -70,7 +80,7 @@ public sealed class EntregaServicio(
         }
         else if (alumnoId.HasValue)
         {
-            consulta = historial
+            consulta = consultaHistorial
                 ? consulta.Where(x =>
                     x.AlumnoId == alumnoId.Value &&
                     contexto.Inscripciones.Any(inscripcion =>
@@ -104,7 +114,7 @@ public sealed class EntregaServicio(
         }
         else if (acceso.EsOperadorInstitucional)
         {
-            consulta = consulta.Where(x => historial
+            consulta = consulta.Where(x => consultaHistorial
                 ? x.Tarea.Asignacion.Estado != EstadoRegistro.Activo ||
                   !x.Tarea.Asignacion.Seccion.CicloEscolar.Activo ||
                   x.Tarea.Estado == EstadoTarea.Cerrada
@@ -160,6 +170,7 @@ public sealed class EntregaServicio(
                         inscripcion.SeccionId == x.Tarea.Asignacion.SeccionId &&
                         inscripcion.Estado == EstadoInscripcion.Activa &&
                         inscripcion.Seccion.CicloEscolar.Activo) &&
+                    x.Tarea.Estado == EstadoTarea.Publicada &&
                     ((x.FechaLimiteIndividual.HasValue &&
                       x.FechaLimiteIndividual >= ahora &&
                       x.Reaperturas.Any(r => r.FechaLimite >= ahora)) ||
@@ -313,6 +324,7 @@ public sealed class EntregaServicio(
                         x.Tarea.Asignacion.Seccion.CicloEscolarId &&
                     inscripcion.Estado == EstadoInscripcion.Activa &&
                     inscripcion.Seccion.CicloEscolar.Activo) &&
+                x.Tarea.Estado == EstadoTarea.Publicada &&
                 ((x.FechaLimiteIndividual.HasValue &&
                   x.FechaLimiteIndividual >= ahora &&
                   x.Reaperturas.Any(r => r.FechaLimite >= ahora)) ||
@@ -352,7 +364,16 @@ public sealed class EntregaServicio(
             .AsNoTracking()
             .Include(x => x.Tarea)
                 .ThenInclude(x => x.Asignacion)
+                    .ThenInclude(x => x.Seccion)
             .FirstOrDefaultAsync(x => x.Id == id);
+
+        if (seleccionada is not null && contextoCiclo is not null)
+        {
+            var ciclo = await contextoCiclo.ObtenerAsync();
+            if (!ciclo.CicloEscolarId.HasValue ||
+                seleccionada.Tarea.Asignacion.Seccion.CicloEscolarId != ciclo.CicloEscolarId.Value)
+                return null;
+        }
 
         if (seleccionada == null || !await PuedeConsultarEntregaAsync(seleccionada))
         {
@@ -464,6 +485,8 @@ public sealed class EntregaServicio(
         return new DetalleEntrega
         {
             EntregaSeleccionadaId = id,
+            TareaId = seleccionada.TareaId,
+            AlumnoId = seleccionada.AlumnoId,
             Alumno = informacion.Alumno,
             Tarea = seleccionada.Tarea.Titulo,
             Curso = informacion.Curso,
@@ -533,6 +556,10 @@ public sealed class EntregaServicio(
         }
 
         var ahora = DateTime.UtcNow;
+        if (entrega.Tarea.Estado != EstadoTarea.Publicada)
+        {
+            return ResultadoOperacion.Error("La actividad está cerrada y no admite nuevas entregas.");
+        }
         var existeIntentoPosterior = await contexto.Entregas.AnyAsync(otra =>
             otra.TareaId == entrega.TareaId &&
             otra.AlumnoId == entrega.AlumnoId &&
@@ -1221,6 +1248,12 @@ public sealed class EntregaServicio(
         {
             return ResultadoOperacion.Error(
                 "Solo el docente responsable puede reabrir esta entrega.");
+        }
+
+        if (docenteId.HasValue)
+        {
+            return ResultadoOperacion.Error(
+                "Las reaperturas individuales no conceden intentos adicionales. Use la reapertura general de la tarea.");
         }
 
         var fechaLimite = HoraGuatemala.ParaGuardar(modelo.FechaLimite);

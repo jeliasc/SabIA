@@ -1,0 +1,26 @@
+@model Proyecto_Final.ViewModels.ExploradorAcademico.ListaExploradorAcademico
+<div class="col-12 col-xl-6">
+    <section class="app-card h-100">
+        <div class="app-card-header">
+            <h3 class="app-card-title">@Model.Titulo</h3>
+        </div>
+        <div class="app-card-body">
+            @if (Model.Elementos.Count == 0)
+            {
+                <p class="text-body-secondary mb-0">Sin registros visibles para esta sección.</p>
+            }
+            else
+            {
+                <div class="list-group list-group-flush">
+                    @foreach (var elemento in Model.Elementos)
+                    {
+                        <div class="list-group-item">
+                            <div class="fw-semibold">@elemento.Titulo</div>
+                            <div class="small text-body-secondary">@elemento.Detalle</div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+</div>

@@ -157,6 +157,8 @@ public sealed class ArchivoTareaApoyo
 public sealed class DetalleEntrega
 {
     public int EntregaSeleccionadaId { get; set; }
+    public int TareaId { get; set; }
+    public int AlumnoId { get; set; }
     public string Alumno { get; set; } = string.Empty;
     public string Tarea { get; set; } = string.Empty;
     public string Curso { get; set; } = string.Empty;

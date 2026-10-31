@@ -11,10 +11,13 @@
 
     <div class="card shadow-sm border-0">
         <div class="card-body p-4">
-            <form method="post">
+            <form asp-action="Editar" method="post">
                 @Html.AntiForgeryToken()
-                @Html.HiddenFor(m => m.Id)
+                @Html.HiddenFor(m => m.UnidadId)
                 @Html.HiddenFor(m => m.UnidadAsignacionId)
+                @* Solo conserva la presentación al revalidar; el servicio nunca
+                   acepta este orden como una instrucción de actualización. *@
+                @Html.HiddenFor(m => m.Orden)
 
                 <partial name="Formulario" model="Model" />
 

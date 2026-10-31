@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Seguridad;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.ViewModels.Prototipo;
 
@@ -10,17 +11,19 @@ namespace Proyecto_Final.Servicios.Dashboard;
 
 public sealed class DashboardServicio(
     Contexto contexto,
-    IAccesoAcademicoServicio acceso) : IDashboardServicio
+    IAccesoAcademicoServicio acceso,
+    IContextoCicloEscolar? contextoCiclo = null) : IDashboardServicio
 {
     public async Task<ResultadoDashboard> ObtenerAsync(
         ClaimsPrincipal usuarioActual,
         string? contextoSolicitado = null)
     {
+        var cicloSeleccionadoId = contextoCiclo is null
+            ? (int?)null
+            : (await contextoCiclo.ObtenerAsync()).CicloEscolarId;
         var docenteId = await acceso.ObtenerDocenteIdAsync();
         var alumnoId = await acceso.ObtenerAlumnoIdAsync();
-        var puedeCoordinar = Tiene(
-            usuarioActual,
-            Permisos.Dashboard.CoordinacionVer);
+        var puedeCoordinar = AutorizacionDashboardCoordinacion.PuedeVer(usuarioActual);
 
         var contextos = new List<ContextoDashboard>();
         if (alumnoId.HasValue)
@@ -70,11 +73,11 @@ public sealed class DashboardServicio(
         ResultadoDashboard resultado = codigo switch
         {
             "alumno" when alumnoId.HasValue =>
-                await ObtenerAlumnoAsync(alumnoId.Value, usuarioActual),
+                await ObtenerAlumnoAsync(alumnoId.Value, usuarioActual, cicloSeleccionadoId),
             "docente" when docenteId.HasValue =>
-                await ObtenerDocenteAsync(docenteId.Value, usuarioActual),
+                await ObtenerDocenteAsync(docenteId.Value, usuarioActual, cicloSeleccionadoId),
             "coordinacion" when puedeCoordinar =>
-                await ObtenerCoordinacionAsync(usuarioActual),
+                await ObtenerCoordinacionAsync(usuarioActual, cicloSeleccionadoId),
             _ => ObtenerInicio(usuarioActual)
         };
 
@@ -99,7 +102,7 @@ public sealed class DashboardServicio(
     }
 
     private async Task<ResultadoDashboard> ObtenerCoordinacionAsync(
-        ClaimsPrincipal usuario)
+        ClaimsPrincipal usuario, int? cicloSeleccionadoId)
     {
         var modelo = new DashboardPrototipo
         {
@@ -107,11 +110,56 @@ public sealed class DashboardServicio(
             Accesos = CrearAccesos(usuario)
         };
 
+        var cicloActivo = await contexto.CiclosEscolares.AsNoTracking()
+            .Where(x => cicloSeleccionadoId.HasValue
+                ? x.Id == cicloSeleccionadoId.Value
+                : x.Activo && x.Estado == EstadoCicloEscolar.Activo)
+            .Select(x => new { x.Id, x.Anio })
+            .SingleOrDefaultAsync();
+        if (cicloActivo is null)
+        {
+            modelo.Alertas.Add(new AlertaPrototipo
+            {
+                Tipo = "Ciclo escolar",
+                Mensaje = "No hay un ciclo escolar institucional activo configurado.",
+                Clase = "warning"
+            });
+            AgregarEstadoVacio(modelo);
+            return new ResultadoDashboard
+            {
+                Titulo = "Dashboard de coordinación",
+                Descripcion = "No es posible calcular indicadores institucionales hasta configurar un ciclo activo.",
+                Modelo = modelo
+            };
+        }
+
+        var cicloActivoId = cicloActivo.Id;
+        modelo.Indicadores.Add(Indicador("Ciclo escolar activo", cicloActivo.Anio.ToString(),
+            "bi bi-calendar3", "ui-stat-card-primary"));
+
+        if (Tiene(usuario, Permisos.Secciones.Ver))
+        {
+            var seccionesCiclo = contexto.Secciones.AsNoTracking()
+                .Where(x => x.CicloEscolarId == cicloActivoId);
+            modelo.Indicadores.Add(Indicador("Grados configurados",
+                await seccionesCiclo.Select(x => x.GradoId).Distinct().CountAsync(),
+                "bi bi-layers", "ui-stat-card-info"));
+            modelo.Indicadores.Add(Indicador("Secciones configuradas",
+                await seccionesCiclo.CountAsync(), "bi bi-diagram-2", "ui-stat-card-info"));
+        }
+
+        if (Tiene(usuario, Permisos.Periodos.Ver))
+            modelo.Indicadores.Add(Indicador("Períodos académicos",
+                await contexto.Periodos.CountAsync(x => x.CicloEscolarId == cicloActivoId),
+                "bi bi-calendar-range", "ui-stat-card-warning"));
+
         if (Tiene(usuario, Permisos.Docentes.Ver))
         {
             modelo.Indicadores.Add(Indicador(
-                "Docentes activos",
-                await contexto.Docentes.CountAsync(x => x.Usuario.Activo),
+                "Docentes asignados",
+                await contexto.Asignaciones.Where(x => x.Estado == EstadoRegistro.Activo &&
+                    x.Seccion.CicloEscolarId == cicloActivoId && x.Docente.Usuario.Activo)
+                    .Select(x => x.DocenteId).Distinct().CountAsync(),
                 "bi bi-person-badge",
                 "ui-stat-card-primary"));
         }
@@ -119,8 +167,10 @@ public sealed class DashboardServicio(
         if (Tiene(usuario, Permisos.Alumnos.Ver))
         {
             modelo.Indicadores.Add(Indicador(
-                "Alumnos activos",
-                await contexto.Alumnos.CountAsync(x => x.Usuario.Activo),
+                "Alumnos con inscripción vigente",
+                await contexto.Inscripciones.Where(x => x.CicloEscolarId == cicloActivoId &&
+                    x.Estado == EstadoInscripcion.Activa && x.Alumno.Usuario.Activo)
+                    .Select(x => x.AlumnoId).Distinct().CountAsync(),
                 "bi bi-people",
                 "ui-stat-card-success"));
         }
@@ -129,14 +179,15 @@ public sealed class DashboardServicio(
         {
             var asignaciones = await contexto.Asignaciones.CountAsync(x =>
                 x.Estado == EstadoRegistro.Activo &&
-                x.Seccion.CicloEscolar.Activo);
+                x.Seccion.CicloEscolarId == cicloActivoId);
             modelo.Indicadores.Add(Indicador(
                 "Asignaciones del ciclo activo",
                 asignaciones,
                 "bi bi-journal-bookmark",
                 "ui-stat-card-info"));
 
-            modelo.Cursos = await ConsultaCursosActuales()
+            modelo.Cursos = await contexto.Asignaciones.AsNoTracking()
+                .Where(x => x.Estado == EstadoRegistro.Activo && x.Seccion.CicloEscolarId == cicloActivoId)
                 .OrderBy(x => x.Curso.Nombre)
                 .Take(12)
                 .Select(x => new CursoResumenPrototipo
@@ -170,7 +221,7 @@ public sealed class DashboardServicio(
         {
             var revisiones = await contexto.Planificaciones.CountAsync(x =>
                 x.Estado == EstadoPlanificacion.EnRevision &&
-                x.Asignaciones.Any(a => a.Asignacion.Seccion.CicloEscolar.Activo));
+                x.Asignaciones.Any(a => a.Asignacion.Seccion.CicloEscolarId == cicloActivoId));
             modelo.Indicadores.Add(Indicador(
                 "Planificaciones por revisar",
                 revisiones,
@@ -192,12 +243,12 @@ public sealed class DashboardServicio(
         {
             var configurados = await contexto.ConfiguracionesEvaluacion
                 .AsNoTracking()
-                .CountAsync(x => x.Asignacion.Seccion.CicloEscolar.Activo);
+                .CountAsync(x => x.Asignacion.Seccion.CicloEscolarId == cicloActivoId);
             var cerrados = await contexto.CierresCalificaciones
                 .AsNoTracking()
                 .CountAsync(x =>
                     x.Estado == EstadoCierreCalificaciones.Cerrado &&
-                    x.ConfiguracionEvaluacion.Asignacion.Seccion.CicloEscolar.Activo);
+                    x.ConfiguracionEvaluacion.Asignacion.Seccion.CicloEscolarId == cicloActivoId);
             modelo.Indicadores.Add(Indicador(
                 "Avance de cierres",
                 configurados == 0 ? "0/0" : $"{cerrados}/{configurados}",
@@ -207,7 +258,7 @@ public sealed class DashboardServicio(
 
         if (Tiene(usuario, Permisos.Tareas.Ver))
         {
-            modelo.ActividadReciente = await ActividadRecienteAsync(null);
+            modelo.ActividadReciente = await ActividadRecienteAsync(null, cicloActivoId);
         }
 
         AgregarEstadoVacio(modelo);
@@ -220,18 +271,17 @@ public sealed class DashboardServicio(
     }
 
     private async Task<ResultadoDashboard> ObtenerDocenteAsync(
-        int docenteId,
-        ClaimsPrincipal usuario)
+        int docenteId, ClaimsPrincipal usuario, int? cicloSeleccionadoId)
     {
         var modelo = new DashboardPrototipo
         {
             Tipo = "docente",
             Accesos = CrearAccesos(usuario)
         };
-        var asignacionesIds = ConsultaCursosActuales()
+        var asignacionesIds = ConsultaCursosActuales(cicloSeleccionadoId)
             .Where(x => x.DocenteId == docenteId)
             .Select(x => x.Id);
-        var seccionesIds = ConsultaCursosActuales()
+        var seccionesIds = ConsultaCursosActuales(cicloSeleccionadoId)
             .Where(x => x.DocenteId == docenteId)
             .Select(x => x.SeccionId)
             .Distinct();
@@ -247,7 +297,7 @@ public sealed class DashboardServicio(
                 "Cursos asignados", cursos, "bi bi-journal-bookmark",
                 "ui-stat-card-primary"));
 
-            modelo.Cursos = await ConsultaCursosActuales()
+            modelo.Cursos = await ConsultaCursosActuales(cicloSeleccionadoId)
                 .Where(x => x.DocenteId == docenteId)
                 .OrderBy(x => x.Curso.Nombre)
                 .Select(x => new CursoResumenPrototipo
@@ -282,7 +332,7 @@ public sealed class DashboardServicio(
             var alumnos = await contexto.Inscripciones
                 .Where(x =>
                     x.Estado == EstadoInscripcion.Activa &&
-                    x.Seccion.CicloEscolar.Activo &&
+                    (!cicloSeleccionadoId.HasValue || x.Seccion.CicloEscolarId == cicloSeleccionadoId.Value) &&
                     seccionesIds.Contains(x.SeccionId))
                 .Select(x => x.AlumnoId)
                 .Distinct()
@@ -316,7 +366,7 @@ public sealed class DashboardServicio(
             modelo.Indicadores.Add(Indicador(
                 "Tareas cerradas", cerradas, "bi bi-lock",
                 "ui-stat-card-primary"));
-            modelo.ActividadReciente = await ActividadRecienteAsync(docenteId);
+            modelo.ActividadReciente = await ActividadRecienteAsync(docenteId, cicloSeleccionadoId);
         }
 
         if (Tiene(usuario, Permisos.Entregas.Ver))
@@ -379,7 +429,8 @@ public sealed class DashboardServicio(
                 .Where(x =>
                     x.DocenteId == docenteId &&
                     x.Asignaciones.Any(a =>
-                        a.Asignacion.Seccion.CicloEscolar.Activo))
+                        (!cicloSeleccionadoId.HasValue ||
+                         a.Asignacion.Seccion.CicloEscolarId == cicloSeleccionadoId.Value)))
                 .OrderByDescending(x => x.FechaCreacion)
                 .Take(8)
                 .Select(x => new PlanificacionResumenDashboard
@@ -414,7 +465,8 @@ public sealed class DashboardServicio(
                     a.Origen == OrigenActividadEvaluable.Manual &&
                     a.ConfiguracionEvaluacion.Asignacion.DocenteId == docenteId &&
                     a.ConfiguracionEvaluacion.Asignacion.Estado == EstadoRegistro.Activo &&
-                    a.ConfiguracionEvaluacion.Asignacion.Seccion.CicloEscolar.Activo &&
+                    (!cicloSeleccionadoId.HasValue ||
+                     a.ConfiguracionEvaluacion.Asignacion.Seccion.CicloEscolarId == cicloSeleccionadoId.Value) &&
                     !contexto.CierresCalificaciones.Any(c =>
                         c.ConfiguracionEvaluacionId == a.ConfiguracionEvaluacionId &&
                         c.Estado == EstadoCierreCalificaciones.Cerrado))
@@ -438,7 +490,8 @@ public sealed class DashboardServicio(
                 .AsNoTracking()
                 .CountAsync(x =>
                     x.Asignacion.DocenteId == docenteId &&
-                    x.Asignacion.Seccion.CicloEscolar.Activo &&
+                    (!cicloSeleccionadoId.HasValue ||
+                     x.Asignacion.Seccion.CicloEscolarId == cicloSeleccionadoId.Value) &&
                     x.Periodo.FechaFin >= hoy &&
                     x.Periodo.FechaFin <= limite &&
                     !contexto.CierresCalificaciones.Any(c =>
@@ -470,8 +523,7 @@ public sealed class DashboardServicio(
     }
 
     private async Task<ResultadoDashboard> ObtenerAlumnoAsync(
-        int alumnoId,
-        ClaimsPrincipal usuario)
+        int alumnoId, ClaimsPrincipal usuario, int? cicloSeleccionadoId)
     {
         var modelo = new DashboardPrototipo
         {
@@ -484,7 +536,9 @@ public sealed class DashboardServicio(
             .Where(x =>
                 x.AlumnoId == alumnoId &&
                 x.Estado == EstadoInscripcion.Activa &&
-                x.Seccion.CicloEscolar.Activo)
+                (cicloSeleccionadoId.HasValue
+                    ? x.CicloEscolarId == cicloSeleccionadoId.Value
+                    : x.Seccion.CicloEscolar.Activo))
             .OrderByDescending(x => x.Fecha)
             .Select(x => new { x.Id, x.SeccionId })
             .FirstOrDefaultAsync();
@@ -598,6 +652,8 @@ public sealed class DashboardServicio(
 
             var historicas = await contexto.Entregas.CountAsync(x =>
                 x.AlumnoId == alumnoId &&
+                (!cicloSeleccionadoId.HasValue ||
+                 x.Tarea.Asignacion.Seccion.CicloEscolarId == cicloSeleccionadoId.Value) &&
                 !asignacionesIds.Contains(x.Tarea.AsignacionId) &&
                 !contexto.Entregas.Any(otra =>
                     otra.TareaId == x.TareaId &&
@@ -620,7 +676,9 @@ public sealed class DashboardServicio(
         {
             var resultados = await contexto.ResultadosCalificacionesPeriodos
                 .AsNoTracking()
-                .Where(x => x.AlumnoId == alumnoId)
+                .Where(x => x.AlumnoId == alumnoId &&
+                    (!cicloSeleccionadoId.HasValue ||
+                     x.ConfiguracionEvaluacion.CicloEscolarId == cicloSeleccionadoId.Value))
                 .OrderByDescending(x => x.FechaCierre)
                 .Select(x => new { x.NotaBimestral })
                 .ToListAsync();
@@ -645,21 +703,25 @@ public sealed class DashboardServicio(
         };
     }
 
-    private IQueryable<Asignacion> ConsultaCursosActuales() =>
+    private IQueryable<Asignacion> ConsultaCursosActuales(int? cicloSeleccionadoId) =>
         contexto.Asignaciones
             .AsNoTracking()
             .Where(x =>
                 x.Estado == EstadoRegistro.Activo &&
-                x.Seccion.CicloEscolar.Activo);
+                (cicloSeleccionadoId.HasValue
+                    ? x.Seccion.CicloEscolarId == cicloSeleccionadoId.Value
+                    : x.Seccion.CicloEscolar.Activo));
 
     private async Task<List<ActividadPrototipo>> ActividadRecienteAsync(
-        int? docenteId)
+        int? docenteId, int? cicloSeleccionadoId)
     {
         var tareas = contexto.Tareas
             .AsNoTracking()
             .Where(x =>
                 x.FechaPublicacion.HasValue &&
-                x.Asignacion.Seccion.CicloEscolar.Activo);
+                (cicloSeleccionadoId.HasValue
+                    ? x.Asignacion.Seccion.CicloEscolarId == cicloSeleccionadoId.Value
+                    : x.Asignacion.Seccion.CicloEscolar.Activo));
 
         if (docenteId.HasValue)
         {
@@ -699,6 +761,17 @@ public sealed class DashboardServicio(
             "Calificaciones", "Consulte el libro y sus resultados autorizados.", "Calificaciones", "bi bi-journal-check");
         AgregarAcceso(accesos, usuario, Permisos.Notificaciones.Ver,
             "Notificaciones", "Consulte sus avisos académicos.", "Notificaciones", "bi bi-bell");
+        if (AutorizacionDashboardCoordinacion.PuedeVer(usuario) &&
+            Tiene(usuario, Permisos.Secciones.Ver))
+        {
+            accesos.Add(new AccesoDashboard
+            {
+                Titulo = "Explorador académico",
+                Descripcion = "Navegue por ciclo, grado y sección con datos reales.",
+                Controlador = "ExploradorAcademico",
+                Icono = "bi bi-diagram-3"
+            });
+        }
         return accesos;
     }
 

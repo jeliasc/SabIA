@@ -5,6 +5,7 @@ using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.GestionAsignaciones;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.ViewModels.Calificaciones;
@@ -15,14 +16,28 @@ namespace Proyecto_Final.Servicios.GestionCalificaciones;
 public sealed class CalificacionServicio(
     Contexto contexto,
     IAccesoAcademicoServicio acceso,
-    IDelegacionAcademicaServicio? delegaciones = null) : ICalificacionServicio
+    IDelegacionAcademicaServicio? delegaciones = null,
+    IPertenenciaAcademicaHistoricaServicio? pertenenciaHistorica = null,
+    IResultadoOficialTrasladoServicio? resultadosOficiales = null,
+    IContextoCicloEscolar? contextoCiclo = null) : ICalificacionServicio
 {
     private static readonly JsonSerializerOptions JsonOpciones = new(JsonSerializerDefaults.Web);
+
+    private IPertenenciaAcademicaHistoricaServicio PertenenciaHistorica =>
+        pertenenciaHistorica ?? new PertenenciaAcademicaHistoricaServicio(contexto);
+
+    private IResultadoOficialTrasladoServicio ResultadosOficiales =>
+        resultadosOficiales ?? new ResultadoOficialTrasladoServicio(contexto);
 
     public async Task<CalificacionesIndex> ObtenerIndexAsync(bool puedeConfigurar)
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var consulta = contexto.ConfiguracionesEvaluacion.AsNoTracking().AsQueryable();
+        var cicloSeleccionadoId = await ObtenerCicloSeleccionadoIdAsync();
+        if (contextoCiclo is not null)
+            consulta = cicloSeleccionadoId.HasValue
+                ? consulta.Where(x => x.CicloEscolarId == cicloSeleccionadoId.Value)
+                : consulta.Where(_ => false);
 
         if (perfil.DocenteId.HasValue)
         {
@@ -72,7 +87,9 @@ public sealed class CalificacionServicio(
                 .ToListAsync(),
             Asignaciones = await ObtenerAsignacionesConfigurablesAsync(perfil.DocenteId),
             Periodos = await contexto.Periodos.AsNoTracking()
-                .Where(x => x.CicloEscolar.Activo)
+                .Where(x => contextoCiclo == null
+                    ? x.CicloEscolar.Activo
+                    : cicloSeleccionadoId.HasValue && x.CicloEscolarId == cicloSeleccionadoId.Value)
                 .OrderBy(x => x.Numero)
                 .Select(x => new OpcionSeleccion
                 {
@@ -88,6 +105,9 @@ public sealed class CalificacionServicio(
         int periodoId,
         int? plantillaId = null)
     {
+        if (!await AsignacionPerteneceAlCicloSeleccionadoAsync(asignacionId) ||
+            !await PeriodoPerteneceAlCicloSeleccionadoAsync(periodoId))
+            return null;
         if (!await PuedeConfigurarAsync(asignacionId)) return null;
 
         var existente = await contexto.ConfiguracionesEvaluacion
@@ -134,11 +154,13 @@ public sealed class CalificacionServicio(
                 MetodoCalculo = existente.MetodoCalculo,
                 Categorias = existente.Categorias.Select(c => new CategoriaEvaluacionFormulario
                 {
+                    Id = c.Id,
                     Nombre = c.Nombre,
                     Tipo = c.Tipo,
                     Porcentaje = c.Porcentaje,
                     Actividades = c.Actividades.Select(a => new ActividadEvaluableFormulario
                     {
+                        Id = a.Id,
                         Nombre = a.Nombre,
                         PunteoMaximo = a.PunteoMaximo,
                         TareaId = a.TareaId
@@ -165,6 +187,60 @@ public sealed class CalificacionServicio(
         return modelo;
     }
 
+    public async Task<ControlTareas?> ObtenerControlTareasAsync(int asignacionId)
+    {
+        if (!await AsignacionPerteneceAlCicloSeleccionadoAsync(asignacionId)) return null;
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        var puedeConsultar = ciclo?.EsHistorico == true
+            ? await acceso.PuedeConsultarAsignacionHistoricaAsync(asignacionId)
+            : await acceso.PuedeConsultarAsignacionVigenteAsync(asignacionId);
+        if (!puedeConsultar) return null;
+        var asignacion = await contexto.Asignaciones.AsNoTracking()
+            .Include(x => x.Curso).Include(x => x.Seccion).ThenInclude(x => x.Grado)
+            .FirstOrDefaultAsync(x => x.Id == asignacionId);
+        if (asignacion == null) return null;
+
+        var tareas = await contexto.Tareas.AsNoTracking()
+            .Where(x => x.AsignacionId == asignacionId && x.Estado == EstadoTarea.Cerrada)
+            .OrderBy(x => x.FechaCierre).ThenBy(x => x.Id)
+            .Select(x => new { x.Id, x.Titulo, x.PunteoMaximo, x.CriterioCalificacionEntrega })
+            .ToListAsync();
+        var tareaIds = tareas.Select(x => x.Id).ToList();
+        var entregas = await contexto.Entregas.AsNoTracking()
+            .Where(x => tareaIds.Contains(x.TareaId))
+            .Select(x => new { x.TareaId, x.AlumnoId, x.Calificacion, x.NumeroEnvio,
+                x.OrigenCalificacionAdministrativa, x.InscripcionId,
+                Alumno = x.Alumno.Usuario.PrimerNombre + " " + x.Alumno.Usuario.PrimerApellido,
+                Codigo = x.Alumno.CodigoPersonal })
+            .ToListAsync();
+        var actual = await contexto.Inscripciones.AsNoTracking()
+            .Where(x => x.AlumnoId != 0 && x.CicloEscolarId == asignacion.Seccion.CicloEscolarId &&
+                x.SeccionId == asignacion.SeccionId && x.Estado == EstadoInscripcion.Activa)
+            .Select(x => x.AlumnoId).ToListAsync();
+        var modelo = new ControlTareas
+        {
+            AsignacionId = asignacionId, Curso = asignacion.Curso.Nombre,
+            GradoSeccion = asignacion.Seccion.Grado.Nombre + " " + asignacion.Seccion.Nombre,
+            Tareas = tareas.Select(x => new ControlTareaColumna { Id = x.Id, Titulo = x.Titulo,
+                PunteoMaximo = x.PunteoMaximo }).ToList()
+        };
+        foreach (var grupo in entregas.GroupBy(x => x.AlumnoId).OrderBy(x => x.First().Alumno))
+        {
+            var fila = new ControlTareaFila { Alumno = grupo.First().Alumno,
+                CodigoPersonal = grupo.First().Codigo ?? "Sin código", EsHistorico = !actual.Contains(grupo.Key) };
+            foreach (var tarea in tareas)
+            {
+                var intentos = grupo.Where(x => x.TareaId == tarea.Id).ToList();
+                fila.Notas[tarea.Id] = intentos.Count == 0 ? null : CalculoCriterioCalificacion.Aplicar(
+                    tarea.CriterioCalificacionEntrega,
+                    intentos.Select(x => (x.NumeroEnvio, 0, x.Calificacion,
+                        x.OrigenCalificacionAdministrativa.HasValue)));
+            }
+            modelo.Alumnos.Add(fila);
+        }
+        return modelo;
+    }
+
     public async Task PrepararOpcionesAsync(ConfigurarEvaluacion modelo)
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
@@ -174,6 +250,13 @@ public sealed class CalificacionServicio(
             .Where(x => x.Id == modelo.AsignacionId)
             .Select(x => (int?)x.Seccion.CicloEscolarId)
             .FirstOrDefaultAsync();
+        var cicloSeleccionadoId = await ObtenerCicloSeleccionadoIdAsync();
+        if (contextoCiclo is not null && cicloId != cicloSeleccionadoId)
+        {
+            modelo.Periodos = [];
+            modelo.Tareas = [];
+            return;
+        }
 
         modelo.Periodos = await contexto.Periodos.AsNoTracking()
             .Where(x => !cicloId.HasValue || x.CicloEscolarId == cicloId.Value)
@@ -181,8 +264,17 @@ public sealed class CalificacionServicio(
             .Select(x => new OpcionSeleccion { Id = x.Id, Texto = x.Nombre })
             .ToListAsync();
 
-        modelo.Tareas = await contexto.Tareas.AsNoTracking()
-            .Where(x => x.AsignacionId == modelo.AsignacionId)
+        // TAREAS DE LA ASIGNACIÓN Y PERÍODO ACADÉMICO
+        modelo.Tareas = await contexto.Tareas
+            .AsNoTracking()
+            .Where(x =>
+                x.AsignacionId == modelo.AsignacionId &&
+                x.UnidadAsignacionId.HasValue &&
+                x.UnidadAsignacion != null &&
+                x.UnidadAsignacion.AsignacionId == modelo.AsignacionId &&
+                x.UnidadAsignacion.PeriodoId == modelo.PeriodoId &&
+                x.UnidadAsignacion.Periodo != null &&
+                x.UnidadAsignacion.Periodo.CicloEscolarId == cicloId)
             .OrderBy(x => x.Titulo)
             .Select(x => new OpcionSeleccion
             {
@@ -203,6 +295,181 @@ public sealed class CalificacionServicio(
     }
 
     public async Task<ResultadoOperacion<int>> GuardarConfiguracionAsync(
+        ConfigurarEvaluacion modelo)
+    {
+        if (!await AsignacionPerteneceAlCicloSeleccionadoAsync(modelo.AsignacionId) ||
+            !await PeriodoPerteneceAlCicloSeleccionadoAsync(modelo.PeriodoId))
+        {
+            return ResultadoOperacion<int>.Error(
+                "La asignación o el período no pertenecen al ciclo escolar seleccionado.");
+        }
+        var validacion = await ValidarConfiguracionAsync(modelo);
+        if (validacion.Count > 0)
+            return ResultadoOperacion<int>.Validacion(validacion);
+
+        var usuarioId = acceso.UsuarioId;
+        if (string.IsNullOrWhiteSpace(usuarioId))
+            return ResultadoOperacion<int>.Error("No se pudo identificar al usuario.");
+
+        var existe = await contexto.ConfiguracionesEvaluacion.AsNoTracking()
+            .AnyAsync(x => x.AsignacionId == modelo.AsignacionId && x.PeriodoId == modelo.PeriodoId);
+        if (!existe)
+            return await GuardarConfiguracionLegacyAsync(modelo);
+
+        await using var transaccion = await contexto.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable);
+        try
+        {
+            var configuracion = await contexto.ConfiguracionesEvaluacion
+                .Include(x => x.Categorias)
+                    .ThenInclude(x => x.Actividades)
+                .Include(x => x.Actividades)
+                .FirstAsync(x => x.AsignacionId == modelo.AsignacionId &&
+                    x.PeriodoId == modelo.PeriodoId);
+
+            if (modelo.Id != configuracion.Id)
+            {
+                await transaccion.RollbackAsync();
+                return ResultadoOperacion<int>.Error(
+                    "La configuración indicada no pertenece a la asignación y período seleccionados.");
+            }
+
+            if (await EstaCerradaAsync(configuracion.Id))
+            {
+                await transaccion.RollbackAsync();
+                return ResultadoOperacion<int>.Error(
+                    "La configuración pertenece a un período cerrado.");
+            }
+
+            var errores = await ValidarActualizacionConfiguracionAsync(configuracion, modelo);
+            if (errores.Count > 0)
+            {
+                await transaccion.RollbackAsync();
+                return ResultadoOperacion<int>.Validacion(errores);
+            }
+
+            var anterior = ResumenConfiguracion(configuracion);
+            var cambio = ConfiguracionCambio(configuracion, modelo);
+            if (!cambio)
+            {
+                await transaccion.CommitAsync();
+                return ResultadoOperacion<int>.Correcto(configuracion.Id,
+                    "No se detectaron cambios en la configuración de evaluación.");
+            }
+
+            if (string.IsNullOrWhiteSpace(modelo.MotivoCorreccion) ||
+                modelo.MotivoCorreccion.Trim().Length < 10)
+            {
+                await transaccion.RollbackAsync();
+                return ResultadoOperacion<int>.Validacion(nameof(modelo.MotivoCorreccion),
+                    "El motivo de la corrección debe contener al menos 10 caracteres.");
+            }
+
+            var categoriasExistentes = configuracion.Categorias.ToDictionary(x => x.Id);
+            var actividadesExistentes = configuracion.Actividades.ToDictionary(x => x.Id);
+            var categoriasFormulario = modelo.Categorias.Where(x => x.Id > 0)
+                .ToDictionary(x => x.Id);
+            var actividadesFormulario = modelo.Categorias.SelectMany(x => x.Actividades)
+                .Where(x => x.Id > 0).ToDictionary(x => x.Id);
+
+            foreach (var actividad in configuracion.Actividades
+                         .Where(x => !actividadesFormulario.ContainsKey(x.Id)).ToList())
+                contexto.ActividadesEvaluables.Remove(actividad);
+            foreach (var categoria in configuracion.Categorias
+                         .Where(x => !categoriasFormulario.ContainsKey(x.Id)).ToList())
+                contexto.CategoriasEvaluacion.Remove(categoria);
+
+            var ordenActividad = 1;
+            for (var indice = 0; indice < modelo.Categorias.Count; indice++)
+            {
+                var categoriaModelo = modelo.Categorias[indice];
+                CategoriaEvaluacion categoria;
+                if (categoriaModelo.Id > 0)
+                {
+                    categoria = categoriasExistentes[categoriaModelo.Id];
+                    categoria.Nombre = categoriaModelo.Nombre.Trim();
+                    categoria.Tipo = categoriaModelo.Tipo;
+                    categoria.Porcentaje = categoriaModelo.Porcentaje;
+                    categoria.Orden = indice + 1;
+                }
+                else
+                {
+                    categoria = new CategoriaEvaluacion
+                    {
+                        ConfiguracionEvaluacion = configuracion,
+                        Nombre = categoriaModelo.Nombre.Trim(),
+                        Tipo = categoriaModelo.Tipo,
+                        Porcentaje = categoriaModelo.Porcentaje,
+                        Orden = indice + 1
+                    };
+                    contexto.CategoriasEvaluacion.Add(categoria);
+                }
+
+                foreach (var actividadModelo in categoriaModelo.Actividades)
+                {
+                    ActividadEvaluable actividad;
+                    if (actividadModelo.Id > 0)
+                    {
+                        actividad = actividadesExistentes[actividadModelo.Id];
+                        actividad.Nombre = actividadModelo.Nombre.Trim();
+                        actividad.PunteoMaximo = actividadModelo.PunteoMaximo;
+                        // Las vinculaciones heredadas se preservan para consulta,
+                        // pero no se crean ni se cambian en libros nuevos.
+                        actividad.CategoriaEvaluacion = categoria;
+                        actividad.Orden = ordenActividad++;
+                    }
+                    else
+                    {
+                        actividad = new ActividadEvaluable
+                        {
+                            ConfiguracionEvaluacion = configuracion,
+                            AsignacionId = modelo.AsignacionId,
+                            CategoriaEvaluacion = categoria,
+                            Origen = OrigenActividadEvaluable.Manual,
+                            TareaId = null,
+                            Nombre = actividadModelo.Nombre.Trim(),
+                            PunteoMaximo = actividadModelo.PunteoMaximo,
+                            Orden = ordenActividad++,
+                            Activa = true,
+                            FechaCreacion = DateTime.UtcNow
+                        };
+                        contexto.ActividadesEvaluables.Add(actividad);
+                    }
+                }
+            }
+
+            configuracion.MetodoCalculo = modelo.MetodoCalculo;
+            configuracion.Estado = EstadoConfiguracionEvaluacion.Activa;
+            configuracion.FechaActivacion = DateTime.UtcNow;
+            contexto.RegistrosAuditoria.Add(new RegistroAuditoria
+            {
+                FechaUtc = DateTime.UtcNow,
+                UsuarioId = usuarioId,
+                Modulo = "Calificaciones",
+                Accion = "CorregirConfiguracion",
+                Tipo = TipoEventoAuditoria.Operacion,
+                Resultado = ResultadoAuditoria.Exitoso,
+                Entidad = nameof(ConfiguracionEvaluacion),
+                EntidadId = configuracion.Id.ToString(),
+                Descripcion = "Corrección auditada de la configuración de evaluación.",
+                Justificacion = modelo.MotivoCorreccion.Trim(),
+                ValoresAnteriores = anterior,
+                ValoresNuevos = ResumenFormulario(modelo)
+            });
+
+            await contexto.SaveChangesAsync();
+            await transaccion.CommitAsync();
+            return ResultadoOperacion<int>.Correcto(configuracion.Id,
+                "La configuración de evaluación fue corregida y auditada correctamente.");
+        }
+        catch
+        {
+            await transaccion.RollbackAsync();
+            throw;
+        }
+    }
+
+    private async Task<ResultadoOperacion<int>> GuardarConfiguracionLegacyAsync(
         ConfigurarEvaluacion modelo)
     {
         var validacion = await ValidarConfiguracionAsync(modelo);
@@ -298,10 +565,8 @@ public sealed class CalificacionServicio(
                         ConfiguracionEvaluacion = configuracion,
                         AsignacionId = modelo.AsignacionId,
                         CategoriaEvaluacion = categoria,
-                        Origen = actividadModelo.TareaId.HasValue
-                            ? OrigenActividadEvaluable.Tarea
-                            : OrigenActividadEvaluable.Manual,
-                        TareaId = actividadModelo.TareaId,
+                        Origen = OrigenActividadEvaluable.Manual,
+                        TareaId = null,
                         Nombre = actividadModelo.Nombre.Trim(),
                         PunteoMaximo = actividadModelo.PunteoMaximo,
                         Orden = ordenActividad++,
@@ -354,20 +619,28 @@ public sealed class CalificacionServicio(
             .Include(x => x.Periodo)
             .Include(x => x.Categorias.OrderBy(c => c.Orden))
             .Include(x => x.Actividades.OrderBy(a => a.Orden))
+            .ThenInclude(a => a.CategoriaEvaluacion)
             .FirstOrDefaultAsync(x => x.Id == configuracionId);
-        if (configuracion == null || !await PuedeConsultarAsync(configuracion)) return null;
+        if (configuracion == null ||
+            !await PerteneceAlCicloSeleccionadoAsync(configuracion.CicloEscolarId) ||
+            !await PuedeConsultarAsync(configuracion)) return null;
 
         var cierre = await contexto.CierresCalificaciones.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ConfiguracionEvaluacionId == configuracionId);
         var cerrado = cierre?.Estado == EstadoCierreCalificaciones.Cerrado;
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
+        var pertenenciasDelPeriodo = cerrado
+            ? new Dictionary<int, TipoPertenenciaLibro>()
+            : (await PertenenciaHistorica.ObtenerParaSeccionAsync(configuracion, soloActivas: true))
+                .ToDictionary(x => x.Key, x => x.Value);
 
         var inscripciones = contexto.Inscripciones.AsNoTracking()
             .Where(x =>
-                x.SeccionId == configuracion.SeccionId &&
                 x.CicloEscolarId == configuracion.CicloEscolarId);
         if (!cerrado)
-            inscripciones = inscripciones.Where(x => x.Estado == EstadoInscripcion.Activa);
+            inscripciones = inscripciones.Where(x =>
+                x.Estado == EstadoInscripcion.Activa &&
+                pertenenciasDelPeriodo.Keys.Contains(x.Id));
         if (perfil.AlumnoId.HasValue)
             inscripciones = inscripciones.Where(x => x.AlumnoId == perfil.AlumnoId.Value);
 
@@ -389,9 +662,19 @@ public sealed class CalificacionServicio(
             resultadosCerrados = await contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
                 .Where(x => x.ConfiguracionEvaluacionId == configuracionId)
                 .ToDictionaryAsync(x => x.InscripcionId);
-            alumnos = alumnos
-                .Where(x => resultadosCerrados.ContainsKey(x.InscripcionId))
-                .ToList();
+            alumnos = await contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
+                .Where(x => x.ConfiguracionEvaluacionId == configuracionId &&
+                    (!perfil.AlumnoId.HasValue || x.AlumnoId == perfil.AlumnoId.Value))
+                .OrderBy(x => x.Alumno.Usuario.PrimerApellido)
+                .ThenBy(x => x.Alumno.Usuario.PrimerNombre)
+                .Select(x => new
+                {
+                    InscripcionId = x.InscripcionId,
+                    x.AlumnoId,
+                    Codigo = x.Alumno.CodigoPersonal ?? "Sin codigo",
+                    Nombre = x.Alumno.Usuario.PrimerNombre + " " + x.Alumno.Usuario.PrimerApellido
+                })
+                .ToListAsync();
         }
 
         var inscripcionesIds = alumnos.Select(x => x.InscripcionId).ToList();
@@ -411,6 +694,8 @@ public sealed class CalificacionServicio(
             .Where(x => tareasIds.Contains(x.TareaId) && alumnosIds.Contains(x.AlumnoId))
             .Include(x => x.Tarea)
             .ToListAsync();
+        var resultadosOficialesPorInscripcion = await ResultadosOficiales.ObtenerAsync(
+            inscripcionesIds, configuracion.Asignacion.CursoId, configuracion.Periodo);
 
         var libro = new LibroCalificaciones
         {
@@ -457,7 +742,11 @@ public sealed class CalificacionServicio(
                 AlumnoId = alumno.AlumnoId,
                 InscripcionId = alumno.InscripcionId,
                 CodigoPersonal = alumno.Codigo,
-                Alumno = alumno.Nombre
+                Alumno = alumno.Nombre,
+                TipoPertenencia = cerrado
+                    ? TipoPertenenciaLibro.MatriculaOrdinaria
+                    : pertenenciasDelPeriodo.GetValueOrDefault(alumno.InscripcionId,
+                        TipoPertenenciaLibro.MatriculaOrdinaria)
             };
             foreach (var actividad in configuracion.Actividades)
             {
@@ -498,6 +787,11 @@ public sealed class CalificacionServicio(
                 fila.AbacusDesempeno = resultadoCerrado.AbacusDesempeno;
                 fila.AbacusActitudinal = resultadoCerrado.AbacusActitudinal;
             }
+            AplicarResultadoOficial(fila, resultadosOficialesPorInscripcion.GetValueOrDefault(
+                alumno.InscripcionId), configuracion.AsignacionId);
+            if (fila.TipoPertenencia == TipoPertenenciaLibro.EvidenciaHistorica &&
+                !fila.Calificaciones.Any(x => x.Nota.HasValue))
+                continue;
             libro.Alumnos.Add(fila);
         }
         return libro;
@@ -510,6 +804,7 @@ public sealed class CalificacionServicio(
 
         var configuracion = await contexto.ConfiguracionesEvaluacion
             .Include(x => x.Asignacion).ThenInclude(x => x.Seccion).ThenInclude(x => x.CicloEscolar)
+            .Include(x => x.Periodo)
             .Include(x => x.Actividades)
             .FirstOrDefaultAsync(x => x.Id == modelo.ConfiguracionId);
         if (configuracion == null || !await EsDocenteResponsableVigenteAsync(configuracion))
@@ -521,11 +816,13 @@ public sealed class CalificacionServicio(
             .Where(x => x.Origen == OrigenActividadEvaluable.Manual)
             .ToDictionary(x => x.Id);
         var inscripcionesIds = modelo.Notas.Select(x => x.InscripcionId).Distinct().ToList();
+        var inscripcionesPermitidas = (await PertenenciaHistorica
+                .ObtenerParaSeccionAsync(configuracion, soloActivas: true))
+            .Where(x => x.Value == TipoPertenenciaLibro.MatriculaOrdinaria)
+            .Select(x => x.Key).ToList();
         var inscripciones = await contexto.Inscripciones
             .Where(x => inscripcionesIds.Contains(x.Id) &&
-                x.SeccionId == configuracion.SeccionId &&
-                x.CicloEscolarId == configuracion.CicloEscolarId &&
-                x.Estado == EstadoInscripcion.Activa)
+                inscripcionesPermitidas.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id);
 
         var errores = new Dictionary<string, string>();
@@ -606,6 +903,9 @@ public sealed class CalificacionServicio(
         var libro = await ObtenerLibroAsync(configuracionId, false, true);
         if (libro == null || !libro.PuedeCerrar)
             return ResultadoOperacion.Error("No tiene autorización para cerrar este período.");
+        var bloqueo = await ObtenerBloqueoCierreAsync(configuracionId);
+        if (bloqueo != null)
+            return ResultadoOperacion.Error(bloqueo);
         if (libro.Alumnos.Count == 0)
             return ResultadoOperacion.Error("No existen alumnos para cerrar el período.");
         if (libro.Alumnos.Any(x => x.Pendientes > 0))
@@ -623,6 +923,26 @@ public sealed class CalificacionServicio(
             {
                 await transaccion.RollbackAsync();
                 return ResultadoOperacion.Error("El período ya se encuentra cerrado.");
+            }
+
+            bloqueo = await ObtenerBloqueoCierreAsync(configuracionId);
+            if (bloqueo != null)
+            {
+                await transaccion.RollbackAsync();
+                return ResultadoOperacion.Error(bloqueo);
+            }
+
+            var libroActual = await ObtenerLibroAsync(configuracionId, false, true);
+            if (libroActual == null || libroActual.Alumnos.Count == 0)
+            {
+                await transaccion.RollbackAsync();
+                return ResultadoOperacion.Error("No existen alumnos para cerrar el período.");
+            }
+            if (libroActual.Alumnos.Any(x => x.Pendientes > 0))
+            {
+                await transaccion.RollbackAsync();
+                return ResultadoOperacion.Error(
+                    "No puede cerrar mientras existan calificaciones pendientes.");
             }
 
             var fecha = DateTime.UtcNow;
@@ -646,7 +966,7 @@ public sealed class CalificacionServicio(
                 Fecha = fecha,
                 RealizadoPorUsuarioId = usuarioId
             });
-            contexto.ResultadosCalificacionesPeriodos.AddRange(libro.Alumnos.Select(x =>
+            contexto.ResultadosCalificacionesPeriodos.AddRange(libroActual.Alumnos.Select(x =>
                 new ResultadoCalificacionPeriodo
                 {
                     ConfiguracionEvaluacionId = configuracionId,
@@ -721,6 +1041,11 @@ public sealed class CalificacionServicio(
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var consulta = contexto.SolicitudesCorreccionesCalificaciones.AsNoTracking().AsQueryable();
+        var cicloSeleccionadoId = await ObtenerCicloSeleccionadoIdAsync();
+        if (contextoCiclo is not null)
+            consulta = cicloSeleccionadoId.HasValue
+                ? consulta.Where(x => x.ActividadEvaluable.ConfiguracionEvaluacion.CicloEscolarId == cicloSeleccionadoId.Value)
+                : consulta.Where(_ => false);
         if (puedeRevisar && acceso.TienePermiso(Permisos.Calificaciones.AprobarCorreccion))
         {
             // La aprobación explícita permite supervisar todas las solicitudes.
@@ -771,7 +1096,8 @@ public sealed class CalificacionServicio(
         var resultado = await contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
             .Include(x => x.ConfiguracionEvaluacion).ThenInclude(x => x.Asignacion)
             .FirstOrDefaultAsync(x => x.Id == modelo.ResultadoId);
-        if (resultado == null)
+        if (resultado == null ||
+            !await PerteneceAlCicloSeleccionadoAsync(resultado.ConfiguracionEvaluacion.CicloEscolarId))
             return ResultadoOperacion.Error("No tiene autorización para solicitar esta corrección.");
 
         var actividad = await contexto.ActividadesEvaluables.AsNoTracking()
@@ -861,9 +1187,12 @@ public sealed class CalificacionServicio(
         try
         {
             var solicitud = await contexto.SolicitudesCorreccionesCalificaciones
+                .Include(x => x.ActividadEvaluable).ThenInclude(x => x.ConfiguracionEvaluacion)
                 .FirstOrDefaultAsync(x => x.Id == modelo.Id);
             if (solicitud == null || solicitud.Estado != EstadoSolicitudCorreccion.Pendiente ||
-                solicitud.VersionConcurrencia != modelo.VersionConcurrencia)
+                solicitud.VersionConcurrencia != modelo.VersionConcurrencia ||
+                !await PerteneceAlCicloSeleccionadoAsync(
+                    solicitud.ActividadEvaluable.ConfiguracionEvaluacion.CicloEscolarId))
             {
                 await transaccion.RollbackAsync();
                 return ResultadoOperacion.Error(
@@ -910,6 +1239,8 @@ public sealed class CalificacionServicio(
             .FirstOrDefaultAsync(x => x.Id == modelo.Id);
         if (solicitud == null || solicitud.Estado != EstadoSolicitudCorreccion.Aprobada ||
             solicitud.VersionConcurrencia != modelo.VersionConcurrencia ||
+            !await PerteneceAlCicloSeleccionadoAsync(
+                solicitud.ActividadEvaluable.ConfiguracionEvaluacion.CicloEscolarId) ||
             solicitud.ActividadEvaluable.ConfiguracionEvaluacionId !=
                 solicitud.ResultadoCalificacionPeriodo.ConfiguracionEvaluacionId ||
             !await EsDocenteResponsableVigenteOHistoricoAsync(
@@ -975,6 +1306,165 @@ public sealed class CalificacionServicio(
         }
     }
 
+    private async Task<Dictionary<string, string>> ValidarActualizacionConfiguracionAsync(
+        ConfiguracionEvaluacion configuracion,
+        ConfigurarEvaluacion modelo)
+    {
+        var errores = new Dictionary<string, string>();
+        var categorias = configuracion.Categorias.ToDictionary(x => x.Id);
+        var actividades = configuracion.Actividades.ToDictionary(x => x.Id);
+        var categoriasEnviadas = modelo.Categorias.Where(x => x.Id > 0).ToList();
+        var actividadesEnviadas = modelo.Categorias.SelectMany(x => x.Actividades)
+            .Where(x => x.Id > 0).ToList();
+
+        if (categoriasEnviadas.GroupBy(x => x.Id).Any(x => x.Count() > 1) ||
+            actividadesEnviadas.GroupBy(x => x.Id).Any(x => x.Count() > 1))
+        {
+            errores[nameof(modelo.Categorias)] =
+                "La solicitud contiene identificadores de categorías o actividades repetidos.";
+            return errores;
+        }
+
+        if (categoriasEnviadas.Any(x => !categorias.ContainsKey(x.Id)) ||
+            actividadesEnviadas.Any(x => !actividades.ContainsKey(x.Id)))
+        {
+            errores[nameof(modelo.Categorias)] =
+                "Las categorías o actividades indicadas no pertenecen a esta configuración.";
+            return errores;
+        }
+
+        foreach (var categoriaModelo in modelo.Categorias.Where(x => x.Id > 0))
+        {
+            foreach (var actividadModelo in categoriaModelo.Actividades.Where(x => x.Id > 0))
+            {
+                if (actividades[actividadModelo.Id].CategoriaEvaluacionId != categoriaModelo.Id)
+                {
+                    errores[nameof(modelo.Categorias)] =
+                        "No puede trasladar una actividad existente a otra categoría.";
+                    return errores;
+                }
+            }
+        }
+
+        var actividadesIds = actividades.Keys.ToList();
+        var tareasIds = actividades.Values.Where(x => x.TareaId.HasValue)
+            .Select(x => x.TareaId!.Value).Distinct().ToList();
+        var manualesConDependencia = await contexto.CalificacionesManuales.AsNoTracking()
+            .Where(x => actividadesIds.Contains(x.ActividadEvaluableId))
+            .Select(x => x.ActividadEvaluableId).Distinct().ToListAsync();
+        var historialesManuales = await contexto.HistorialesCalificaciones.AsNoTracking()
+            .Where(x => x.CalificacionManualId.HasValue &&
+                actividadesIds.Contains(x.CalificacionManual!.ActividadEvaluableId))
+            .Select(x => x.CalificacionManual!.ActividadEvaluableId).Distinct().ToListAsync();
+        var tareasConDependencia = tareasIds.Count == 0 ? [] : await contexto.Entregas.AsNoTracking()
+            .Where(x => x.Calificacion.HasValue && tareasIds.Contains(x.TareaId))
+            .Select(x => x.TareaId).Distinct().ToListAsync();
+        var tareasConHistorial = tareasIds.Count == 0 ? [] : await contexto.HistorialesCalificaciones.AsNoTracking()
+            .Where(x => x.EntregaId.HasValue && x.Entrega != null &&
+                tareasIds.Contains(x.Entrega.TareaId))
+            .Select(x => x.Entrega!.TareaId).Distinct().ToListAsync();
+
+        var actividadesProtegidas = actividades.Values.Where(x =>
+                manualesConDependencia.Contains(x.Id) ||
+                historialesManuales.Contains(x.Id) ||
+                (x.TareaId.HasValue && (tareasConDependencia.Contains(x.TareaId.Value) ||
+                    tareasConHistorial.Contains(x.TareaId.Value))))
+            .Select(x => x.Id).ToHashSet();
+        var hayDependencias = actividadesProtegidas.Count > 0;
+
+        if (hayDependencias && configuracion.MetodoCalculo != modelo.MetodoCalculo)
+            errores[nameof(modelo.MetodoCalculo)] =
+                "No puede cambiar el método de cálculo porque existen calificaciones o historiales vinculados.";
+
+        foreach (var categoria in categorias.Values)
+        {
+            var enviada = categoriasEnviadas.FirstOrDefault(x => x.Id == categoria.Id);
+            var categoriaProtegida = configuracion.Actividades.Any(x =>
+                x.CategoriaEvaluacionId == categoria.Id && actividadesProtegidas.Contains(x.Id));
+            if (enviada is null)
+            {
+                if (categoriaProtegida)
+                    errores[nameof(modelo.Categorias)] =
+                        "No puede eliminar una categoría que contiene calificaciones o historial académico.";
+                continue;
+            }
+            if (categoriaProtegida && (categoria.Porcentaje != enviada.Porcentaje ||
+                categoria.Tipo != enviada.Tipo))
+                errores[nameof(modelo.Categorias)] =
+                    "No puede cambiar la ponderación o el tipo de una categoría con calificaciones existentes.";
+        }
+
+        foreach (var actividad in actividades.Values)
+        {
+            var enviada = actividadesEnviadas.FirstOrDefault(x => x.Id == actividad.Id);
+            if (enviada is null)
+            {
+                if (actividadesProtegidas.Contains(actividad.Id))
+                    errores[nameof(modelo.Categorias)] =
+                        "No puede eliminar una actividad con calificaciones o historial académico.";
+                continue;
+            }
+            if (actividadesProtegidas.Contains(actividad.Id) &&
+                (actividad.PunteoMaximo != enviada.PunteoMaximo ||
+                 actividad.TareaId != enviada.TareaId))
+                errores[nameof(modelo.Categorias)] =
+                    "No puede cambiar el punteo ni la tarea vinculada de una actividad ya calificada.";
+        }
+
+        return errores;
+    }
+
+    private static bool ConfiguracionCambio(
+        ConfiguracionEvaluacion configuracion, ConfigurarEvaluacion modelo)
+    {
+        if (configuracion.MetodoCalculo != modelo.MetodoCalculo ||
+            configuracion.Categorias.Count != modelo.Categorias.Count ||
+            configuracion.Actividades.Count != modelo.Categorias.Sum(x => x.Actividades.Count))
+            return true;
+
+        var categorias = configuracion.Categorias.ToDictionary(x => x.Id);
+        var actividades = configuracion.Actividades.ToDictionary(x => x.Id);
+        foreach (var categoria in modelo.Categorias)
+        {
+            if (categoria.Id == 0 || !categorias.TryGetValue(categoria.Id, out var actual) ||
+                actual.Nombre != categoria.Nombre.Trim() || actual.Tipo != categoria.Tipo ||
+                actual.Porcentaje != categoria.Porcentaje)
+                return true;
+            foreach (var actividad in categoria.Actividades)
+            {
+                if (actividad.Id == 0 || !actividades.TryGetValue(actividad.Id, out var existente) ||
+                    existente.Nombre != actividad.Nombre.Trim() ||
+                    existente.PunteoMaximo != actividad.PunteoMaximo ||
+                    existente.TareaId != actividad.TareaId)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    private static string ResumenConfiguracion(ConfiguracionEvaluacion configuracion) =>
+        JsonSerializer.Serialize(new
+        {
+            configuracion.MetodoCalculo,
+            Categorias = configuracion.Categorias.OrderBy(x => x.Orden).Select(c => new
+            {
+                c.Id, c.Nombre, c.Tipo, c.Porcentaje,
+                Actividades = configuracion.Actividades.Where(a => a.CategoriaEvaluacionId == c.Id)
+                    .OrderBy(a => a.Orden).Select(a => new { a.Id, a.Nombre, a.PunteoMaximo, a.TareaId })
+            })
+        }, JsonOpciones);
+
+    private static string ResumenFormulario(ConfigurarEvaluacion modelo) =>
+        JsonSerializer.Serialize(new
+        {
+            modelo.MetodoCalculo,
+            Categorias = modelo.Categorias.Select(c => new
+            {
+                c.Id, c.Nombre, c.Tipo, c.Porcentaje,
+                Actividades = c.Actividades.Select(a => new { a.Id, a.Nombre, a.PunteoMaximo, a.TareaId })
+            })
+        }, JsonOpciones);
+
     private async Task<Dictionary<string, string>> ValidarConfiguracionAsync(ConfigurarEvaluacion modelo)
     {
         var errores = new Dictionary<string, string>();
@@ -1017,27 +1507,77 @@ public sealed class CalificacionServicio(
                 errores[nameof(modelo.Categorias)] =
                     "La metodología institucional requiere cinco aspectos actitudinales configurables.";
         }
-        var tareas = actividades.Where(x => x.TareaId.HasValue).Select(x => x.TareaId!.Value).ToList();
-        var tareasVinculables = await contexto.Tareas.AsNoTracking()
-            .Where(x => tareas.Contains(x.Id) && x.AsignacionId == modelo.AsignacionId)
-            .Select(x => new { x.Id, x.PunteoMaximo })
-            .ToDictionaryAsync(x => x.Id);
-        if (tareas.Count != tareas.Distinct().Count() ||
-            tareasVinculables.Count != tareas.Distinct().Count())
-            errores[nameof(modelo.Categorias)] = "Las tareas vinculadas deben pertenecer a la asignación y no repetirse.";
-        else if (actividades.Any(x => x.TareaId.HasValue &&
-            tareasVinculables[x.TareaId.Value].PunteoMaximo != x.PunteoMaximo))
+
+        // VALIDAR TAREAS VINCULADAS AL PERÍODO ACADÉMICO
+        var tareas = actividades
+            .Where(x => x.TareaId.HasValue)
+            .Select(x => x.TareaId!.Value)
+            .ToList();
+
+        if (modelo.Id == 0 && tareas.Count > 0)
+        {
             errores[nameof(modelo.Categorias)] =
-                "El punteo máximo de una actividad vinculada debe coincidir con el de su tarea.";
-        if (modelo.GuardarComoPlantilla && string.IsNullOrWhiteSpace(modelo.NombrePlantilla))
-            errores[nameof(modelo.NombrePlantilla)] = "Indique el nombre de la plantilla.";
+                "Las nuevas configuraciones oficiales sólo admiten actividades manuales.";
+        }
+        else if (tareas.Count != tareas.Distinct().Count())
+        {
+            errores[nameof(modelo.Categorias)] =
+                "Una tarea no puede vincularse más de una vez.";
+        }
+        else if (tareas.Count > 0)
+        {
+            var tareasVinculables = await contexto.Tareas
+                .AsNoTracking()
+                .Where(x =>
+                    tareas.Contains(x.Id) &&
+                    x.AsignacionId == modelo.AsignacionId &&
+                    x.UnidadAsignacionId.HasValue &&
+                    x.UnidadAsignacion != null &&
+                    x.UnidadAsignacion.AsignacionId == modelo.AsignacionId &&
+                    x.UnidadAsignacion.PeriodoId == modelo.PeriodoId &&
+                    x.UnidadAsignacion.Periodo != null &&
+                    x.UnidadAsignacion.Periodo.CicloEscolarId == cicloId)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.PunteoMaximo
+                })
+                .ToDictionaryAsync(x => x.Id);
+
+            if (tareasVinculables.Count != tareas.Count)
+            {
+                errores[nameof(modelo.Categorias)] =
+                    "Las tareas vinculadas deben pertenecer a la asignación y al período académico seleccionado.";
+            }
+            else if (actividades.Any(x =>
+                x.TareaId.HasValue &&
+                tareasVinculables[x.TareaId.Value].PunteoMaximo != x.PunteoMaximo))
+            {
+                errores[nameof(modelo.Categorias)] =
+                    "El punteo máximo de una actividad vinculada debe coincidir con el de su tarea.";
+            }
+        }
+
+        if (modelo.GuardarComoPlantilla &&
+            string.IsNullOrWhiteSpace(modelo.NombrePlantilla))
+        {
+            errores[nameof(modelo.NombrePlantilla)] =
+                "Indique el nombre de la plantilla.";
+        }
+
         return errores;
     }
+
 
     private async Task<List<OpcionSeleccion>> ObtenerAsignacionesConfigurablesAsync(int? docenteId)
     {
         var consulta = contexto.Asignaciones.AsNoTracking().Where(x =>
             x.Estado == EstadoRegistro.Activo && x.Seccion.CicloEscolar.Activo);
+        var cicloSeleccionadoId = await ObtenerCicloSeleccionadoIdAsync();
+        if (contextoCiclo is not null)
+            consulta = cicloSeleccionadoId.HasValue
+                ? consulta.Where(x => x.Seccion.CicloEscolarId == cicloSeleccionadoId.Value)
+                : consulta.Where(_ => false);
         if (docenteId.HasValue)
         {
             var ahora = DateTime.UtcNow;
@@ -1078,6 +1618,28 @@ public sealed class CalificacionServicio(
             asignacionId,
             perfil.DocenteId.Value,
             OperacionDelegacionAcademica.GestionarEvaluaciones);
+    }
+
+    private async Task<int?> ObtenerCicloSeleccionadoIdAsync() =>
+        contextoCiclo is null ? null : (await contextoCiclo.ObtenerAsync()).CicloEscolarId;
+
+    private async Task<bool> PerteneceAlCicloSeleccionadoAsync(int cicloEscolarId) =>
+        contextoCiclo is null || (await contextoCiclo.ObtenerAsync()).CicloEscolarId == cicloEscolarId;
+
+    private async Task<bool> AsignacionPerteneceAlCicloSeleccionadoAsync(int asignacionId)
+    {
+        if (contextoCiclo is null) return true;
+        var cicloId = await ObtenerCicloSeleccionadoIdAsync();
+        return cicloId.HasValue && await contexto.Asignaciones.AsNoTracking()
+            .AnyAsync(x => x.Id == asignacionId && x.Seccion.CicloEscolarId == cicloId.Value);
+    }
+
+    private async Task<bool> PeriodoPerteneceAlCicloSeleccionadoAsync(int periodoId)
+    {
+        if (contextoCiclo is null) return true;
+        var cicloId = await ObtenerCicloSeleccionadoIdAsync();
+        return cicloId.HasValue && await contexto.Periodos.AsNoTracking()
+            .AnyAsync(x => x.Id == periodoId && x.CicloEscolarId == cicloId.Value);
     }
 
     private async Task<bool> PuedeConsultarAsync(ConfiguracionEvaluacion configuracion)
@@ -1124,10 +1686,191 @@ public sealed class CalificacionServicio(
             OperacionDelegacionAcademica.SolicitarCorrecciones);
     }
 
+    private async Task<string?> ObtenerBloqueoCierreAsync(int configuracionId)
+    {
+        var configuracion = await contexto.ConfiguracionesEvaluacion.AsNoTracking()
+            .Where(x => x.Id == configuracionId)
+            .Select(x => new
+            {
+                x.AsignacionId,
+                x.SeccionId,
+                x.CicloEscolarId,
+                x.PeriodoId,
+                Inicio = x.Periodo.FechaInicio,
+                Fin = x.Periodo.FechaFin,
+                Periodo = x.Periodo.Nombre
+            })
+            .FirstOrDefaultAsync();
+        if (configuracion == null)
+            return "No se encontró la configuración de evaluación.";
+
+        // Los períodos son fechas civiles de Guatemala. Se convierten sus
+        // medianoches locales a UTC antes de compararlas con timestamptz.
+        // Se conserva la regla vigente: el primer día no bloquea el cierre;
+        // desde el día siguiente el límite es inclusivo y el fin exclusivo.
+        var inicioTrasladosDurantePeriodo = HoraGuatemala.ParaGuardar(
+            configuracion.Inicio.AddDays(1).ToDateTime(TimeOnly.MinValue));
+        var finExclusivo = HoraGuatemala.ParaGuardar(
+            configuracion.Fin.AddDays(1).ToDateTime(TimeOnly.MinValue));
+        var trasladoPendiente = await contexto.HistorialTraslados.AsNoTracking().AnyAsync(x =>
+            x.CicloEscolarId == configuracion.CicloEscolarId &&
+            (x.SeccionOrigenId == configuracion.SeccionId ||
+             x.SeccionDestinoId == configuracion.SeccionId) &&
+            x.FechaTraslado >= inicioTrasladosDurantePeriodo &&
+            x.FechaTraslado < finExclusivo);
+        // Los traslados ya no requieren resolución para cerrar el resultado
+        // manual vigente; la instantánea de cierre conserva el historial.
+        if (false && trasladoPendiente)
+        {
+            return $"Existe un traslado durante {configuracion.Periodo} pendiente de resolución académica.";
+        }
+
+        var tareas = await contexto.Tareas.AsNoTracking()
+            .Where(x => x.AsignacionId == configuracion.AsignacionId &&
+                x.UnidadAsignacionId.HasValue &&
+                x.UnidadAsignacion != null &&
+                x.UnidadAsignacion.AsignacionId == configuracion.AsignacionId &&
+                x.UnidadAsignacion.PeriodoId == configuracion.PeriodoId &&
+                x.UnidadAsignacion.Periodo != null &&
+                x.UnidadAsignacion.Periodo.CicloEscolarId == configuracion.CicloEscolarId)
+            .Select(x => new { x.Id, x.Titulo, x.Estado })
+            .ToListAsync();
+
+        var tareaSinCerrar = tareas.FirstOrDefault(x => x.Estado != EstadoTarea.Cerrada);
+        if (tareaSinCerrar != null)
+        {
+            var estado = tareaSinCerrar.Estado switch
+            {
+                EstadoTarea.Publicada => "publicada",
+                EstadoTarea.Borrador => "en borrador",
+                EstadoTarea.Archivada => "archivada sin cierre válido",
+                _ => "sin cerrar"
+            };
+            return $"La tarea '{tareaSinCerrar.Titulo}' del {configuracion.Periodo} está {estado}.";
+        }
+
+        var tareasIds = tareas.Select(x => x.Id).ToList();
+        if (tareasIds.Count == 0) return null;
+
+        var entregaRealizadaSinCalificar = await contexto.Entregas.AsNoTracking().AnyAsync(x =>
+            tareasIds.Contains(x.TareaId) && x.FechaEntrega.HasValue && !x.Calificacion.HasValue);
+        if (entregaRealizadaSinCalificar)
+            return $"Hay entregas del {configuracion.Periodo} pendientes de calificación.";
+
+        var actividadSinResolver = await contexto.Entregas.AsNoTracking().AnyAsync(x =>
+            tareasIds.Contains(x.TareaId) && !x.Calificacion.HasValue);
+        if (actividadSinResolver)
+        {
+            return $"Existen tareas no entregadas del {configuracion.Periodo} sin resolución administrativa.";
+        }
+
+        var intentoEnCurso = await contexto.IntentosCuestionarios.AsNoTracking().AnyAsync(x =>
+            tareasIds.Contains(x.Cuestionario.TareaId) &&
+            x.Estado == EstadoIntentoCuestionario.EnCurso);
+        if (intentoEnCurso)
+            return $"Hay cuestionarios del {configuracion.Periodo} con intentos en curso.";
+
+        return null;
+    }
+
     private Task<bool> EstaCerradaAsync(int configuracionId) =>
         contexto.CierresCalificaciones.AsNoTracking().AnyAsync(x =>
             x.ConfiguracionEvaluacionId == configuracionId &&
             x.Estado == EstadoCierreCalificaciones.Cerrado);
+
+    private static void AplicarResultadoOficial(
+        FilaAlumnoCalificacion fila,
+        ResultadoOficialTraslado? resultado,
+        int asignacionActualId)
+    {
+        resultado ??= new ResultadoOficialTraslado(EstadoResultadoOficialTraslado.Ordinario);
+        fila.EstadoResultadoOficial = resultado.Estado;
+        fila.ResolucionTrasladoId = resultado.ResolucionId;
+        fila.AsignacionFuenteOficialId = resultado.AsignacionFuenteId;
+        fila.NotaOficialConsolidada = resultado.NotaConsolidada;
+        fila.EscalaMaximaConsolidada = resultado.EscalaMaximaConsolidada;
+        fila.EsFuenteResultadoOficial = resultado.Estado is EstadoResultadoOficialTraslado.Ordinario ||
+            resultado.Estado == EstadoResultadoOficialTraslado.ConsolidacionOficial ||
+            (resultado.Estado == EstadoResultadoOficialTraslado.FuenteOficial &&
+             resultado.AsignacionFuenteId == asignacionActualId);
+    }
+
+    private async Task<List<int>> ObtenerIdsInscripcionesDelPeriodoAsync(
+        ConfiguracionEvaluacion configuracion,
+        bool soloActivas)
+    {
+        var consultaInscripciones = contexto.Inscripciones.AsNoTracking()
+            .Where(x => x.CicloEscolarId == configuracion.CicloEscolarId);
+        if (soloActivas)
+            consultaInscripciones = consultaInscripciones.Where(x =>
+                x.Estado == EstadoInscripcion.Activa);
+
+        var inscripciones = await consultaInscripciones.ToListAsync();
+        if (inscripciones.Count == 0) return [];
+
+        var inscripcionesIds = inscripciones.Select(x => x.Id).ToList();
+        var traslados = await contexto.HistorialTraslados.AsNoTracking()
+            .Where(x => x.CicloEscolarId == configuracion.CicloEscolarId &&
+                inscripcionesIds.Contains(x.InscripcionId))
+            .OrderBy(x => x.FechaTraslado)
+            .ThenBy(x => x.Id)
+            .ToListAsync();
+
+        var trasladosPorInscripcion = traslados
+            .GroupBy(x => x.InscripcionId)
+            .ToDictionary(x => x.Key, x => x.ToList());
+
+        return inscripciones
+            .Where(inscripcion => PerteneceAlPeriodo(
+                inscripcion,
+                trasladosPorInscripcion.GetValueOrDefault(inscripcion.Id) ?? [],
+                configuracion))
+            .Select(x => x.Id)
+            .ToList();
+    }
+
+    private static bool PerteneceAlPeriodo(
+        Inscripcion inscripcion,
+        IReadOnlyList<HistorialTraslado> traslados,
+        ConfiguracionEvaluacion configuracion)
+    {
+        if (traslados.Count == 0)
+            return inscripcion.SeccionId == configuracion.SeccionId;
+
+        // El primer origen es la sección inicial; cada movimiento debe continuar
+        // exactamente desde el destino anterior para que el historial sea utilizable.
+        var seccionEsperada = traslados[0].SeccionOrigenId;
+        foreach (var traslado in traslados)
+        {
+            if (traslado.SeccionOrigenId != seccionEsperada ||
+                DateOnly.FromDateTime(traslado.FechaTraslado) < inscripcion.Fecha)
+                return false;
+            seccionEsperada = traslado.SeccionDestinoId;
+        }
+        if (seccionEsperada != inscripcion.SeccionId)
+            return false;
+
+        var seccionAlInicioDelPeriodo = traslados[0].SeccionOrigenId;
+        foreach (var traslado in traslados)
+        {
+            var fechaTraslado = DateOnly.FromDateTime(traslado.FechaTraslado);
+            if (fechaTraslado <= configuracion.Periodo.FechaInicio)
+            {
+                seccionAlInicioDelPeriodo = traslado.SeccionDestinoId;
+                continue;
+            }
+
+            // El modelo no expresa a cuál docente corresponde un traslado ocurrido
+            // durante el bimestre. Se omite de ambos libros abiertos hasta que exista
+            // una regla académica explícita; los libros cerrados usan su resultado.
+            if (fechaTraslado <= configuracion.Periodo.FechaFin)
+                return false;
+
+            break;
+        }
+
+        return seccionAlInicioDelPeriodo == configuracion.SeccionId;
+    }
 
     private static void AplicarCalculo(
         ConfiguracionEvaluacion configuracion,

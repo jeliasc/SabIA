@@ -3,6 +3,7 @@ using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.GestionAsignaciones;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.ViewModels.Comunes;
 using Proyecto_Final.ViewModels.Cuestionarios;
@@ -12,22 +13,31 @@ namespace Proyecto_Final.Servicios.GestionCuestionarios;
 public sealed class CuestionarioServicio(
     Contexto contexto,
     IAccesoAcademicoServicio acceso,
-    IDelegacionAcademicaServicio? delegaciones = null) : ICuestionarioServicio
+    IDelegacionAcademicaServicio? delegaciones = null,
+    IContextoCicloEscolar? contextoCiclo = null) : ICuestionarioServicio
 {
     // Margen para la latencia de red y el envío automático al vencer el tiempo.
     public const int ToleranciaSegundos = 10;
 
     private static readonly TimeSpan Tolerancia = TimeSpan.FromSeconds(ToleranciaSegundos);
 
-    public async Task<List<CuestionarioLista>> ObtenerTodosAsync() =>
-        await ObtenerListadoAsync(historial: false);
+    public async Task<List<CuestionarioLista>> ObtenerTodosAsync(int? asignacionId = null) =>
+        await ObtenerListadoAsync(historial: false, asignacionId);
 
-    public async Task<List<CuestionarioLista>> ObtenerHistorialAsync() =>
-        await ObtenerListadoAsync(historial: true);
+    public async Task<List<CuestionarioLista>> ObtenerHistorialAsync(int? asignacionId = null) =>
+        await ObtenerListadoAsync(historial: true, asignacionId);
 
-    private async Task<List<CuestionarioLista>> ObtenerListadoAsync(bool historial)
+    private async Task<List<CuestionarioLista>> ObtenerListadoAsync(bool historial, int? asignacionId = null)
     {
         var consulta = contexto.Cuestionarios.AsNoTracking().AsQueryable();
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        var consultaHistorial = historial || ciclo?.EsHistorico == true;
+        if (contextoCiclo is not null)
+            consulta = ciclo!.CicloEscolarId.HasValue
+                ? consulta.Where(x => x.Tarea.Asignacion.Seccion.CicloEscolarId == ciclo.CicloEscolarId.Value)
+                : consulta.Where(_ => false);
+        if (asignacionId.HasValue)
+            consulta = consulta.Where(x => x.Tarea.AsignacionId == asignacionId.Value);
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var docenteId = perfil.DocenteId;
         var alumnoId = perfil.AlumnoId;
@@ -36,7 +46,7 @@ public sealed class CuestionarioServicio(
         if (docenteId.HasValue)
         {
             consulta = consulta.Where(x =>
-                (historial
+                (consultaHistorial
                     ? (x.Tarea.Asignacion.DocenteId == docenteId.Value ||
                        contexto.DelegacionesAcademicas.Any(d =>
                           d.AsignacionId == x.Tarea.AsignacionId &&
@@ -62,7 +72,7 @@ public sealed class CuestionarioServicio(
         }
         else if (alumnoId.HasValue)
         {
-            consulta = historial
+            consulta = consultaHistorial
                 ? consulta.Where(x =>
                     x.Tarea.Estado != EstadoTarea.Borrador &&
                     contexto.Inscripciones.Any(i =>
@@ -97,7 +107,7 @@ public sealed class CuestionarioServicio(
         }
         else if (acceso.EsOperadorInstitucional)
         {
-            consulta = consulta.Where(x => historial
+            consulta = consulta.Where(x => consultaHistorial
                 ? x.Tarea.Estado == EstadoTarea.Cerrada ||
                   x.Tarea.Asignacion.Estado != EstadoRegistro.Activo ||
                   !x.Tarea.Asignacion.Seccion.CicloEscolar.Activo
@@ -498,13 +508,7 @@ public sealed class CuestionarioServicio(
 
         inicio.IntentosUsados = terminados.Count;
         inicio.UltimoIntentoId = terminados.Count > 0 ? terminados[0] : null;
-        inicio.OportunidadAutorizada = await contexto.ReaperturasEntregas
-            .AsNoTracking()
-            .AnyAsync(x => x.Entrega.TareaId == inicio.TareaId &&
-                x.Entrega.AlumnoId == alumnoId.Value &&
-                x.Entrega.InscripcionId == inscripcionId.Value &&
-                x.AutorizaOportunidadAdicional && x.FechaLimite >= ahora &&
-                !contexto.IntentosCuestionarios.Any(i => i.ReaperturaEntregaId == x.Id));
+        inicio.OportunidadAutorizada = false;
 
         // Fuera del plazo y sin entrega tardía solo se puede consultar el resultado.
         inicio.PlazoVencido = false;
@@ -578,19 +582,7 @@ public sealed class CuestionarioServicio(
         var terminados = intentosPrevios.Count(x =>
             x.Estado is EstadoIntentoCuestionario.Finalizado or EstadoIntentoCuestionario.Expirado);
 
-        var autorizacion = await contexto.ReaperturasEntregas
-            .AsNoTracking()
-            .Where(x => x.Entrega.TareaId == cuestionario.TareaId &&
-                x.Entrega.AlumnoId == alumnoId.Value &&
-                x.Entrega.InscripcionId == inscripcionId.Value &&
-                x.AutorizaOportunidadAdicional && x.FechaLimite >= ahora &&
-                !contexto.IntentosCuestionarios.Any(i => i.ReaperturaEntregaId == x.Id))
-            .OrderBy(x => x.Id)
-            .Select(x => (int?)x.Id)
-            .FirstOrDefaultAsync();
-
-        if (cuestionario.MaximoIntentos > 0 && terminados >= cuestionario.MaximoIntentos &&
-            !autorizacion.HasValue)
+        if (cuestionario.MaximoIntentos > 0 && terminados >= cuestionario.MaximoIntentos)
             return ResultadoOperacion<int>.Error("Ya alcanzó el máximo de intentos.");
 
         var orden = cuestionario.Preguntas
@@ -614,7 +606,6 @@ public sealed class CuestionarioServicio(
             Estado = EstadoIntentoCuestionario.EnCurso,
             FechaInicio = ahora,
             FechaLimite = CalcularFechaLimite(cuestionario, ahora, disponibilidad.FechaLimite),
-            ReaperturaEntregaId = autorizacion,
             OrdenPreguntas = string.Join(',', orden),
             PreguntaActual = 0
         };
@@ -1880,64 +1871,21 @@ public sealed class CuestionarioServicio(
             ? intento.Cuestionario.Preguntas.FirstOrDefault(x => x.Id == preguntaId)
             : null;
 
-    // La reapertura general no cambia por sí sola el acceso de todos: se
-    // consulta el alumno alcanzado y el plazo individual que quedó auditado.
     private async Task<DisponibilidadAlumno> ObtenerDisponibilidadAlumnoAsync(
         int tareaId, int alumnoId, int inscripcionId, DateTime ahora)
     {
-        var entrega = await contexto.Entregas.AsNoTracking()
-            .Where(x => x.TareaId == tareaId && x.AlumnoId == alumnoId &&
-                x.InscripcionId == inscripcionId)
-            .OrderByDescending(x => x.NumeroEnvio)
-            .Select(x => new
-            {
-                x.FechaLimiteIndividual,
-                TieneReaperturaVigente = x.Reaperturas.Any(r => r.FechaLimite >= ahora)
-            })
-            .FirstOrDefaultAsync();
-
-        // El plazo individual es la autorización efectiva de la entrega más
-        // reciente. Cuando vence no se debe volver al plazo general, pues eso
-        // reviviría una autorización individual ya agotada.
-        if (entrega?.FechaLimiteIndividual is DateTime limiteIndividual)
-            return new DisponibilidadAlumno(
-                limiteIndividual >= ahora && entrega.TieneReaperturaVigente,
-                limiteIndividual);
-
-        var general = await contexto.ReaperturasTareas.AsNoTracking()
-            .Where(x => x.TareaId == tareaId)
-            .OrderByDescending(x => x.FechaReapertura)
-            .Select(x => new { x.Id, x.FechaLimite })
-            .FirstOrDefaultAsync();
-
-        if (general is not null)
-        {
-            if (general.FechaLimite < ahora)
-                return new DisponibilidadAlumno(false, general.FechaLimite);
-
-            var beneficiado = await contexto.ReaperturasTareasAlumnos.AsNoTracking()
-                .AnyAsync(x => x.ReaperturaTareaId == general.Id && x.AlumnoId == alumnoId);
-            if (!beneficiado)
-                return new DisponibilidadAlumno(false, general.FechaLimite);
-
-            return new DisponibilidadAlumno(true, general.FechaLimite);
-        }
-
-        var tarea = await contexto.Tareas.AsNoTracking().Where(x => x.Id == tareaId)
+        var tareaActual = await contexto.Tareas.AsNoTracking().Where(x => x.Id == tareaId)
             .Select(x => new { x.Estado, x.FechaDisponibilidad, x.FechaLimite, x.PermitirEntregaTardia })
             .FirstOrDefaultAsync();
-        if (tarea is null || tarea.Estado == EstadoTarea.Borrador)
-            return new DisponibilidadAlumno(false, tarea?.FechaLimite);
+        if (tareaActual is null || tareaActual.Estado != EstadoTarea.Publicada ||
+            (tareaActual.FechaDisponibilidad.HasValue && tareaActual.FechaDisponibilidad > ahora) ||
+            (tareaActual.FechaLimite.HasValue && tareaActual.FechaLimite < ahora &&
+             !tareaActual.PermitirEntregaTardia))
+            return new DisponibilidadAlumno(false, tareaActual?.FechaLimite);
 
-        if (tarea.Estado == EstadoTarea.Cerrada)
-            return new DisponibilidadAlumno(tarea.PermitirEntregaTardia, tarea.FechaLimite);
-
-        if (tarea.Estado != EstadoTarea.Publicada ||
-            (tarea.FechaDisponibilidad.HasValue && tarea.FechaDisponibilidad > ahora) ||
-            (tarea.FechaLimite.HasValue && tarea.FechaLimite < ahora && !tarea.PermitirEntregaTardia))
-            return new DisponibilidadAlumno(false, tarea?.FechaLimite);
-
-        return new DisponibilidadAlumno(true, tarea.FechaLimite);
+        // Una reapertura general publica nuevamente la tarea, pero no crea ni
+        // consume autorizaciones individuales ni oportunidades extraordinarias.
+        return new DisponibilidadAlumno(true, tareaActual.FechaLimite);
     }
 
     private sealed record DisponibilidadAlumno(bool Disponible, DateTime? FechaLimite);

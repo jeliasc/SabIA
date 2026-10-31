@@ -2,14 +2,24 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.ViewModels.Secciones;
 
 namespace Proyecto_Final.Servicios.GestionSecciones;
 
-public sealed class SeccionServicio(Contexto contexto) : ISeccionServicio
+public sealed class SeccionServicio(
+    Contexto contexto,
+    IContextoCicloEscolar? contextoCiclo = null) : ISeccionServicio
 {
-    public Task<List<SeccionLista>> ObtenerTodosAsync() =>
-        contexto.Secciones.AsNoTracking()
+    public async Task<List<SeccionLista>> ObtenerTodosAsync()
+    {
+        var ciclo = await ContextoSeleccionadoAsync();
+        var consulta = contexto.Secciones.AsNoTracking().AsQueryable();
+        if (contextoCiclo is not null)
+            consulta = ciclo.CicloEscolarId.HasValue
+                ? consulta.Where(x => x.CicloEscolarId == ciclo.CicloEscolarId.Value)
+                : consulta.Where(_ => false);
+        return await consulta
             .OrderByDescending(x => x.CicloEscolar.Anio).ThenBy(x => x.Grado.Orden).ThenBy(x => x.Nombre)
             .Select(x => new SeccionLista
             {
@@ -21,6 +31,10 @@ public sealed class SeccionServicio(Contexto contexto) : ISeccionServicio
                 Alumnos = contexto.Inscripciones.Count(i => i.SeccionId == x.Id && i.Estado == EstadoInscripcion.Activa),
                 Asignaciones = contexto.Asignaciones.Count(a => a.SeccionId == x.Id && a.Estado == EstadoRegistro.Activo)
             }).ToListAsync();
+    }
+
+    private async Task<ContextoCicloEscolar> ContextoSeleccionadoAsync() =>
+        contextoCiclo is null ? new ContextoCicloEscolar() : await contextoCiclo.ObtenerAsync();
 
     public async Task<ResultadoOperacion> CrearAsync(CrearSeccion modelo)
     {

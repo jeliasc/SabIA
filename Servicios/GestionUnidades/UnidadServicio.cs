@@ -5,6 +5,7 @@ using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.SeguridadAcademica;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.ViewModels.Comunes;
 using Proyecto_Final.ViewModels.Unidades;
 
@@ -12,15 +13,24 @@ namespace Proyecto_Final.Servicios.GestionUnidades;
 
 public sealed class UnidadServicio(
     Contexto c,
-    IAccesoAcademicoServicio acceso) : IUnidadServicio
+    IAccesoAcademicoServicio acceso,
+    IContextoCicloEscolar? contextoCiclo = null) : IUnidadServicio
 {
     private const int MaximoIntentosOrden = 3;
 
-    private async Task<IQueryable<UnidadAsignacion>> Q(bool historial = false)
+    private async Task<IQueryable<UnidadAsignacion>> Q(bool historial = false, int? asignacionId = null)
     {
         var q = c.UnidadesAsignaciones
             .AsNoTracking()
             .AsQueryable();
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        var cicloHistoricoSeleccionado = ciclo?.EsHistorico == true;
+        if (contextoCiclo is not null)
+            q = ciclo?.CicloEscolarId is int cicloId
+                ? q.Where(x => x.Asignacion.Seccion.CicloEscolarId == cicloId)
+                : q.Where(_ => false);
+        if (asignacionId.HasValue)
+            q = q.Where(x => x.AsignacionId == asignacionId.Value);
 
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var d = perfil.DocenteId;
@@ -33,7 +43,7 @@ public sealed class UnidadServicio(
                     ? x.Asignacion.Estado != EstadoRegistro.Activo ||
                       !x.Asignacion.Seccion.CicloEscolar.Activo
                     : x.Asignacion.Estado == EstadoRegistro.Activo &&
-                      x.Asignacion.Seccion.CicloEscolar.Activo)
+                      (cicloHistoricoSeleccionado || x.Asignacion.Seccion.CicloEscolar.Activo))
             );
         }
         else if (perfil.AlumnoId.HasValue)
@@ -56,7 +66,7 @@ public sealed class UnidadServicio(
                           i.Estado == EstadoInscripcion.Activa)))
                 : q.Where(x =>
                     x.Asignacion.Estado == EstadoRegistro.Activo &&
-                    x.Asignacion.Seccion.CicloEscolar.Activo &&
+                    (cicloHistoricoSeleccionado || x.Asignacion.Seccion.CicloEscolar.Activo) &&
                     x.Estado == EstadoPublicacionUnidad.Publicada &&
                     (!x.FechaDisponibilidad.HasValue || x.FechaDisponibilidad <= ahora) &&
                     (!x.FechaCierreAcceso.HasValue || x.FechaCierreAcceso >= ahora) &&
@@ -65,7 +75,7 @@ public sealed class UnidadServicio(
                         i.SeccionId == x.Asignacion.SeccionId &&
                         i.CicloEscolarId == x.Asignacion.Seccion.CicloEscolarId &&
                         i.Estado == EstadoInscripcion.Activa &&
-                        i.Seccion.CicloEscolar.Activo));
+                        (cicloHistoricoSeleccionado || i.Seccion.CicloEscolar.Activo)));
         }
         else if (acceso.EsOperadorInstitucional)
         {
@@ -73,7 +83,7 @@ public sealed class UnidadServicio(
                 ? x.Asignacion.Estado != EstadoRegistro.Activo ||
                   !x.Asignacion.Seccion.CicloEscolar.Activo
                 : x.Asignacion.Estado == EstadoRegistro.Activo &&
-                  x.Asignacion.Seccion.CicloEscolar.Activo);
+                  (cicloHistoricoSeleccionado || x.Asignacion.Seccion.CicloEscolar.Activo));
         }
         else
         {
@@ -83,8 +93,8 @@ public sealed class UnidadServicio(
         return q;
     }
 
-    public async Task<List<UnidadLista>> ObtenerTodosAsync() =>
-        await (await Q())
+    public async Task<List<UnidadLista>> ObtenerTodosAsync(int? asignacionId = null) =>
+        await (await Q(asignacionId: asignacionId))
             .OrderByDescending(x => x.Asignacion.Seccion.CicloEscolar.Anio)
             .ThenBy(x => x.Asignacion.Curso.Nombre)
             .ThenBy(x => x.Asignacion.Seccion.Grado.Nombre)
@@ -109,8 +119,8 @@ public sealed class UnidadServicio(
             })
             .ToListAsync();
 
-    public async Task<List<UnidadLista>> ObtenerHistorialAsync() =>
-        await (await Q(historial: true))
+    public async Task<List<UnidadLista>> ObtenerHistorialAsync(int? asignacionId = null) =>
+        await (await Q(historial: true, asignacionId: asignacionId))
             .OrderByDescending(x => x.Asignacion.Seccion.CicloEscolar.Anio)
             .ThenBy(x => x.Asignacion.Curso.Nombre)
             .ThenBy(x => x.Asignacion.Seccion.Grado.Nombre)
@@ -144,11 +154,15 @@ public sealed class UnidadServicio(
             return;
         }
 
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        var cicloHistoricoSeleccionado = ciclo?.EsHistorico == true;
+        var cicloSeleccionadoId = ciclo?.CicloEscolarId;
         var aq = c.Asignaciones
             .AsNoTracking()
             .Where(x =>
                 x.Estado == EstadoRegistro.Activo &&
-                x.Seccion.CicloEscolar.Activo);
+                (cicloHistoricoSeleccionado || x.Seccion.CicloEscolar.Activo) &&
+                (contextoCiclo == null || cicloSeleccionadoId.HasValue && x.Seccion.CicloEscolarId == cicloSeleccionadoId.Value));
 
         if (d.HasValue)
         {
@@ -176,7 +190,8 @@ public sealed class UnidadServicio(
 
         var periodos = c.Periodos
             .AsNoTracking()
-            .Where(x => x.CicloEscolar.Activo);
+            .Where(x => (cicloHistoricoSeleccionado || x.CicloEscolar.Activo) &&
+                (contextoCiclo == null || cicloSeleccionadoId.HasValue && x.CicloEscolarId == cicloSeleccionadoId.Value));
 
         if (d.HasValue)
         {
@@ -308,7 +323,7 @@ public sealed class UnidadServicio(
             .Where(x => x.Id == id)
             .Select(x => new EditarUnidad
             {
-                Id = x.UnidadId,
+                UnidadId = x.UnidadId,
                 UnidadAsignacionId = x.Id,
                 Titulo = x.Unidad.Titulo,
                 Descripcion = x.Unidad.Descripcion,
@@ -344,7 +359,7 @@ public sealed class UnidadServicio(
             .AsNoTracking()
             .FirstOrDefaultAsync(x =>
                 x.Id == m.UnidadAsignacionId &&
-                x.UnidadId == m.Id
+                x.UnidadId == m.UnidadId
             );
 
         if (ua == null)
@@ -391,7 +406,7 @@ public sealed class UnidadServicio(
                     .Include(x => x.Unidad)
                     .FirstOrDefaultAsync(x =>
                         x.Id == m.UnidadAsignacionId &&
-                        x.UnidadId == m.Id);
+                        x.UnidadId == m.UnidadId);
 
                 if (unidadAsignacion is null)
                 {

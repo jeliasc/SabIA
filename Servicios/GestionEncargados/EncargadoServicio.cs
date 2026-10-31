@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.ViewModels.Encargados;
 
@@ -9,17 +10,27 @@ namespace Proyecto_Final.Servicios.GestionEncargados;
 
 public sealed class EncargadoServicio(
     Contexto contexto,
-    IAccesoAcademicoServicio acceso) : IEncargadoServicio
+    IAccesoAcademicoServicio acceso,
+    IContextoCicloEscolar? contextoCiclo = null) : IEncargadoServicio
 {
-    public Task<List<EncargadoLista>> ObtenerTodosAsync()
+    public async Task<List<EncargadoLista>> ObtenerTodosAsync()
     {
         if (!acceso.EsOperadorInstitucional)
         {
-            return Task.FromResult(new List<EncargadoLista>());
+            return [];
         }
 
-        return
-        contexto.Encargados.AsNoTracking()
+        var cicloId = contextoCiclo is null ? null : (await contextoCiclo.ObtenerAsync()).CicloEscolarId;
+        var consulta = contexto.Encargados.AsNoTracking().AsQueryable();
+        if (contextoCiclo is not null)
+            consulta = cicloId.HasValue
+                ? consulta.Where(x => x.AlumnoEncargados.Any(relacion =>
+                    contexto.Inscripciones.Any(inscripcion =>
+                        inscripcion.AlumnoId == relacion.AlumnoId &&
+                        inscripcion.CicloEscolarId == cicloId.Value)))
+                : consulta.Where(_ => false);
+
+        return await consulta
             .OrderBy(x => x.Nombres).ThenBy(x => x.Apellidos)
             .Select(x => new EncargadoLista
             {
@@ -28,7 +39,11 @@ public sealed class EncargadoServicio(
                 Dpi = x.Dpi,
                 Telefono = x.Telefono,
                 Correo = x.Correo,
-                Alumnos = x.AlumnoEncargados.Count
+                Alumnos = cicloId.HasValue
+                    ? x.AlumnoEncargados.Count(relacion => contexto.Inscripciones.Any(inscripcion =>
+                        inscripcion.AlumnoId == relacion.AlumnoId &&
+                        inscripcion.CicloEscolarId == cicloId.Value))
+                    : x.AlumnoEncargados.Count
             }).ToListAsync();
     }
 

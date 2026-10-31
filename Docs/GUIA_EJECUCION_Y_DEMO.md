@@ -8,6 +8,10 @@
 4. Compilar antes de iniciar: `dotnet build --no-restore -v:minimal`.
 5. Las pruebas PostgreSQL ya fueron validadas con PostgreSQL 18.6 en un clúster temporal. Para repetirlas, crear otro clúster desechable, comprobar su directorio y puerto, y usar las variables `SABIA_PRUEBAS_PG` y `SABIA_PRUEBAS_PG_CONFIRMAR=BASE_DESCARTABLE`; no reutilizar la configuración de la aplicación.
 
+### Migraciones al inicio
+
+`Migraciones:AplicarAlInicio` controla si la aplicación ejecuta `Database.MigrateAsync()` durante el arranque. Su valor predeterminado es `true`, incluso si la clave no está configurada, para conservar la compatibilidad con desarrollo, pruebas y despliegues existentes. Para una futura operación con migrador independiente, establézcase `Migraciones__AplicarAlInicio=false` únicamente después de que la base haya sido migrada mediante el procedimiento institucional aprobado. Con la opción deshabilitada no se crea ni altera el esquema desde el arranque; los seeders continúan ejecutándose y reportarán cualquier esquema incompatible.
+
 ## Recorrido sugerido de demostración
 
 ### Perfil Coordinación

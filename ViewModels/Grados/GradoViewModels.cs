@@ -27,5 +27,5 @@ public sealed class GradoLista
     public string Carrera { get; init; } = string.Empty;
     public int Orden { get; init; }
     public int Secciones { get; init; }
-    public int Cursos { get; init; }
+    public int Asignaciones { get; init; }
 }

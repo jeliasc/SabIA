@@ -32,8 +32,12 @@ public sealed class CrearUnidad : FormularioUnidad
 
 public sealed class EditarUnidad : FormularioUnidad
 {
-    public int Id { get; set; }
+    // Nombre explícito para que la clave de Unidad no compita con el parámetro
+    // de ruta de la asignación académica durante el model binding del POST.
+    [Range(1, int.MaxValue)]
+    public int UnidadId { get; set; }
 
+    [Range(1, int.MaxValue)]
     public int UnidadAsignacionId { get; set; }
 
     public int Orden { get; set; }

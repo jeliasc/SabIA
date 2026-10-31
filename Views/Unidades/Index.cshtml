@@ -64,7 +64,7 @@
                         <th>Estado</th>
                         @if (hayAcciones)
                         {
-                            <th>Acciones</th>
+                            <th class="text-end">Acciones</th>
                         }
                     </tr>
                 </thead>
@@ -99,7 +99,7 @@
                                     <div class="app-actions app-actions-table">
                                         @if (e)
                                         {
-                                            <a asp-action="Editar" asp-route-id="@x.UnidadAsignacionId"
+                                            <a asp-action="Editar" asp-route-unidadAsignacionId="@x.UnidadAsignacionId"
                                                class="app-btn app-btn-soft-secondary app-btn-sm">
                                                 Editar
                                             </a>
@@ -183,7 +183,7 @@
 
                     @if (!soloLectura && e)
                     {
-                        <a asp-action="Editar" asp-route-id="@x.UnidadAsignacionId"
+                        <a asp-action="Editar" asp-route-unidadAsignacionId="@x.UnidadAsignacionId"
                            class="app-btn app-btn-soft-secondary w-100 mb-2">
                             Editar
                         </a>

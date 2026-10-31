@@ -1,0 +1,79 @@
+@model Proyecto_Final.ViewModels.ResolucionesTraslados.CrearResolucionTraslado
+@{
+    ViewData["Title"] = "Crear resolución";
+}
+<div class="container">
+    <div class="card shadow-sm border-secondary">
+        <div class="card-body">
+            <h2 class="fw-bold">Crear resolución académica</h2>
+            <p class="text-muted">@Model.Alumno · @Model.Curso · @Model.Periodo</p>
+            <div class="app-alert app-alert-info">La decisión conserva las evidencias originales y no recalcula
+                calificaciones automáticamente.
+            </div>
+            <form asp-action="Crear" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <input asp-for="InscripcionId" type="hidden" />
+                <input asp-for="CursoId" type="hidden" />
+                <input asp-for="PeriodoId" type="hidden" />
+                <div class="mb-3">
+                    <label asp-for="Tipo" class="form-label">
+                        Resultado institucional
+
+                    </label>
+                    <select asp-for="Tipo" class="form-select">
+                        <option value="">Seleccione</option>
+                        <option value="Origen">Origen</option>
+                        <option value="Destino">Destino</option>
+                        <option value="Consolidacion">Consolidación</option>
+                    </select>
+                    <span asp-validation-for="Tipo" class="text-danger"></span>
+                </div>
+                <div class="mb-3" id="consolidacion">
+                    <label asp-for="NotaConsolidadaPropuesta" class="form-label">
+                        Nota consolidada propuesta
+                    </label>
+                    <input asp-for="NotaConsolidadaPropuesta" class="form-control" type="number" step="0.0001"
+                           min="0" />
+                    <div class="form-text">Obligatoria solo para consolidación; la escala se comprueba contra fuentes
+                        activas y compatibles.
+                    </div>
+                    <span asp-validation-for="NotaConsolidadaPropuesta" class="text-danger"> </span>
+                </div>
+                <fieldset class="mb-3">
+                    <legend class="fs-6">
+                        Traslados relacionados
+                    </legend>
+                    @foreach (var x in Model.Traslados)
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="HistorialTrasladoIds" value="@x.Value"
+                                   checked="@x.Selected" id="t_@x.Value" />
+                            <label class="form-check-label" for="t_@x.Value">@x.Text </label>
+                        </div>
+                    }
+                </fieldset>
+                <div class="mb-3">
+                    <label asp-for="Justificacion" class="form-label"></label>
+                    <textarea asp-for="Justificacion" class="form-control" rows="5">          </textarea>
+                    <span asp-validation-for="Justificacion" class="text-danger"> </span>
+                </div>
+                <button class="app-btn app-btn-primary" type="submit">
+                    Registrar pendiente
+                </button>
+                <a asp-action="Index" class="app-btn app-btn-soft-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const t = document.getElementById('Tipo'), c = document.getElementById('consolidacion');
+            const f = () => c.hidden = t.value !== 'Consolidacion' && t.value !== '3';
+            t.addEventListener('change', f);
+            f();
+        });
+    </script>
+}

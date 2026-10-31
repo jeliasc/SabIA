@@ -115,6 +115,13 @@ public static class Permisos
         public const string CambiarEstado = "Inscripciones.CambiarEstado";
     }
 
+    public static class ResolucionesTraslados
+    {
+        public const string Ver = "ResolucionesTraslados.Ver";
+        public const string Gestionar = "ResolucionesTraslados.Gestionar";
+        public const string Aprobar = "ResolucionesTraslados.Aprobar";
+    }
+
     public static class Unidades
     {
         public const string Ver = "Unidades.Ver";
@@ -267,6 +274,10 @@ public static class Permisos
             Inscripciones.Editar,
             Inscripciones.Trasladar,
             Inscripciones.CambiarEstado,
+
+            ResolucionesTraslados.Ver,
+            ResolucionesTraslados.Gestionar,
+            ResolucionesTraslados.Aprobar,
 
             Unidades.Ver,
             Unidades.Crear,

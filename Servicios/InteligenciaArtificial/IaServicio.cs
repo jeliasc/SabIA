@@ -11,6 +11,7 @@ using Proyecto_Final.Models;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Archivos;
 using Proyecto_Final.Servicios.Comunes;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 
 namespace Proyecto_Final.Servicios.InteligenciaArtificial;
@@ -21,7 +22,8 @@ public sealed class IaServicio(
     Contexto contexto,
     IArchivoFisicoServicio archivosFisicos,
     IAccesoAcademicoServicio acceso,
-    IMemoryCache cache) : IIaServicio
+    IMemoryCache cache,
+    IContextoCicloEscolar? contextoCiclo = null) : IIaServicio
 {
     private static readonly HashSet<string> TiposValidos = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -61,12 +63,15 @@ public sealed class IaServicio(
         if (string.IsNullOrWhiteSpace(configuracion.ApiKey))
             return ResultadoOperacion<List<TrabajoIa>>.Error("La clave de acceso al servicio de IA no está configurada.");
 
+        var cicloId = contextoCiclo is null ? null : (await contextoCiclo.ObtenerAsync()).CicloEscolarId;
         var planificacion = await contexto.Planificaciones
             .AsNoTracking()
             .Where(x => x.Id == planificacionId &&
                 x.Asignaciones.Any(a =>
                     a.Asignacion.Estado == EstadoRegistro.Activo &&
-                    a.Asignacion.Seccion.CicloEscolar.Activo))
+                    (cicloId.HasValue
+                        ? a.Asignacion.Seccion.CicloEscolarId == cicloId.Value
+                        : a.Asignacion.Seccion.CicloEscolar.Activo)))
             .Select(x => new
             {
                 x.Id,

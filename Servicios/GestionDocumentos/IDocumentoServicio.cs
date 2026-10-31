@@ -5,6 +5,8 @@ namespace Proyecto_Final.Servicios.GestionDocumentos;
 
 public interface IDocumentoServicio
 {
+    Task<bool> PuedeConsultarAsync();
+
     Task<List<DocumentoLista>> ObtenerTodosAsync();
 
     Task<ResultadoOperacion> CrearAsync(

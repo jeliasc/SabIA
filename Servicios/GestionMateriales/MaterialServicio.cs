@@ -6,6 +6,7 @@ using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Archivos;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.SeguridadAcademica;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.ViewModels.Comunes;
 using Proyecto_Final.ViewModels.Materiales;
 
@@ -14,19 +15,33 @@ namespace Proyecto_Final.Servicios.GestionMateriales;
 public sealed class MaterialServicio(
     Contexto contexto,
     IArchivoFisicoServicio archivosFisicos,
-    IAccesoAcademicoServicio acceso) : IMaterialServicio
+    IAccesoAcademicoServicio acceso,
+    IContextoCicloEscolar? contextoCiclo = null) : IMaterialServicio
 {
     private const int MaximoIntentosOrden = 3;
 
-    public async Task<List<MaterialLista>> ObtenerTodosAsync() =>
-        await ObtenerListadoAsync(historial: false);
+    public async Task<List<MaterialLista>> ObtenerTodosAsync(int? asignacionId = null) =>
+        await ObtenerListadoAsync(historial: false, asignacionId);
 
-    public async Task<List<MaterialLista>> ObtenerHistorialAsync() =>
-        await ObtenerListadoAsync(historial: true);
+    public async Task<List<MaterialLista>> ObtenerHistorialAsync(int? asignacionId = null) =>
+        await ObtenerListadoAsync(historial: true, asignacionId);
 
-    private async Task<List<MaterialLista>> ObtenerListadoAsync(bool historial)
+    private async Task<List<MaterialLista>> ObtenerListadoAsync(bool historial, int? asignacionId = null)
     {
         var consulta = contexto.Materiales.AsNoTracking().AsQueryable();
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        var consultaHistorial = historial || ciclo?.EsHistorico == true;
+        var cicloId = ciclo?.CicloEscolarId;
+        if (contextoCiclo is not null)
+            consulta = cicloId.HasValue
+                ? consulta.Where(material => contexto.UnidadesAsignaciones.Any(unidadAsignacion =>
+                    unidadAsignacion.UnidadId == material.UnidadId &&
+                    unidadAsignacion.Asignacion.Seccion.CicloEscolarId == cicloId.Value))
+                : consulta.Where(_ => false);
+        if (asignacionId.HasValue)
+            consulta = consulta.Where(material => contexto.UnidadesAsignaciones.Any(unidadAsignacion =>
+                unidadAsignacion.UnidadId == material.UnidadId &&
+                unidadAsignacion.AsignacionId == asignacionId.Value));
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var docenteId = perfil.DocenteId;
         var alumnoId = perfil.AlumnoId;
@@ -35,11 +50,13 @@ public sealed class MaterialServicio(
         {
             consulta = consulta.Where(material => contexto.UnidadesAsignaciones.Any(unidadAsignacion =>
                 unidadAsignacion.UnidadId == material.UnidadId &&
-                (historial
+                (consultaHistorial
                     ? unidadAsignacion.Asignacion.Estado != EstadoRegistro.Activo ||
                       !unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo
                     : unidadAsignacion.Asignacion.Estado == EstadoRegistro.Activo &&
-                      unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo)));
+                      unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo) &&
+                (contextoCiclo == null || cicloId.HasValue &&
+                    unidadAsignacion.Asignacion.Seccion.CicloEscolarId == cicloId.Value)));
         }
         else if (docenteId.HasValue)
         {
@@ -47,16 +64,18 @@ public sealed class MaterialServicio(
                 contexto.UnidadesAsignaciones.Any(unidadAsignacion =>
                     unidadAsignacion.UnidadId == material.UnidadId &&
                     unidadAsignacion.Asignacion.DocenteId == docenteId.Value &&
-                    (historial
+                    (consultaHistorial
                         ? unidadAsignacion.Asignacion.Estado != EstadoRegistro.Activo ||
                           !unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo
                         : unidadAsignacion.Asignacion.Estado == EstadoRegistro.Activo &&
-                          unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo)));
+                        unidadAsignacion.Asignacion.Seccion.CicloEscolar.Activo) &&
+                    (contextoCiclo == null || cicloId.HasValue &&
+                        unidadAsignacion.Asignacion.Seccion.CicloEscolarId == cicloId.Value)));
         }
         else if (alumnoId.HasValue)
         {
             var ahora = DateTime.UtcNow;
-            consulta = historial
+            consulta = consultaHistorial
                 ? consulta.Where(material =>
                     material.Estado == EstadoPublicacionMaterial.Publicado &&
                     contexto.UnidadesAsignaciones.Any(unidadAsignacion =>
@@ -86,8 +105,10 @@ public sealed class MaterialServicio(
                         inscripcion.AlumnoId == alumnoId.Value &&
                         inscripcion.SeccionId == unidadAsignacion.Asignacion.SeccionId &&
                         inscripcion.CicloEscolarId == unidadAsignacion.Asignacion.Seccion.CicloEscolarId &&
-                        inscripcion.Estado == EstadoInscripcion.Activa &&
-                        inscripcion.Seccion.CicloEscolar.Activo)));
+                          inscripcion.Estado == EstadoInscripcion.Activa &&
+                          inscripcion.Seccion.CicloEscolar.Activo) &&
+                        (contextoCiclo == null || cicloId.HasValue &&
+                            unidadAsignacion.Asignacion.Seccion.CicloEscolarId == cicloId.Value)));
         }
         else
             consulta = consulta.Where(_ => false);

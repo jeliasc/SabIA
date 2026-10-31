@@ -1,0 +1,76 @@
+@model Proyecto_Final.ViewModels.ResolucionesTraslados.DetalleResolucionTraslado
+@inject IAuthorizationService Autorizacion
+@{
+    ViewData["Title"] = "Detalle de resolución";
+    var puedeAprobar = (await Autorizacion.AuthorizeAsync(User, Permisos.ResolucionesTraslados.Aprobar)).Succeeded;
+}
+<div class="container">
+    <partial name="_AlertasResultado" />
+    <div class="card shadow-sm border-secondary">
+        <div class="card-body">
+            <h2 class="fw-bold">Resolución #@Model.Id</h2>
+            <p class="text-muted">@Model.Alumno · @Model.Curso · @Model.Periodo</p>
+            <dl class="row">
+                <dt class="col-sm-3">Tipo</dt>
+                <dd class="col-sm-9">@Model.Tipo</dd>
+                <dt class="col-sm-3">Estado</dt>
+                <dd class="col-sm-9">@Model.Estado</dd>
+                <dt class="col-sm-3">Justificación</dt>
+                <dd class="col-sm-9">@Model.Justificacion</dd>
+            </dl>
+            @if (Model.PeriodoCerrado)
+            {
+                <div class="app-alert app-alert-warning">Hay un cierre en una asignación
+                    involucrada. Esta etapa no altera cierres ni libros.
+                </div>
+            }
+            <h5>Fuentes y evidencia preservada</h5>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Sección</th>
+                            <th>Traslado</th>
+                            <th>Rol</th>
+                            <th>Evidencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var f in Model.Fuentes)
+                        {
+                            <tr>
+                                <td>@f.CursoSeccion</td>
+                                <td>@f.Traslado</td>
+                                <td>@f.Rol</td>
+                                <td>@f.Evidencia</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (puedeAprobar && Model.Estado == EstadoResolucionTraslado.Pendiente)
+            {
+                <hr />
+                <form asp-action="Decidir" method="post" class="row g-3">
+                    <input name="Id" value="@Model.Id" type="hidden" />
+                    <div class="col-12">
+                        <label class="form-label" for="Observacion">
+                            Fundamento de la decisión
+                        </label>
+                        <textarea class="form-control" name="Observacion" id="Observacion" required
+                                  minlength="5"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button class="app-btn app-btn-primary" name="Aprobar" value="true" type="submit">
+                            Aprobar
+                        </button>
+                        <button class="app-btn app-btn-danger" name="Aprobar" value="false" type="submit">
+                            Rechazar
+                        </button>
+                    </div>
+                </form>
+            }
+            <a asp-action="Index" class="app-btn app-btn-soft-secondary mt-3">Volver</a>
+        </div>
+    </div>
+</div>

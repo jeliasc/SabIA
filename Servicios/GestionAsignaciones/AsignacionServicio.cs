@@ -7,6 +7,7 @@ using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Auditoria;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.SeguridadAcademica;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.ViewModels.Asignaciones;
 using Proyecto_Final.ViewModels.Comunes;
 
@@ -15,19 +16,24 @@ namespace Proyecto_Final.Servicios.GestionAsignaciones;
 public sealed class AsignacionServicio(
     Contexto c,
     IAccesoAcademicoServicio acceso,
-    IAuditoriaServicio? auditoria = null) : IAsignacionServicio
+    IAuditoriaServicio? auditoria = null,
+    IContextoCicloEscolar? contextoCiclo = null) : IAsignacionServicio
 {
     public async Task<List<AsignacionLista>> ObtenerTodosAsync()
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var consulta = c.Asignaciones.AsNoTracking().AsQueryable();
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        if (contextoCiclo is not null)
+            consulta = ciclo!.CicloEscolarId.HasValue
+                ? consulta.Where(x => x.Seccion.CicloEscolarId == ciclo.CicloEscolarId.Value)
+                : consulta.Where(_ => false);
 
         if (!acceso.EsOperadorInstitucional && perfil.DocenteId.HasValue)
         {
             consulta = consulta.Where(x =>
                 x.DocenteId == perfil.DocenteId.Value &&
-                x.Estado == EstadoRegistro.Activo &&
-                x.Seccion.CicloEscolar.Activo);
+                x.Estado == EstadoRegistro.Activo);
         }
         else if (!acceso.EsOperadorInstitucional && perfil.AlumnoId.HasValue)
         {
@@ -64,9 +70,12 @@ public sealed class AsignacionServicio(
             m.Docentes = [];
             return;
         }
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        var cicloId = ciclo?.CicloEscolarId;
         m.Secciones = await c.Secciones
             .AsNoTracking()
-            .Where(x => x.Estado == EstadoRegistro.Activo && x.CicloEscolar.Activo)
+            .Where(x => x.Estado == EstadoRegistro.Activo &&
+                (contextoCiclo == null || cicloId.HasValue && x.CicloEscolarId == cicloId.Value))
             .OrderByDescending(x => x.CicloEscolar.Anio)
             .ThenBy(x => x.Grado.Orden)
             .Select(x => new OpcionAsignacion
@@ -557,7 +566,7 @@ public sealed class AsignacionServicio(
 
     private bool PuedeRelevarExcepcional() =>
         acceso.TienePermiso(Permisos.Asignaciones.RelevarExcepcional) &&
-        acceso.TienePermiso(Permisos.Dashboard.CoordinacionVer);
+        acceso.EsOperadorInstitucional;
 
     private async Task CompletarRelevoAsync(ReemplazarDocenteAsignacion modelo)
     {

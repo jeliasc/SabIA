@@ -5,8 +5,8 @@ namespace Proyecto_Final.Servicios.GestionUnidades;
 
 public interface IUnidadServicio
 {
-    Task<List<UnidadLista>> ObtenerTodosAsync();
-    Task<List<UnidadLista>> ObtenerHistorialAsync();
+    Task<List<UnidadLista>> ObtenerTodosAsync(int? asignacionId = null);
+    Task<List<UnidadLista>> ObtenerHistorialAsync(int? asignacionId = null);
 
     Task PrepararAsync(FormularioUnidad m);
 

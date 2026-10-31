@@ -36,8 +36,8 @@
             Unidad
         </label>
 
-        <select asp-for="UnidadAsignacionId" class="form-select" data-select-busqueda>
-            <option value="">Sin unidad específica</option>
+        <select asp-for="UnidadAsignacionId" class="form-select" data-select-busqueda required>
+            <option value="">Seleccione una unidad...</option>
 
             @foreach (var x in Model.Unidades)
             {

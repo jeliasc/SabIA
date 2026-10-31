@@ -10,7 +10,7 @@
         </label>
 
         <select asp-for="Tipo" asp-items="Html.GetEnumSelectList<Proyecto_Final.Models.TipoPlanificacion>()"
-                class="form-select">
+                class="form-select" data-tipo-planificacion>
         </select>
     </div>
 
@@ -39,7 +39,7 @@
         </select>
     </div>
 
-    <div class="col-md-3">
+    <div class="col-md-3" data-contenedor-periodo>
         <label asp-for="PeriodoId" class="form-label">
             Período
         </label>
@@ -56,7 +56,7 @@
         </select>
     </div>
 
-    <div class="col-md-3">
+    <div class="col-md-3" data-contenedor-unidad>
         <label asp-for="UnidadAsignacionId" class="form-label">
             Unidad
         </label>
@@ -89,13 +89,41 @@
         <input asp-for="FechaFin" type="date" class="form-control" />
     </div>
 
+    @{
+        var esEdicion = Model is Proyecto_Final.ViewModels.Planificaciones.EditarPlanificacion;
+        var archivoActual = Model is Proyecto_Final.ViewModels.Planificaciones.EditarPlanificacion edicion
+            ? edicion.ArchivoActual
+            : null;
+
+        var tienePdfActual = !string.IsNullOrWhiteSpace(archivoActual);
+    }
+
     <div class="col-12">
+        <label for="ModalidadContenido" class="form-label">
+            Modalidad de registro de la planificación
+        </label>
+
+        <select id="ModalidadContenido" name="ModalidadContenido" class="form-select" data-modalidad-contenido
+                data-pdf-actual="@(tienePdfActual ? "true" : "false")" data-es-edicion="@(esEdicion ? "true" : "false")">
+            <option value="Formulario">
+                Completar formulario
+            </option>
+            <option value="Pdf">
+                Adjuntar planificación en PDF
+            </option>
+        </select>
+
+        <div class="form-text">
+            Seleccione si desea completar los campos de la planificación
+            o presentar el contenido mediante un documento PDF.
+        </div>
+    </div>
+
+    <div class="col-12" data-contenido-manual>
         <label asp-for="Objetivos" class="form-label">
             Objetivos
         </label>
-
-        <textarea asp-for="Objetivos" class="form-control" rows="2">
-        </textarea>
+        <textarea asp-for="Objetivos" class="form-control" rows="2"></textarea>
     </div>
 
     <div class="col-12">
@@ -107,50 +135,48 @@
         </textarea>
     </div>
 
-    <div class="col-12">
+    <div class="col-12" data-contenido-manual>
         <label asp-for="Contenido" class="form-label">
             Contenido / temario
         </label>
-
-        <textarea asp-for="Contenido" class="form-control" rows="6">
-        </textarea>
-
-        <span asp-validation-for="Contenido" class="text-danger">
-        </span>
+        <textarea asp-for="Contenido" class="form-control" rows="6"></textarea>
+        <span asp-validation-for="Contenido" class="text-danger"></span>
     </div>
 
-    <div class="col-md-6">
+    <div class="col-md-6" data-contenido-manual>
         <label asp-for="Actividades" class="form-label">
             Actividades
         </label>
-
-        <textarea asp-for="Actividades" class="form-control" rows="3">
-        </textarea>
+        <textarea asp-for="Actividades" class="form-control" rows="3"></textarea>
     </div>
 
-    <div class="col-md-6">
+    <div class="col-md-6" data-contenido-manual>
         <label asp-for="Recursos" class="form-label">
             Recursos
         </label>
-
-        <textarea asp-for="Recursos" class="form-control" rows="3">
-        </textarea>
+        <textarea asp-for="Recursos" class="form-control" rows="3"></textarea>
     </div>
 
-    <div class="col-12">
+    <div class="col-12" data-contenido-manual>
         <label asp-for="EstrategiaEvaluacion" class="form-label">
             Estrategia de evaluación
         </label>
-
-        <textarea asp-for="EstrategiaEvaluacion" class="form-control" rows="3">
-        </textarea>
+        <textarea asp-for="EstrategiaEvaluacion" class="form-control" rows="3"></textarea>
     </div>
 
-    <div class="col-12">
+    <div class="col-12" data-contenedor-archivo>
         <label asp-for="Archivo" class="form-label">
-            Planificación en PDF para generación con IA (opcional)
+            Documento de planificación en PDF
         </label>
 
-        <input asp-for="Archivo" type="file" accept="application/pdf,.pdf" class="form-control" />
+        <input asp-for="Archivo" type="file" accept="application/pdf,.pdf" class="form-control"
+               data-archivo-planificacion />
+
+        <span asp-validation-for="Archivo" class="text-danger"></span>
+
+        <div class="form-text" data-ayuda-archivo>
+            Adjunte el PDF de la planificación.
+            Este documento también podrá utilizarse para generación de contenido con IA.
+        </div>
     </div>
 </div>

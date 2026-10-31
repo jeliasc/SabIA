@@ -2,19 +2,53 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.ViewModels.Grados;
 
 namespace Proyecto_Final.Servicios.GestionGrados;
 
-public sealed class GradoServicio(Contexto contexto) : IGradoServicio
+public sealed class GradoServicio(
+    Contexto contexto,
+    IContextoCicloEscolar? contextoCiclo = null) : IGradoServicio
 {
-    public Task<List<GradoLista>> ObtenerTodosAsync() =>
-        contexto.Grados.AsNoTracking().OrderBy(x => x.Nivel).ThenBy(x => x.Orden)
+    public async Task<List<GradoLista>> ObtenerTodosAsync()
+    {
+        // Grado es un catálogo institucional: nunca se excluye del listado por
+        // ciclo. Solo sus métricas académicas proceden del ciclo seleccionado.
+        if (contextoCiclo is null)
+        {
+            return await contexto.Grados.AsNoTracking().OrderBy(x => x.Nivel).ThenBy(x => x.Orden)
+                .Select(x => new GradoLista
+                {
+                    Id = x.Id, Nivel = x.Nivel, Nombre = x.Nombre, Carrera = x.Carrera,
+                    Orden = x.Orden,
+                    Secciones = x.Secciones.Count,
+                    Asignaciones = contexto.Asignaciones.Count(asignacion => asignacion.GradoId == x.Id)
+                }).ToListAsync();
+        }
+
+        var cicloId = (await contextoCiclo.ObtenerAsync()).CicloEscolarId;
+        if (!cicloId.HasValue)
+        {
+            return await contexto.Grados.AsNoTracking().OrderBy(x => x.Nivel).ThenBy(x => x.Orden)
+                .Select(x => new GradoLista
+                {
+                    Id = x.Id, Nivel = x.Nivel, Nombre = x.Nombre, Carrera = x.Carrera,
+                    Orden = x.Orden
+                }).ToListAsync();
+        }
+
+        return await contexto.Grados.AsNoTracking().OrderBy(x => x.Nivel).ThenBy(x => x.Orden)
             .Select(x => new GradoLista
             {
                 Id = x.Id, Nivel = x.Nivel, Nombre = x.Nombre, Carrera = x.Carrera,
-                Orden = x.Orden, Secciones = x.Secciones.Count, Cursos = x.Cursos.Count
+                Orden = x.Orden,
+                Secciones = x.Secciones.Count(seccion => seccion.CicloEscolarId == cicloId.Value),
+                Asignaciones = contexto.Asignaciones.Count(asignacion =>
+                    asignacion.GradoId == x.Id &&
+                    asignacion.Seccion.CicloEscolarId == cicloId.Value)
             }).ToListAsync();
+    }
 
     public async Task<ResultadoOperacion> CrearAsync(CrearGrado modelo)
     {

@@ -14,18 +14,18 @@ public sealed class AuditoriaFiltro
     [Display(Name = "Hasta (Guatemala)")]
     public DateOnly? FechaHasta { get; set; }
 
-    [StringLength(100)]
+    [StringLength(100, ErrorMessage = "El responsable no puede superar los 100 caracteres.")]
     public string? Responsable { get; set; }
 
-    [StringLength(80)]
+    [StringLength(80, ErrorMessage = "El módulo no puede superar los 80 caracteres.")]
     [Display(Name = "Módulo")]
     public string? Modulo { get; set; }
 
-    [StringLength(120)]
+    [StringLength(120, ErrorMessage = "La acción no puede superar los 120 caracteres.")]
     [Display(Name = "Acción")]
     public string? Accion { get; set; }
 
-    [StringLength(45)]
+    [StringLength(45, ErrorMessage = "La dirección IP no puede superar los 45 caracteres.")]
     [Display(Name = "Dirección IP")]
     public string? DireccionIp { get; set; }
 

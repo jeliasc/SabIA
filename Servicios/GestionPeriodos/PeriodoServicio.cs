@@ -4,17 +4,27 @@ using Npgsql;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Comunes;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.ViewModels.Periodos;
 
 namespace Proyecto_Final.Servicios.GestionPeriodos;
 
-public sealed class PeriodoServicio(Contexto contexto) : IPeriodoServicio
+public sealed class PeriodoServicio(
+    Contexto contexto,
+    IContextoCicloEscolar? contextoCiclo = null) : IPeriodoServicio
 {
     private const int MaximoPeriodosPorCiclo = 4;
     private const int MaximoIntentosNumero = 3;
 
-    public Task<List<PeriodoLista>> ObtenerTodosAsync() =>
-        contexto.Periodos.AsNoTracking()
+    public async Task<List<PeriodoLista>> ObtenerTodosAsync()
+    {
+        var ciclo = await ContextoSeleccionadoAsync();
+        var consulta = contexto.Periodos.AsNoTracking().AsQueryable();
+        if (contextoCiclo is not null)
+            consulta = ciclo.CicloEscolarId.HasValue
+                ? consulta.Where(x => x.CicloEscolarId == ciclo.CicloEscolarId.Value)
+                : consulta.Where(_ => false);
+        return await consulta
             .OrderByDescending(x => x.CicloEscolar.Anio).ThenBy(x => x.Numero)
             .Select(x => new PeriodoLista
             {
@@ -26,6 +36,10 @@ public sealed class PeriodoServicio(Contexto contexto) : IPeriodoServicio
                 Inicio = x.FechaInicio,
                 Fin = x.FechaFin
             }).ToListAsync();
+    }
+
+    private async Task<ContextoCicloEscolar> ContextoSeleccionadoAsync() =>
+        contextoCiclo is null ? new ContextoCicloEscolar() : await contextoCiclo.ObtenerAsync();
 
     public async Task<ResultadoOperacion> CrearAsync(CrearPeriodo modelo)
     {

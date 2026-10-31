@@ -75,7 +75,7 @@ public sealed class UnidadServicioTests
         var servicio = new UnidadServicio(contexto, new AccesoOperador());
         var resultado = await servicio.EditarAsync(new EditarUnidad
         {
-            Id = 1,
+            UnidadId = 1,
             UnidadAsignacionId = 1,
             Titulo = "Unidad editada",
             AsignacionId = 1,
@@ -240,7 +240,7 @@ public sealed class UnidadServicioTests
 
         var resultado = await servicio.EditarAsync(new EditarUnidad
         {
-            Id = 1,
+            UnidadId = 1,
             UnidadAsignacionId = 1,
             Titulo = "Unidad trasladada",
             AsignacionId = 2,

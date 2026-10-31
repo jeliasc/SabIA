@@ -161,7 +161,7 @@
                                 @if (hayAcciones)
                                 {
                                     <td>
-                                        <div class="app-actions app-actions-table">
+                                        <div class="app-actions d-flex flex-nowrap align-items-center gap-2 text-nowrap">
                                             @if (e &&
                                                 (x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador ||
                                                  x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada))
@@ -305,8 +305,7 @@
                             }
                             @if (cerrar && esPublicada)
                             {
-                                <a asp-action="Cerrar" asp-route-id="@x.Id"
-                                   class="app-btn app-btn-soft-danger w-100">Cerrar</a>
+                                <a asp-action="Cerrar" asp-route-id="@x.Id" class="app-btn app-btn-soft-danger w-100">Cerrar</a>
                             }
                             @if (reabrir && x.PuedeReabrirse &&
                                 (!soloLectura || x.Estado == Proyecto_Final.Models.EstadoTarea.Cerrada))

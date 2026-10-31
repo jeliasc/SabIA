@@ -3,20 +3,41 @@ using Proyecto_Final.Data;
 using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Archivos;
 using Proyecto_Final.Servicios.Comunes;
+using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.ViewModels.Documentos;
 
 namespace Proyecto_Final.Servicios.GestionDocumentos;
 
 public sealed class DocumentoServicio(
     Contexto c,
-    IArchivoFisicoServicio fisico) : IDocumentoServicio
+    IArchivoFisicoServicio fisico,
+    IAccesoAcademicoServicio acceso) : IDocumentoServicio
 {
-    public Task<List<DocumentoLista>> ObtenerTodosAsync() =>
-        c.Archivos
+    // Los archivos de esta carpeta son institucionales: Archivo no contiene
+    // relación con ciclo, sección ni asignación. El contenido académico se
+    // consulta por Materiales, Tareas y Planificaciones, que sí la conservan.
+    public async Task<bool> PuedeConsultarAsync() =>
+        await ObtenerAmbitoAsync() is not null;
+
+    public async Task<List<DocumentoLista>> ObtenerTodosAsync()
+    {
+        var ambito = await ObtenerAmbitoAsync();
+        if (ambito is null)
+            return [];
+
+        var consulta = c.Archivos
             .AsNoTracking()
             .Where(x =>
                 x.ClaveAlmacenamiento.StartsWith("documentos-internos/")
-            )
+            );
+
+        // Un docente consulta exclusivamente los documentos cuya identidad
+        // persistida coincide con la de su cuenta; el nombre es solo
+        // informativo y no participa en la autorización.
+        if (!ambito.EsInstitucional)
+            consulta = consulta.Where(x => x.SubidoPorUsuarioId == ambito.UsuarioId);
+
+        return await consulta
             .OrderByDescending(x => x.FechaCreacion)
             .Select(x => new DocumentoLista
             {
@@ -28,14 +49,21 @@ public sealed class DocumentoServicio(
                     + x.SubidoPorUsuario.PrimerApellido,
                 Tamano = x.TamanoBytes,
                 Fecha = x.FechaCreacion
-            })
-            .ToListAsync();
+            }).ToListAsync();
+    }
 
     public async Task<ResultadoOperacion> CrearAsync(
         CrearDocumento m,
         string usuarioId,
         CancellationToken ct)
     {
+        var ambito = await ObtenerAmbitoAsync();
+        if (ambito is null ||
+            (!ambito.EsInstitucional && !string.Equals(ambito.UsuarioId, usuarioId, StringComparison.Ordinal)))
+        {
+            return ResultadoOperacion.Error("No tiene autorización para administrar documentos internos.");
+        }
+
         if (m.Archivo == null)
         {
             return ResultadoOperacion.Validacion(
@@ -101,15 +129,19 @@ public sealed class DocumentoServicio(
     public async Task<(Stream Stream, string Mime, string Nombre)?> AbrirAsync(
         int id)
     {
-        var x = await c.Archivos
+        var ambito = await ObtenerAmbitoAsync();
+        if (ambito is null)
+            return null;
+
+        var consulta = c.Archivos
             .AsNoTracking()
-            .FirstOrDefaultAsync(
-                a =>
-                    a.Id == id &&
-                    a.ClaveAlmacenamiento.StartsWith(
-                        "documentos-internos/"
-                    )
-            );
+            .Where(a => a.Id == id &&
+                a.ClaveAlmacenamiento.StartsWith("documentos-internos/"));
+
+        if (!ambito.EsInstitucional)
+            consulta = consulta.Where(a => a.SubidoPorUsuarioId == ambito.UsuarioId);
+
+        var x = await consulta.FirstOrDefaultAsync();
 
         if (x == null)
         {
@@ -124,4 +156,18 @@ public sealed class DocumentoServicio(
             ? null
             : (s, x.TipoMime, x.NombreOriginal);
     }
+
+    private async Task<AmbitoDocumento?> ObtenerAmbitoAsync()
+    {
+        if (acceso.EsOperadorInstitucional)
+            return new AmbitoDocumento(acceso.UsuarioId ?? string.Empty, true);
+
+        var perfil = await acceso.ObtenerContextoUsuarioAsync();
+        if (perfil.DocenteId.HasValue && !string.IsNullOrWhiteSpace(acceso.UsuarioId))
+            return new AmbitoDocumento(acceso.UsuarioId, false);
+
+        return null;
+    }
+
+    private sealed record AmbitoDocumento(string UsuarioId, bool EsInstitucional);
 }

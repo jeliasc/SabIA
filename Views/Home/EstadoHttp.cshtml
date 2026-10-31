@@ -1,0 +1,26 @@
+@model int
+@{
+    ViewData["Title"] = Model switch
+    {
+        403 => "Acceso denegado",
+        404 => "Página no encontrada",
+        500 => "Error interno",
+        _ => "No fue posible completar la solicitud"
+    };
+    var mensaje = Model switch
+    {
+        403 => "No tiene autorización para acceder a este recurso.",
+        404 => "El recurso solicitado no existe o no está disponible en su contexto académico.",
+        400 => "La solicitud no es válida. Revise la información e inténtelo nuevamente.",
+        500 => "Ocurrió un problema inesperado. Intente nuevamente o regrese al inicio.",
+        _ => "No fue posible completar la solicitud. Inténtelo nuevamente."
+    };
+}
+
+<div class="container-fluid">
+    <div class="alert alert-warning" role="alert">
+        <h1 class="h4 alert-heading">@ViewData["Title"]</h1>
+        <p class="mb-0">@mensaje</p>
+    </div>
+    <a asp-controller="Home" asp-action="Index" class="app-btn app-btn-primary">Ir al inicio</a>
+</div>

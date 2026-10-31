@@ -90,10 +90,10 @@ public sealed class EntregasControllerTests
         public ResultadoOperacion ResultadoCalificar { get; init; } =
             ResultadoOperacion.Error("No usado.");
 
-        public Task<List<EntregaLista>> ObtenerTodasAsync() =>
+        public Task<List<EntregaLista>> ObtenerTodasAsync(int? asignacionId = null) =>
             Task.FromResult(new List<EntregaLista>());
 
-        public Task<List<EntregaLista>> ObtenerHistorialAsync() =>
+        public Task<List<EntregaLista>> ObtenerHistorialAsync(int? asignacionId = null) =>
             Task.FromResult(new List<EntregaLista>());
 
         public Task<EntregarTarea?> ObtenerParaEntregarAsync(int id) =>

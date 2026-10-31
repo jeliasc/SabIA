@@ -5,8 +5,8 @@ namespace Proyecto_Final.Servicios.GestionMateriales;
 
 public interface IMaterialServicio
 {
-    Task<List<MaterialLista>> ObtenerTodosAsync();
-    Task<List<MaterialLista>> ObtenerHistorialAsync();
+    Task<List<MaterialLista>> ObtenerTodosAsync(int? asignacionId = null);
+    Task<List<MaterialLista>> ObtenerHistorialAsync(int? asignacionId = null);
 
     Task PrepararAsync(FormularioMaterial m);
 

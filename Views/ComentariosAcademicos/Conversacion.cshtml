@@ -1,0 +1,71 @@
+@model Proyecto_Final.ViewModels.ComentariosAcademicos.ConversacionAcademica
+@using Proyecto_Final.Servicios.Comunes
+
+@{
+    ViewData["Title"] = "Comentarios académicos";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Comentarios académicos</h2>
+            <p class="text-muted mb-0">@Model.Actividad · @Model.Alumno</p>
+        </div>
+        <a asp-controller="Entregas" asp-action="Index" class="app-btn app-btn-soft-secondary">Volver</a>
+    </div>
+
+    <section class="card border-0 shadow-sm">
+        <div class="card-body">
+            @if (Model.Comentarios.Count == 0)
+            {
+                <p class="text-muted mb-0">Aún no hay comentarios para esta actividad.</p>
+            }
+            else
+            {
+                @foreach (var comentario in Model.Comentarios)
+                {
+                    <article class="border-bottom pb-3 mb-3">
+                        <div class="d-flex justify-content-between gap-3 mb-2">
+                            <strong>@comentario.Autor</strong>
+                            <span
+                            class="small text-muted">@HoraGuatemala.ParaFormulario(comentario.FechaCreacion).ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(comentario.Contenido))
+                        {
+                            <div class="white-space-pre-line">@comentario.Contenido</div>
+                        }
+                        @foreach (var archivo in comentario.Archivos)
+                        {
+                            <div class="d-flex align-items-center gap-2 mt-2">
+                                <span>@archivo.Nombre</span>
+                                @if (archivo.PuedeVisualizar)
+                                {
+                                    <a asp-action="VisualizarArchivo" asp-route-id="@archivo.Id" target="_blank" rel="noopener"
+                                       class="app-btn app-btn-soft-success app-btn-sm">Visualizar</a>
+                                }
+                                <a asp-action="Archivo" asp-route-id="@archivo.Id"
+                                   class="app-btn app-btn-soft-primary app-btn-sm">Descargar</a>
+                            </div>
+                        }
+                    </article>
+                }
+            }
+        </div>
+    </section>
+
+    @if (Model.PuedeComentar)
+    {
+        <form asp-action="Crear" method="post" enctype="multipart/form-data" class="card border-0 shadow-sm mt-3">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="TareaId" value="@Model.TareaId" />
+            <input type="hidden" name="AlumnoId" value="@Model.AlumnoId" />
+            <div class="card-body">
+                <label class="form-label" for="Contenido">Nuevo comentario</label>
+                <textarea id="Contenido" name="Contenido" class="form-control" rows="4" maxlength="4000"></textarea>
+                <label class="form-label mt-3" for="Archivo">Adjunto (PDF, JPG, PNG o WEBP; opcional)</label>
+                <input id="Archivo" name="Archivo" type="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp" />
+                <button class="app-btn app-btn-primary mt-3" type="submit">Publicar comentario</button>
+            </div>
+        </form>
+    }
+</div>

@@ -5,8 +5,8 @@ namespace Proyecto_Final.Servicios.GestionTareas;
 
 public interface ITareaServicio
 {
-    Task<List<TareaLista>> ObtenerTodosAsync();
-    Task<List<TareaLista>> ObtenerHistorialAsync();
+    Task<List<TareaLista>> ObtenerTodosAsync(int? asignacionId = null);
+    Task<List<TareaLista>> ObtenerHistorialAsync(int? asignacionId = null);
 
     Task PrepararAsync(FormularioTarea m);
 

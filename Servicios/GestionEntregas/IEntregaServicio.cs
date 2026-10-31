@@ -5,8 +5,8 @@ namespace Proyecto_Final.Servicios.GestionEntregas;
 
 public interface IEntregaServicio
 {
-    Task<List<EntregaLista>> ObtenerTodasAsync();
-    Task<List<EntregaLista>> ObtenerHistorialAsync();
+    Task<List<EntregaLista>> ObtenerTodasAsync(int? asignacionId = null);
+    Task<List<EntregaLista>> ObtenerHistorialAsync(int? asignacionId = null);
 
     Task<EntregarTarea?> ObtenerParaEntregarAsync(int id);
 

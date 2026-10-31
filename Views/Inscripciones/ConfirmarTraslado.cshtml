@@ -1,0 +1,108 @@
+@model Proyecto_Final.ViewModels.Inscripciones.RevisionTrasladoInscripcion
+
+@{
+    ViewData["Title"] = "Revisar traslado";
+}
+
+<div class="container-fluid">
+    <h2 class="fw-bold mb-1">Revisar impacto del traslado</h2>
+    <p class="text-muted mb-4">@Model.Alumno · @Model.SeccionOrigen → @Model.SeccionDestino · Vigente desde
+        @Model.FechaEfectiva?.ToString("dd/MM/yyyy")
+    </p>
+
+    <div class="alert alert-info">Esta revisión no modifica calificaciones, entregas, intentos ni libros. Los libros
+        continúan usando temporalmente la fecha histórica de registro hasta la fase de resolución académica.
+    </div>
+
+    @foreach (var periodo in Model.Periodos)
+    {
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between gap-3 flex-wrap">
+                    <div>
+                        <h3 class="h5 mb-1">@periodo.Periodo</h3>
+                        <p class="text-muted mb-3">@periodo.Escenario · @periodo.Inicio.ToString("dd/MM/yyyy") al
+                            @periodo.Fin.ToString("dd/MM/yyyy")
+                        </p>
+                    </div>
+                    @if (periodo.Cerrado)
+                    {
+                        <span class="app-badge app-badge-danger">Período cerrado</span>
+                    }
+                </div>
+                @if (periodo.Cerrado)
+                {
+                    <div class="alert alert-warning mb-3">No puede confirmarse un traslado con fecha
+                        efectiva dentro de un período cerrado.
+                    </div>
+                }
+                <div class="table-responsive">
+                    <table class="table app-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Curso</th>
+                                <th>Docente origen</th>
+                                <th>Docente destino</th>
+                                <th>Evidencia origen</th>
+                                <th>Evidencia destino</th>
+                                <th>Advertencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var curso in periodo.Cursos)
+                            {
+                                <tr>
+                                    <td>@curso.Curso</td>
+                                    <td>@curso.DocenteOrigen</td>
+                                    <td>@curso.DocenteDestino</td>
+                                    <td>
+                                        @curso.ActividadesOrigen actividades · @curso.EntregasOrigen entregas ·
+                                        @curso.IntentosOrigen intentos · @curso.CalificacionesOrigen calificaciones
+                                    </td>
+                                    <td>
+                                        @curso.ActividadesDestino actividades · @curso.EntregasDestino entregas ·
+                                        @curso.IntentosDestino intentos · @curso.CalificacionesDestino calificaciones
+                                    </td>
+                                    <td>
+                                        @if (curso.PotencialAsignacionDirectaDestino)
+                                        {
+                                            <span class="text-success">Posible
+                                                asignación directa futura
+                                            </span>
+                                        }
+                                        else if (curso.RequiereResolucionFutura)
+                                        {
+
+                                            <span class="text-warning">Requerirá resolución académica futura</span>
+                                        }
+                                        else
+                                        {
+
+                                            <span class="text-muted">Sin evidencia registrada</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <form asp-action="ConfirmarTraslado" method="post" class="d-flex justify-content-end gap-2">
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+        <input asp-for="SeccionOrigenId" type="hidden" />
+        <input asp-for="SeccionDestinoId" type="hidden" /><input asp-for="FechaEfectiva" type="hidden" />
+        <input asp-for="Motivo" type="hidden" />
+        <input asp-for="TokenRevision" type="hidden" />
+        <a asp-action="Trasladar" asp-route-id="@Model.Id" class="app-btn app-btn-secondary">
+            Volver
+        </a>
+        <button class="app-btn app-btn-soft-primary"
+                disabled="@(Model.TienePeriodoCerradoAfectado ? "disabled" : null)">
+            Confirmar traslado
+        </button>
+    </form>
+</div>

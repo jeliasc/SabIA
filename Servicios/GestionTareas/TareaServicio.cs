@@ -5,6 +5,7 @@ using Proyecto_Final.Servicios.Archivos;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.Servicios.GestionAsignaciones;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.ViewModels.Comunes;
 using Proyecto_Final.ViewModels.Tareas;
@@ -15,13 +16,22 @@ public sealed class TareaServicio(
     Contexto c,
     IArchivoFisicoServicio fisico,
     IAccesoAcademicoServicio acceso,
-    IDelegacionAcademicaServicio? delegaciones = null) : ITareaServicio
+    IDelegacionAcademicaServicio? delegaciones = null,
+    IContextoCicloEscolar? contextoCiclo = null) : ITareaServicio
 {
-    private async Task<IQueryable<Tarea>> Q(bool historial = false)
+    private async Task<IQueryable<Tarea>> Q(bool historial = false, int? asignacionId = null)
     {
         var q = c.Tareas
             .AsNoTracking()
             .AsQueryable();
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        var consultaHistorial = historial || ciclo?.EsHistorico == true;
+        if (contextoCiclo is not null)
+            q = ciclo!.CicloEscolarId.HasValue
+                ? q.Where(x => x.Asignacion.Seccion.CicloEscolarId == ciclo.CicloEscolarId.Value)
+                : q.Where(_ => false);
+        if (asignacionId.HasValue)
+            q = q.Where(x => x.AsignacionId == asignacionId.Value);
 
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var d = perfil.DocenteId;
@@ -38,7 +48,7 @@ public sealed class TareaServicio(
                     (!delegacion.FechaFinUtc.HasValue || delegacion.FechaFinUtc >= DateTime.UtcNow) &&
                     (delegacion.Operaciones & OperacionDelegacionAcademica.ReabrirEntregas) ==
                         OperacionDelegacionAcademica.ReabrirEntregas)) &&
-                (historial
+                (consultaHistorial
                     ? x.Estado == EstadoTarea.Cerrada ||
                       x.Asignacion.Estado != EstadoRegistro.Activo ||
                       !x.Asignacion.Seccion.CicloEscolar.Activo
@@ -51,7 +61,7 @@ public sealed class TareaServicio(
         {
             var ahora = DateTime.UtcNow;
 
-            q = historial
+            q = consultaHistorial
                 ? q.Where(x =>
                     x.Estado != EstadoTarea.Borrador &&
                     c.Inscripciones.Any(i =>
@@ -86,7 +96,7 @@ public sealed class TareaServicio(
         }
         else if (acceso.EsOperadorInstitucional)
         {
-            q = q.Where(x => historial
+            q = q.Where(x => consultaHistorial
                 ? x.Estado == EstadoTarea.Cerrada ||
                   x.Asignacion.Estado != EstadoRegistro.Activo ||
                   !x.Asignacion.Seccion.CicloEscolar.Activo
@@ -102,13 +112,13 @@ public sealed class TareaServicio(
         return q;
     }
 
-    public async Task<List<TareaLista>> ObtenerTodosAsync()
+    public async Task<List<TareaLista>> ObtenerTodosAsync(int? asignacionId = null)
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var docenteId = perfil.DocenteId;
         var alumnoId = perfil.AlumnoId;
         var ahora = DateTime.UtcNow;
-        return await (await Q())
+        return await (await Q(asignacionId: asignacionId))
             .OrderByDescending(x => x.FechaCreacion)
             .Select(x => new TareaLista
             {
@@ -178,13 +188,13 @@ public sealed class TareaServicio(
             .ToListAsync();
     }
 
-    public async Task<List<TareaLista>> ObtenerHistorialAsync()
+    public async Task<List<TareaLista>> ObtenerHistorialAsync(int? asignacionId = null)
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         var alumnoId = perfil.AlumnoId;
         var docenteId = perfil.DocenteId;
         var ahora = DateTime.UtcNow;
-        var tareas = await (await Q(historial: true))
+        var tareas = await (await Q(historial: true, asignacionId: asignacionId))
             .OrderByDescending(x => x.FechaCreacion)
             .Select(x => new TareaLista
             {
@@ -793,8 +803,14 @@ public sealed class TareaServicio(
     {
         var tarea = await c.Tareas.AsNoTracking()
             .Where(x => x.Id == id && x.Estado == EstadoTarea.Publicada)
-            .Select(x => new { x.Id, x.AsignacionId, x.Titulo, x.Tipo,
-                Curso = x.Asignacion.Curso.Nombre })
+            .Select(x => new
+            {
+                x.Id,
+                x.AsignacionId,
+                x.Titulo,
+                x.Tipo,
+                Curso = x.Asignacion.Curso.Nombre
+            })
             .FirstOrDefaultAsync();
         if (tarea is null || !await Puede(tarea.AsignacionId))
             return null;
@@ -834,6 +850,30 @@ public sealed class TareaServicio(
                 await tx.RollbackAsync();
                 return ResultadoOperacion.Error(
                     "La tarea no existe o ya no puede cerrarse en su contexto académico.");
+            }
+
+            if (await c.IntentosCuestionarios.AnyAsync(x =>
+                x.Cuestionario.TareaId == tarea.Id &&
+                x.Estado == EstadoIntentoCuestionario.EnCurso))
+            {
+                await tx.RollbackAsync();
+                return ResultadoOperacion.Error(
+                    "No puede cerrar la tarea mientras existan intentos de cuestionario en curso.");
+            }
+
+            if (await c.Entregas.AnyAsync(x => x.TareaId == tarea.Id &&
+                x.FechaEntrega.HasValue && !x.Calificacion.HasValue))
+            {
+                await tx.RollbackAsync();
+                return ResultadoOperacion.Error(
+                    "No puede cerrar la tarea mientras existan entregas pendientes de calificación.");
+            }
+
+            if (!modelo.CalificarSinActividad && await ConsultaSinActividad(tarea.Id).AnyAsync())
+            {
+                await tx.RollbackAsync();
+                return ResultadoOperacion.Error(
+                    "Existen alumnos sin actividad; califíquelos administrativamente antes de cerrar.");
             }
 
             var afectados = 0;
@@ -967,7 +1007,7 @@ public sealed class TareaServicio(
             var tarea = await c.Tareas
                 .Include(x => x.Asignacion).ThenInclude(x => x.Seccion).ThenInclude(x => x.CicloEscolar)
                 .FirstOrDefaultAsync(x => x.Id == modelo.Id);
-            if (tarea is null || tarea.Estado == EstadoTarea.Borrador ||
+            if (tarea is null || tarea.Estado != EstadoTarea.Cerrada ||
                 !tarea.Asignacion.Seccion.CicloEscolar.Activo ||
                 !await PuedeReabrirAsync(tarea.AsignacionId))
             {
@@ -993,6 +1033,9 @@ public sealed class TareaServicio(
                 return ResultadoOperacion.Error("No existen alumnos inscritos para reabrir la actividad.");
             }
 
+            // La reapertura general vuelve a publicar la actividad, pero no genera
+            // entregas ni oportunidades extraordinarias por alumno.
+            alumnos = [];
             var reapertura = new ReaperturaTarea
             {
                 TareaId = tarea.Id,
@@ -1179,17 +1222,32 @@ public sealed class TareaServicio(
             );
         }
 
-        if (
-            m.UnidadAsignacionId.HasValue &&
-            !await c.UnidadesAsignaciones.AnyAsync(x =>
-                x.Id == m.UnidadAsignacionId &&
-                x.AsignacionId == m.AsignacionId
-            )
-        )
+        // VALIDAR UNIDAD ACADÉMICA OBLIGATORIA
+        if (!m.UnidadAsignacionId.HasValue ||
+            m.UnidadAsignacionId.Value <= 0)
         {
             return ResultadoOperacion.Validacion(
                 nameof(m.UnidadAsignacionId),
-                "La unidad no pertenece a la asignación."
+                "Seleccione una unidad académica."
+            );
+        }
+
+        // VALIDAR UNIDAD Y PERÍODO ACADÉMICO
+        var unidadValida = await c.UnidadesAsignaciones
+            .AsNoTracking()
+            .AnyAsync(x =>
+                x.Id == m.UnidadAsignacionId.Value &&
+                x.AsignacionId == m.AsignacionId &&
+                x.PeriodoId.HasValue &&
+                x.Periodo != null &&
+                x.Periodo.CicloEscolarId ==
+                x.Asignacion.Seccion.CicloEscolarId);
+
+        if (!unidadValida)
+        {
+            return ResultadoOperacion.Validacion(
+                nameof(m.UnidadAsignacionId),
+                "La unidad debe pertenecer a la asignación y tener un período válido."
             );
         }
 

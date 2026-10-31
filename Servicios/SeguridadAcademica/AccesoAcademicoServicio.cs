@@ -15,9 +15,8 @@ public sealed class AccesoAcademicoServicio(
     public string? UsuarioId => httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
     public bool EsOperadorInstitucional =>
-        httpContextAccessor.HttpContext?.User.HasClaim(
-            TiposClaims.Permiso,
-            Permisos.Dashboard.CoordinacionVer) == true;
+        httpContextAccessor.HttpContext is { } httpContext &&
+        AutorizacionDashboardCoordinacion.PuedeVer(httpContext.User);
 
     public bool TienePermiso(string permiso) =>
         httpContextAccessor.HttpContext?.User.HasClaim(

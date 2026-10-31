@@ -11,8 +11,7 @@
 
     <div class="card shadow-sm border-0">
         <div class="card-body p-4">
-            <form method="post"
-                  enctype="multipart/form-data">
+            <form method="post" enctype="multipart/form-data" data-formulario-planificacion>
                 @Html.AntiForgeryToken()
                 @Html.HiddenFor(m => m.Id)
 
@@ -23,8 +22,7 @@
                 <partial name="Formulario" model="Model" />
 
                 <div class="d-flex justify-content-end gap-2 mt-4">
-                    <a asp-action="Index"
-                       class="app-btn app-btn-secondary">
+                    <a asp-action="Index" class="app-btn app-btn-secondary">
                         Cancelar
                     </a>
 
@@ -40,4 +38,5 @@
 @section Scripts
 {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/planificaciones-formulario.js" asp-append-version="true"></script>
 }

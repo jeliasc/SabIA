@@ -21,8 +21,7 @@
 
         @if (Model.Contextos.Count > 1 && Model.Tipo != "inicio")
         {
-            <a asp-action="Index" asp-route-contexto="inicio"
-               class="app-btn app-btn-soft-secondary">
+            <a asp-action="Index" asp-route-contexto="inicio" class="app-btn app-btn-soft-secondary">
                 <i class="bi bi-grid me-1"></i>Cambiar de espacio
             </a>
         }
@@ -98,8 +97,8 @@
                                     <td>
                                         <div class="d-flex align-items-center gap-2">
                                             <div class="ui-progress flex-grow-1" role="progressbar"
-                                                 aria-label="Progreso de @curso.Curso"
-                                                 aria-valuenow="@curso.Progreso" aria-valuemin="0" aria-valuemax="100">
+                                                 aria-label="Progreso de @curso.Curso" aria-valuenow="@curso.Progreso"
+                                                 aria-valuemin="0" aria-valuemax="100">
                                                 <div class="ui-progress-bar" style="width: @curso.Progreso%"></div>
                                             </div>
                                             <span class="small">@curso.Progreso%</span>
@@ -128,8 +127,7 @@
                             </div>
                             <div class="small text-body-secondary">@curso.GradoSeccion</div>
                             <div class="small mb-2">@curso.Docente</div>
-                            <div class="ui-progress" role="progressbar"
-                                 aria-label="Progreso de @curso.Curso"
+                            <div class="ui-progress" role="progressbar" aria-label="Progreso de @curso.Curso"
                                  aria-valuenow="@curso.Progreso" aria-valuemin="0" aria-valuemax="100">
                                 <div class="ui-progress-bar" style="width: @curso.Progreso%"></div>
                             </div>
@@ -222,8 +220,7 @@
                                     @if (puedeCalificar)
                                     {
                                         <td class="text-end">
-                                            <a asp-controller="Entregas" asp-action="Calificar"
-                                               asp-route-id="@entrega.Id"
+                                            <a asp-controller="Entregas" asp-action="Calificar" asp-route-id="@entrega.Id"
                                                class="app-btn app-btn-soft-primary app-btn-sm">
                                                 Calificar
                                             </a>
@@ -245,8 +242,7 @@
                             <div class="small text-body-secondary mb-3">@entrega.Curso · @entrega.Fecha</div>
                             @if (puedeCalificar)
                             {
-                                <a asp-controller="Entregas" asp-action="Calificar"
-                                   asp-route-id="@entrega.Id"
+                                <a asp-controller="Entregas" asp-action="Calificar" asp-route-id="@entrega.Id"
                                    class="app-btn app-btn-soft-primary w-100">
                                     Calificar
                                 </a>

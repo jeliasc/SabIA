@@ -9,14 +9,14 @@ namespace Proyecto_Final.Controllers;
 [Authorize(Policy = Permisos.Materiales.Ver)]
 public class MaterialesController(IMaterialServicio s) : Controller
 {
-    public async Task<IActionResult> Index() =>
-        View(await s.ObtenerTodosAsync());
+    public async Task<IActionResult> Index(int? asignacionId = null) =>
+        View(await s.ObtenerTodosAsync(asignacionId));
 
     [HttpGet]
-    public async Task<IActionResult> Historial()
+    public async Task<IActionResult> Historial(int? asignacionId = null)
     {
         ViewData["SoloLectura"] = true;
-        return View("Index", await s.ObtenerHistorialAsync());
+        return View("Index", await s.ObtenerHistorialAsync(asignacionId));
     }
 
     [HttpGet]

@@ -9,14 +9,14 @@ namespace Proyecto_Final.Controllers;
 [Authorize(Policy = Permisos.Unidades.Ver)]
 public class UnidadesController(IUnidadServicio s) : Controller
 {
-    public async Task<IActionResult> Index() =>
-        View(await s.ObtenerTodosAsync());
+    public async Task<IActionResult> Index(int? asignacionId = null) =>
+        View(await s.ObtenerTodosAsync(asignacionId));
 
     [HttpGet]
-    public async Task<IActionResult> Historial()
+    public async Task<IActionResult> Historial(int? asignacionId = null)
     {
         ViewData["SoloLectura"] = true;
-        return View("Index", await s.ObtenerHistorialAsync());
+        return View("Index", await s.ObtenerHistorialAsync(asignacionId));
     }
 
     [HttpGet]
@@ -55,9 +55,9 @@ public class UnidadesController(IUnidadServicio s) : Controller
 
     [HttpGet]
     [Authorize(Policy = Permisos.Unidades.Editar)]
-    public async Task<IActionResult> Editar(int id)
+    public async Task<IActionResult> Editar(int unidadAsignacionId)
     {
-        var m = await s.ObtenerEditarAsync(id);
+        var m = await s.ObtenerEditarAsync(unidadAsignacionId);
 
         return m == null
             ? NotFound()

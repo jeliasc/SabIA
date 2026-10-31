@@ -5,8 +5,8 @@ namespace Proyecto_Final.Servicios.GestionCuestionarios;
 
 public interface ICuestionarioServicio
 {
-    Task<List<CuestionarioLista>> ObtenerTodosAsync();
-    Task<List<CuestionarioLista>> ObtenerHistorialAsync();
+    Task<List<CuestionarioLista>> ObtenerTodosAsync(int? asignacionId = null);
+    Task<List<CuestionarioLista>> ObtenerHistorialAsync(int? asignacionId = null);
     Task<ConfigurarCuestionario?> ObtenerConfiguracionAsync(int tareaId);
     Task<ResultadoOperacion<int>> GuardarConfiguracionAsync(ConfigurarCuestionario m);
     Task<CrearPregunta?> PrepararPreguntaAsync(int cuestionarioId);

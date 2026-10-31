@@ -59,13 +59,13 @@
                         <tr>
                             <th>Cuestionario</th>
                             <th>Curso</th>
-                            <th>Preguntas</th>
-                            <th>Intentos</th>
+                            <th class="text-start">Preguntas</th>
+                            <th class="text-start">Intentos</th>
                             <th>Origen</th>
                             <th>Estado</th>
                             @if (hayAcciones)
                             {
-                                <th>Acciones</th>
+                                <th class="text-end">Acciones</th>
                             }
                         </tr>
                     </thead>
@@ -80,9 +80,9 @@
 
                                 <td>@x.Curso</td>
 
-                                <td>@x.Preguntas</td>
+                                <td class="text-start">@x.Preguntas</td>
 
-                                <td>
+                                <td class="text-start">
                                     @(x.MaximoIntentos == 0
                                         ? "Sin límite"
                                         : x.MaximoIntentos)
@@ -90,40 +90,49 @@
 
                                 <td>@x.Origen.GetDisplayName()</td>
 
-                                <td>@x.EstadoTarea.GetDisplayName()</td>
+                                <td>
+                                    <span class="app-badge @(x.EstadoTarea switch
+                                          {
+                                              Proyecto_Final.Models.EstadoTarea.Publicada => "app-badge-success",
+                                              Proyecto_Final.Models.EstadoTarea.Cerrada => "app-badge-danger",
+                                              _ => "app-badge-secondary"
+                                          })">
+                                        @x.EstadoTarea.GetDisplayName()
+                                    </span>
+                                </td>
 
                                 @if (hayAcciones)
                                 {
-                                <td>
-                                    <div class="app-actions app-actions-table">
-                                        @if (editar &&
-                                            x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Borrador)
-                                        {
-                                            <a asp-action="AgregarPregunta" asp-route-cuestionarioId="@x.Id"
-                                               class="app-btn app-btn-soft-secondary app-btn-sm">
-                                                Preguntas
-                                            </a>
-                                        }
+                                    <td>
+                                        <div class="app-actions app-actions-table">
+                                            @if (editar &&
+                                                x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Borrador)
+                                            {
+                                                <a asp-action="AgregarPregunta" asp-route-cuestionarioId="@x.Id"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                    Preguntas
+                                                </a>
+                                            }
 
-                                        @if (x.PuedeVerResultados &&
-                                            x.EstadoTarea != Proyecto_Final.Models.EstadoTarea.Borrador)
-                                        {
-                                            <a asp-action="Resultados" asp-route-id="@x.Id"
-                                               class="app-btn app-btn-soft-secondary app-btn-sm">
-                                                Resultados
-                                            </a>
-                                        }
+                                            @if (x.PuedeVerResultados &&
+                                                x.EstadoTarea != Proyecto_Final.Models.EstadoTarea.Borrador)
+                                            {
+                                                <a asp-action="Resultados" asp-route-id="@x.Id"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">
+                                                    Resultados
+                                                </a>
+                                            }
 
-                                        @if (resolver &&
-                                            x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Publicada)
-                                        {
-                                            <a asp-action="Resolver" asp-route-id="@x.Id"
-                                               class="app-btn app-btn-soft-primary app-btn-sm">
-                                                Resolver
-                                            </a>
-                                        }
-                                    </div>
-                                </td>
+                                            @if (resolver &&
+                                                x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Publicada)
+                                            {
+                                                <a asp-action="Resolver" asp-route-id="@x.Id"
+                                                   class="app-btn app-btn-soft-primary app-btn-sm">
+                                                    Resolver
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
                                 }
                             </tr>
                         }
@@ -136,18 +145,16 @@
     <div class="d-md-none" id="cuestionariosMovil">
         <div class="mb-3">
             <div class="d-grid">
-                <button type="button" class="app-btn app-btn-secondary"
-                        aria-expanded="false" aria-controls="busqueda-cuestionarios-movil"
-                        data-mostrar-busqueda-cuestionarios>
+                <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                        aria-controls="busqueda-cuestionarios-movil" data-mostrar-busqueda-cuestionarios>
                     <i class="bi bi-search" aria-hidden="true"></i>
                     Buscar cuestionario
                 </button>
             </div>
-            <div id="busqueda-cuestionarios-movil" class="mt-2 d-none"
-                 data-contenedor-busqueda-cuestionarios>
+            <div id="busqueda-cuestionarios-movil" class="mt-2 d-none" data-contenedor-busqueda-cuestionarios>
                 <input type="search" id="buscarCuestionarioMovil" class="form-control"
-                       placeholder="Cuestionario, curso, origen o estado..."
-                       aria-label="Buscar cuestionarios" autocomplete="off" />
+                       placeholder="Cuestionario, curso, origen o estado..." aria-label="Buscar cuestionarios"
+                       autocomplete="off" />
             </div>
         </div>
 
@@ -166,46 +173,55 @@
                         <div class="row g-2 mb-3">
                             <div class="col-4"><span class="small text-muted d-block">Preguntas</span>@x.Preguntas</div>
                             <div class="col-4"><span class="small text-muted d-block">Intentos</span>@intentos</div>
-                            <div class="col-4"><span class="small text-muted d-block">Origen</span>@x.Origen.GetDisplayName()</div>
+                            <div class="col-4"><span
+                                class="small text-muted d-block">Origen</span>@x.Origen.GetDisplayName()</div>
+                            </div>
+                            <div class="mb-3">
+                                <span class="app-badge @(x.EstadoTarea switch
+                                      {
+                                          Proyecto_Final.Models.EstadoTarea.Publicada => "app-badge-success",
+                                          Proyecto_Final.Models.EstadoTarea.Cerrada => "app-badge-danger",
+                                          _ => "app-badge-secondary"
+                                      })">
+                                    @x.EstadoTarea.GetDisplayName()
+                                </span>
+                            </div>
+                            <div class="d-grid gap-2">
+                                @if (!soloLectura && editar && esBorrador)
+                                {
+                                    <a asp-action="AgregarPregunta" asp-route-cuestionarioId="@x.Id"
+                                       class="app-btn app-btn-soft-secondary">Preguntas</a>
+                                }
+                                @if (x.PuedeVerResultados && !esBorrador)
+                                {
+                                    <a asp-action="Resultados" asp-route-id="@x.Id"
+                                       class="app-btn app-btn-soft-secondary">Resultados</a>
+                                }
+                                @if (!soloLectura && resolver && esPublicada)
+                                {
+                                    <a asp-action="Resolver" asp-route-id="@x.Id" class="app-btn app-btn-soft-primary">Resolver</a>
+                                }
+                            </div>
                         </div>
-                        <div class="mb-3"><span class="app-badge app-badge-secondary">@x.EstadoTarea.GetDisplayName()</span></div>
-                        <div class="d-grid gap-2">
-                            @if (!soloLectura && editar && esBorrador)
-                            {
-                                <a asp-action="AgregarPregunta" asp-route-cuestionarioId="@x.Id"
-                                   class="app-btn app-btn-soft-secondary">Preguntas</a>
-                            }
-                            @if (x.PuedeVerResultados && !esBorrador)
-                            {
-                                <a asp-action="Resultados" asp-route-id="@x.Id"
-                                   class="app-btn app-btn-soft-secondary">Resultados</a>
-                            }
-                            @if (!soloLectura && resolver && esPublicada)
-                            {
-                                <a asp-action="Resolver" asp-route-id="@x.Id"
-                                   class="app-btn app-btn-soft-primary">Resolver</a>
-                            }
-                        </div>
-                    </div>
-                </article>
-            }
-        </div>
+                    </article>
+                }
+            </div>
 
-        <p class="text-muted text-center py-3 d-none" data-sin-cuestionarios-movil>
-            No se encontraron cuestionarios.
-        </p>
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
-            <span class="small text-muted" data-contador-cuestionarios-movil></span>
-            <div class="d-flex gap-2">
-                <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
-                        data-anterior-cuestionarios-movil>Anterior</button>
-                <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
-                        data-siguiente-cuestionarios-movil>Siguiente</button>
+            <p class="text-muted text-center py-3 d-none" data-sin-cuestionarios-movil>
+                No se encontraron cuestionarios.
+            </p>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+                <span class="small text-muted" data-contador-cuestionarios-movil></span>
+                <div class="d-flex gap-2">
+                    <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
+                            data-anterior-cuestionarios-movil>Anterior</button>
+                    <button type="button" class="app-btn app-btn-soft-secondary app-btn-sm"
+                            data-siguiente-cuestionarios-movil>Siguiente</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-@section Scripts {
-    <script src="~/js/cuestionarios-index.js" asp-append-version="true"></script>
-}
+    @section Scripts {
+        <script src="~/js/cuestionarios-index.js" asp-append-version="true"></script>
+    }

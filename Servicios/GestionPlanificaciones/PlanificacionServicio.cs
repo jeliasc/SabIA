@@ -4,6 +4,7 @@ using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Archivos;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.SeguridadAcademica;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.ViewModels.Comunes;
 using Proyecto_Final.ViewModels.Planificaciones;
 
@@ -12,17 +13,27 @@ namespace Proyecto_Final.Servicios.GestionPlanificaciones;
 public sealed class PlanificacionServicio(
     Contexto contexto,
     IArchivoFisicoServicio archivosFisicos,
-    IAccesoAcademicoServicio acceso) : IPlanificacionServicio
+    IAccesoAcademicoServicio acceso,
+    IContextoCicloEscolar? contextoCiclo = null) : IPlanificacionServicio
 {
-    private async Task<IQueryable<Planificacion>> ConsultaPermitidaAsync(bool historial = false)
+    private async Task<IQueryable<Planificacion>> ConsultaPermitidaAsync(bool historial = false, int? asignacionId = null)
     {
         var consulta = contexto.Planificaciones.AsNoTracking().AsQueryable();
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        var consultaHistorial = historial || ciclo?.EsHistorico == true;
+        var cicloId = ciclo?.CicloEscolarId;
+        if (contextoCiclo is not null)
+            consulta = cicloId.HasValue
+                ? consulta.Where(x => x.Asignaciones.Any(a => a.Asignacion.Seccion.CicloEscolarId == cicloId.Value))
+                : consulta.Where(_ => false);
+        if (asignacionId.HasValue)
+            consulta = consulta.Where(x => x.Asignaciones.Any(a => a.AsignacionId == asignacionId.Value));
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
         if (perfil.DocenteId.HasValue)
         {
             consulta = consulta.Where(x =>
                 x.DocenteId == perfil.DocenteId.Value &&
-                (historial
+                (consultaHistorial
                     ? !x.Asignaciones.Any(a => a.Asignacion.Estado == EstadoRegistro.Activo &&
                         a.Asignacion.Seccion.CicloEscolar.Activo)
                     : x.Asignaciones.Any(a => a.Asignacion.Estado == EstadoRegistro.Activo &&
@@ -34,7 +45,7 @@ public sealed class PlanificacionServicio(
         }
         else if (acceso.EsOperadorInstitucional)
         {
-            consulta = consulta.Where(x => historial
+            consulta = consulta.Where(x => consultaHistorial
                 ? !x.Asignaciones.Any(a => a.Asignacion.Estado == EstadoRegistro.Activo &&
                     a.Asignacion.Seccion.CicloEscolar.Activo)
                 : x.Asignaciones.Any(a => a.Asignacion.Estado == EstadoRegistro.Activo &&
@@ -47,8 +58,8 @@ public sealed class PlanificacionServicio(
         return consulta;
     }
 
-    public async Task<List<PlanificacionLista>> ObtenerTodosAsync() =>
-        await (await ConsultaPermitidaAsync())
+    public async Task<List<PlanificacionLista>> ObtenerTodosAsync(int? asignacionId = null) =>
+        await (await ConsultaPermitidaAsync(asignacionId: asignacionId))
             .OrderByDescending(x => x.FechaCreacion)
             .Select(x => new PlanificacionLista
             {
@@ -65,8 +76,8 @@ public sealed class PlanificacionServicio(
             })
             .ToListAsync();
 
-    public async Task<List<PlanificacionLista>> ObtenerHistorialAsync() =>
-        await (await ConsultaPermitidaAsync(historial: true))
+    public async Task<List<PlanificacionLista>> ObtenerHistorialAsync(int? asignacionId = null) =>
+        await (await ConsultaPermitidaAsync(historial: true, asignacionId: asignacionId))
             .OrderByDescending(x => x.FechaCreacion)
             .Select(x => new PlanificacionLista
             {

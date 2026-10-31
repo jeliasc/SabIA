@@ -14,14 +14,14 @@ public class EntregasController(
     INotificacionServicio notificaciones,
     IAccesoAcademicoServicio acceso) : Controller
 {
-    public async Task<IActionResult> Index() =>
-        View(await s.ObtenerTodasAsync());
+    public async Task<IActionResult> Index(int? asignacionId = null) =>
+        View(await s.ObtenerTodasAsync(asignacionId));
 
     [HttpGet]
-    public async Task<IActionResult> Historial()
+    public async Task<IActionResult> Historial(int? asignacionId = null)
     {
         ViewData["SoloLectura"] = true;
-        return View("Index", await s.ObtenerHistorialAsync());
+        return View("Index", await s.ObtenerHistorialAsync(asignacionId));
     }
 
     [HttpGet]

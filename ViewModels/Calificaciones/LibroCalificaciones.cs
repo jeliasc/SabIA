@@ -1,4 +1,5 @@
 using Proyecto_Final.Models;
+using Proyecto_Final.Servicios.GestionCalificaciones;
 
 namespace Proyecto_Final.ViewModels.Calificaciones;
 
@@ -43,6 +44,13 @@ public sealed class FilaAlumnoCalificacion
     public decimal AbacusDesempeno { get; set; }
     public decimal AbacusActitudinal { get; set; }
     public int Pendientes { get; set; }
+    public TipoPertenenciaLibro TipoPertenencia { get; set; } = TipoPertenenciaLibro.MatriculaOrdinaria;
+    public EstadoResultadoOficialTraslado EstadoResultadoOficial { get; set; } = EstadoResultadoOficialTraslado.Ordinario;
+    public int? ResolucionTrasladoId { get; set; }
+    public int? AsignacionFuenteOficialId { get; set; }
+    public bool EsFuenteResultadoOficial { get; set; }
+    public decimal? NotaOficialConsolidada { get; set; }
+    public decimal? EscalaMaximaConsolidada { get; set; }
 }
 
 public sealed class CeldaCalificacion

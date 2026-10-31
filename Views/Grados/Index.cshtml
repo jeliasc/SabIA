@@ -51,8 +51,8 @@
                             <th>Grado</th>
                             <th>Carrera</th>
                             <th class="text-start">Orden</th>
-                            <th class="text-start">Secciones</th>
-                            <th class="text-start">Cursos</th>
+                            <th class="text-start">Secciones (ciclo)</th>
+                            <th class="text-start">Asignaciones (ciclo)</th>
                             @if (hayAcciones)
                             {
                                 <th class="text-end">Acciones</th>
@@ -76,7 +76,7 @@
 
                                 <td class="text-start">@x.Secciones</td>
 
-                                <td class="text-start">@x.Cursos</td>
+                                <td class="text-start">@x.Asignaciones</td>
 
                                 @if (hayAcciones)
                                 {
@@ -116,14 +116,14 @@
         @foreach (var x in Model)
         {
             <article class="card shadow-sm border-0 mb-3 grado-movil-item"
-                     data-busqueda="@($"{x.Nivel.GetDisplayName()} {x.Nombre} {x.Carrera} {x.Orden} {x.Secciones} {x.Cursos}")">
+                     data-busqueda="@($"{x.Nivel.GetDisplayName()} {x.Nombre} {x.Carrera} {x.Orden} {x.Secciones} {x.Asignaciones}")">
                 <div class="card-body">
                     <div class="fw-bold">@x.Nombre</div>
                     <div class="text-muted mb-3">@x.Nivel.GetDisplayName() · @x.Carrera</div>
                     <div class="row g-2 mb-3">
                         <div class="col-4"><span class="small text-muted d-block">Orden</span>@x.Orden</div>
                         <div class="col-4"><span class="small text-muted d-block">Secciones</span>@x.Secciones</div>
-                        <div class="col-4"><span class="small text-muted d-block">Cursos</span>@x.Cursos</div>
+                        <div class="col-4"><span class="small text-muted d-block">Asignaciones</span>@x.Asignaciones</div>
                     </div>
                     @if (editar)
                     {

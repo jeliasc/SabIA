@@ -10,6 +10,8 @@ public class FormularioTarea
     [Range(1, int.MaxValue, ErrorMessage = "Seleccione una asignación.")]
     public int AsignacionId { get; set; }
 
+    [Required(ErrorMessage = "Seleccione una unidad académica.")]
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccione una unidad académica.")]
     public int? UnidadAsignacionId { get; set; }
 
     public TipoTarea Tipo { get; set; } =
@@ -95,10 +97,10 @@ public sealed class ReabrirTarea
     [Required(ErrorMessage = "Seleccione una nueva fecha límite.")]
     public DateTime FechaLimite { get; set; }
 
-    [Required(ErrorMessage = "El motivo es obligatorio."), StringLength(500, MinimumLength = 5)]
+    [Required(ErrorMessage = "El motivo es obligatorio."), StringLength(500, MinimumLength = 5, ErrorMessage = "El motivo debe contener entre 5 y 500 caracteres.")]
     public string Motivo { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Seleccione el alcance de la reapertura.")]
     public AlcanceReaperturaTarea Alcance { get; set; } = AlcanceReaperturaTarea.SoloPendientes;
 }
 

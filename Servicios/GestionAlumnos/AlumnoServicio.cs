@@ -8,6 +8,7 @@ using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Academico;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.SeguridadAcademica;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.ViewModels.Alumnos;
 using Proyecto_Final.ViewModels.Comunes;
 using Proyecto_Final.ViewModels.Usuarios;
@@ -22,24 +23,28 @@ public sealed class AlumnoServicio : IAlumnoServicio
     private readonly ICuentaAcademicaServicio cuentaAcademica;
     private readonly IEntregaPendienteServicio entregaPendienteServicio;
     private readonly IAccesoAcademicoServicio acceso;
+    private readonly IContextoCicloEscolar? contextoCiclo;
 
     public AlumnoServicio(
         Contexto contexto,
         UserManager<Usuario> administradorUsuarios,
         ICuentaAcademicaServicio cuentaAcademica,
         IEntregaPendienteServicio entregaPendienteServicio,
-        IAccesoAcademicoServicio acceso)
+        IAccesoAcademicoServicio acceso,
+        IContextoCicloEscolar? contextoCiclo = null)
     {
         this.contexto = contexto;
         this.administradorUsuarios = administradorUsuarios;
         this.cuentaAcademica = cuentaAcademica;
         this.entregaPendienteServicio = entregaPendienteServicio;
         this.acceso = acceso;
+        this.contextoCiclo = contextoCiclo;
     }
 
     public async Task<ConsultaIndiceAlumnos> ObtenerIndiceAsync()
     {
-        var ambito = await ObtenerAmbitoAsync();
+        var ciclo = await ObtenerCicloSeleccionadoAsync();
+        var ambito = await ObtenerAmbitoAsync(ciclo?.CicloEscolarId);
 
         if (ambito.Tipo == TipoAccesoAlumnos.Denegado)
         {
@@ -54,7 +59,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
             return new ConsultaIndiceAlumnos
             {
                 TipoAcceso = TipoAccesoAlumnos.Institucional,
-                Institucional = await ObtenerIndiceInstitucionalAsync()
+                Institucional = await ObtenerIndiceInstitucionalAsync(ciclo?.CicloEscolarId)
             };
         }
 
@@ -112,7 +117,8 @@ public sealed class AlumnoServicio : IAlumnoServicio
     public async Task<ConsultaDetalleAlumno> ObtenerDetalleAutorizadoAsync(
         int id)
     {
-        var ambito = await ObtenerAmbitoAsync();
+        var ciclo = await ObtenerCicloSeleccionadoAsync();
+        var ambito = await ObtenerAmbitoAsync(ciclo?.CicloEscolarId);
 
         if (ambito.Tipo == TipoAccesoAlumnos.Denegado)
         {
@@ -200,7 +206,10 @@ public sealed class AlumnoServicio : IAlumnoServicio
         };
     }
 
-    private async Task<AmbitoAlumnos> ObtenerAmbitoAsync()
+    private async Task<ContextoCicloEscolar?> ObtenerCicloSeleccionadoAsync() =>
+        contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+
+    private async Task<AmbitoAlumnos> ObtenerAmbitoAsync(int? cicloEscolarId)
     {
         if (acceso.EsOperadorInstitucional)
         {
@@ -214,6 +223,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
             return new AmbitoAlumnos(
                 TipoAccesoAlumnos.Docente,
                 DocenteId: perfil.DocenteId.Value,
+                CicloEscolarId: cicloEscolarId,
                 SeccionesDelegadas: await acceso.ObtenerSeccionesDelegadasParaConsultaAsync());
         }
 
@@ -229,8 +239,10 @@ public sealed class AlumnoServicio : IAlumnoServicio
                 item.Alumno.Usuario.Activo &&
                 item.Estado == EstadoInscripcion.Activa &&
                 item.Seccion.Estado == EstadoRegistro.Activo &&
-                item.Seccion.CicloEscolar.Activo &&
-                item.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Activo)
+                (cicloEscolarId.HasValue
+                    ? item.CicloEscolarId == cicloEscolarId.Value
+                    : item.Seccion.CicloEscolar.Activo &&
+                      item.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Activo))
             .Select(item => new
             {
                 item.SeccionId,
@@ -242,7 +254,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
             TipoAccesoAlumnos.Alumno,
             AlumnoId: perfil.AlumnoId.Value,
             SeccionId: inscripcion?.SeccionId,
-            CicloEscolarId: inscripcion?.CicloEscolarId);
+            CicloEscolarId: cicloEscolarId ?? inscripcion?.CicloEscolarId);
     }
 
     private IQueryable<Inscripcion> AplicarAmbitoContextual(
@@ -253,8 +265,10 @@ public sealed class AlumnoServicio : IAlumnoServicio
             inscripcion.Alumno.Usuario.Activo &&
             inscripcion.Estado == EstadoInscripcion.Activa &&
             inscripcion.Seccion.Estado == EstadoRegistro.Activo &&
-            inscripcion.Seccion.CicloEscolar.Activo &&
-            inscripcion.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Activo);
+            (ambito.CicloEscolarId.HasValue
+                ? inscripcion.CicloEscolarId == ambito.CicloEscolarId.Value
+                : inscripcion.Seccion.CicloEscolar.Activo &&
+                  inscripcion.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Activo));
 
         if (ambito.Tipo == TipoAccesoAlumnos.Docente &&
             ambito.DocenteId.HasValue)
@@ -269,9 +283,10 @@ public sealed class AlumnoServicio : IAlumnoServicio
                     asignacion.Estado == EstadoRegistro.Activo &&
                     asignacion.Curso.Estado == EstadoRegistro.Activo &&
                     asignacion.Seccion.Estado == EstadoRegistro.Activo &&
-                    asignacion.Seccion.CicloEscolar.Activo &&
-                    asignacion.Seccion.CicloEscolar.Estado ==
-                        EstadoCicloEscolar.Activo));
+                    (ambito.CicloEscolarId.HasValue
+                        ? asignacion.Seccion.CicloEscolarId == ambito.CicloEscolarId.Value
+                        : asignacion.Seccion.CicloEscolar.Activo &&
+                          asignacion.Seccion.CicloEscolar.Estado == EstadoCicloEscolar.Activo)));
         }
 
         if (ambito.Tipo == TipoAccesoAlumnos.Alumno &&
@@ -306,11 +321,16 @@ public sealed class AlumnoServicio : IAlumnoServicio
         public string Seccion { get; init; } = string.Empty;
     }
 
-    private async Task<AlumnosIndice> ObtenerIndiceInstitucionalAsync()
+    private async Task<AlumnosIndice> ObtenerIndiceInstitucionalAsync(int? cicloEscolarId)
     {
         var consulta = contexto.Alumnos
             .AsNoTracking()
             .AsQueryable();
+
+        if (cicloEscolarId.HasValue)
+            consulta = consulta.Where(alumno => contexto.Inscripciones.Any(inscripcion =>
+                inscripcion.AlumnoId == alumno.Id &&
+                inscripcion.CicloEscolarId == cicloEscolarId.Value));
 
         var alumnos = await consulta
             .OrderBy(alumno => alumno.Usuario.PrimerNombre)
@@ -330,7 +350,9 @@ public sealed class AlumnoServicio : IAlumnoServicio
                     .Where(inscripcion =>
                         inscripcion.AlumnoId == alumno.Id &&
                         inscripcion.Estado == EstadoInscripcion.Activa &&
-                        inscripcion.Seccion.CicloEscolar.Activo)
+                        (cicloEscolarId.HasValue
+                            ? inscripcion.CicloEscolarId == cicloEscolarId.Value
+                            : inscripcion.Seccion.CicloEscolar.Activo))
                     .Select(inscripcion =>
                         inscripcion.Seccion.Grado.Nombre + " " +
                         inscripcion.Seccion.Nombre)
@@ -339,7 +361,9 @@ public sealed class AlumnoServicio : IAlumnoServicio
                     .Where(inscripcion =>
                         inscripcion.AlumnoId == alumno.Id &&
                         inscripcion.Estado == EstadoInscripcion.Activa &&
-                        inscripcion.Seccion.CicloEscolar.Activo)
+                        (cicloEscolarId.HasValue
+                            ? inscripcion.CicloEscolarId == cicloEscolarId.Value
+                            : inscripcion.Seccion.CicloEscolar.Activo))
                     .Select(inscripcion =>
                         (int?)inscripcion.Seccion.CicloEscolar.Anio)
                     .FirstOrDefault(),
@@ -351,7 +375,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
         return new AlumnosIndice
         {
             Alumnos = alumnos,
-            AlertasOcupacion = await ObtenerAlertasOcupacionAsync(null)
+            AlertasOcupacion = await ObtenerAlertasOcupacionAsync(null, cicloEscolarId)
         };
     }
 
@@ -503,7 +527,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
     }
 
     private async Task<List<AlertaOcupacionSeccion>>
-        ObtenerAlertasOcupacionAsync(int? docenteId)
+        ObtenerAlertasOcupacionAsync(int? docenteId, int? cicloEscolarId = null)
     {
         if (!acceso.EsOperadorInstitucional && !docenteId.HasValue)
         {
@@ -515,7 +539,9 @@ public sealed class AlumnoServicio : IAlumnoServicio
             .Where(inscripcion =>
                 inscripcion.Estado == EstadoInscripcion.Activa &&
                 inscripcion.Seccion.Estado == EstadoRegistro.Activo &&
-                inscripcion.Seccion.CicloEscolar.Activo);
+                (cicloEscolarId.HasValue
+                    ? inscripcion.CicloEscolarId == cicloEscolarId.Value
+                    : inscripcion.Seccion.CicloEscolar.Activo));
 
         if (!acceso.EsOperadorInstitucional)
         {
@@ -526,7 +552,9 @@ public sealed class AlumnoServicio : IAlumnoServicio
                     asignacion.DocenteId == idDocente &&
                     asignacion.SeccionId == inscripcion.SeccionId &&
                     asignacion.Estado == EstadoRegistro.Activo &&
-                    asignacion.Seccion.CicloEscolar.Activo));
+                    (cicloEscolarId.HasValue
+                        ? asignacion.Seccion.CicloEscolarId == cicloEscolarId.Value
+                        : asignacion.Seccion.CicloEscolar.Activo)));
         }
 
         return await inscripciones

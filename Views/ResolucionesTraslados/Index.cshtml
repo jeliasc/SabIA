@@ -1,0 +1,86 @@
+@model Proyecto_Final.ViewModels.ResolucionesTraslados.ResolucionesTrasladosIndex
+
+@{
+  ViewData["Title"] = "Resoluciones de traslados";
+}
+
+<div class="container-fluid">
+  <partial name="_AlertasResultado" />
+
+  <div class="mb-4">
+    <h2 class="fw-bold mb-1">Resoluciones académicas de traslados</h2>
+    <p class="text-muted mb-0">Decisiones independientes: no modifican libros, notas, entregas ni intentos.</p>
+  </div>
+  @if (Model.PuedeGestionar && Model.Pendientes.Count > 0)
+  {
+    <div class="card shadow-sm border-warning mb-4">
+      <div class="card-header fw-semibold">Situaciones pendientes</div>
+      <div class="table-responsive">
+        <table class="table app-table mb-0">
+          <thead>
+            <tr>
+              <th>Alumno</th>
+              <th>Curso</th>
+              <th>Período</th>
+              <th>Secciones</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach (var x in Model.Pendientes)
+            {
+              <tr>
+                <td>@x.Alumno</td>
+                <td>@x.Curso</td>
+                <td>@x.Periodo</td>
+                <td>@x.Secciones</td>
+                <td>
+                  <a class="app-btn app-btn-soft-primary app-btn-sm" asp-action="Crear"
+                     asp-route-inscripcionId="@x.InscripcionId" asp-route-cursoId="@x.CursoId"
+                     asp-route-periodoId="@x.PeriodoId">
+                    Resolver
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+  <div class="card shadow-sm border-secondary">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table app-table w-100" data-tabla-index data-actions-column="true">
+          <thead>
+            <tr>
+              <th>Alumno</th>
+              <th>Curso</th>
+              <th>Período</th>
+              <th>Tipo</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach (var x in Model.Resoluciones)
+            {
+              <tr>
+                <td>@x.Alumno</td>
+                <td>@x.Curso</td>
+                <td>@x.Periodo</td>
+                <td>@x.Tipo</td>
+                <td>@x.Estado</td>
+                <td>
+                  <a class="app-btn app-btn-soft-primary app-btn-sm" asp-action="Detalle" asp-route-id="@x.Id">
+                    Detalle
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

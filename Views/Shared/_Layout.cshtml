@@ -3,6 +3,10 @@
     var accionActual = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
     var titulo = ViewData["Title"]?.ToString() ?? "SabIA";
 }
+@inject Proyecto_Final.Servicios.GestionCiclos.IContextoCicloEscolar ContextoCiclo
+@{
+    var cicloGlobal = await ContextoCiclo.ObtenerAsync();
+}
 <!DOCTYPE html>
 <html lang="es">
 
@@ -50,6 +54,19 @@
             </div>
 
             <div class="app-content pb-4">
+                @if (cicloGlobal.EsHistorico)
+                {
+                    <div class="container-fluid pt-3">
+                        <div class="alert alert-secondary py-2 mb-0" role="status">
+                            <i class="bi bi-clock-history me-1"></i>
+                            Está consultando el ciclo escolar histórico @cicloGlobal.Anio. Las operaciones ordinarias están bloqueadas.
+                        </div>
+                    </div>
+                }
+                else if (!cicloGlobal.Disponible && !string.IsNullOrWhiteSpace(cicloGlobal.Advertencia))
+                {
+                    <div class="container-fluid pt-3"><div class="alert alert-warning py-2 mb-0" role="alert">@cicloGlobal.Advertencia</div></div>
+                }
                 @RenderBody()
             </div>
         </main>

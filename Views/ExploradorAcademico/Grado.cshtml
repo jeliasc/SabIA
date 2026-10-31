@@ -1,0 +1,40 @@
+@model Proyecto_Final.ViewModels.ExploradorAcademico.ExploradorGradoAcademico
+@{
+    ViewData["Title"] = "Secciones académicas";
+}
+<div class="container-fluid">
+    <div class="mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index">Ciclo @Model.Contexto.Anio</a></li>
+                <li class="breadcrumb-item active">@Model.Grado</li>
+            </ol>
+        </nav>
+        <h2 class="fw-semibold mb-1">@Model.Grado</h2>
+        <p class="text-body-secondary mb-0">@Model.Carrera · @Model.Contexto.Estado</p>
+    </div>
+    @if (Model.Secciones.Count == 0)
+    {
+        <div class="alert alert-info" role="status">No hay secciones configuradas para
+            este grado en el ciclo seleccionado.</div>
+        }
+    else
+        {
+
+            <div class="row g-3">@foreach (var seccion in Model.Secciones) {
+                <div class="col-12 col-md-6 col-xl-4"><a
+                    asp-action="Seccion" asp-route-id="@seccion.Id"
+                    class="app-card h-100 d-block text-decoration-none text-body">
+                    <div class="app-card-body">
+                        <div class="d-flex justify-content-between">
+                            <div class="fw-semibold">Sección @seccion.Nombre</div><span
+                            class="app-badge app-badge-info">@seccion.Estado</span>
+                        </div>
+                        <div class="small text-body-secondary mt-3">@seccion.AlumnosVigentes alumno(s) vigente(s)</div>
+                        <div class="small text-body-secondary">@seccion.Docentes docente(s) · @seccion.Cursos curso(s)</div>
+                    </div>
+                </a></div>
+            }
+        </div>
+    }
+</div>

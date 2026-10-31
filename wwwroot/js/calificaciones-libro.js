@@ -7,6 +7,11 @@ document.addEventListener("DOMContentLoaded", () => {
         maximumFractionDigits: 4
     }).format(valor);
 
+    const mostrarNotaFinal = valor => new Intl.NumberFormat("es-GT", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(Math.round(valor));
+
     const recalcular = fila => {
         const categorias = new Map();
         let pendientes = 0;
@@ -43,7 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
         asignar("desempeno", mostrar(desempeno));
         asignar("actitudinal", mostrar(actitudinal));
-        asignar("total", mostrar(total));
+        asignar("total", mostrarNotaFinal(total));
         const etiquetaPendientes = fila.querySelector('[data-resumen="pendientes"]');
         if (etiquetaPendientes) {
             etiquetaPendientes.textContent = etiquetaPendientes.classList.contains("app-badge")

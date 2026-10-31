@@ -6,6 +6,7 @@ namespace Proyecto_Final.Servicios.GestionCalificaciones;
 public interface ICalificacionServicio
 {
     Task<CalificacionesIndex> ObtenerIndexAsync(bool puedeConfigurar);
+    Task<ControlTareas?> ObtenerControlTareasAsync(int asignacionId);
     Task<ConfigurarEvaluacion?> PrepararConfiguracionAsync(
         int asignacionId,
         int periodoId,

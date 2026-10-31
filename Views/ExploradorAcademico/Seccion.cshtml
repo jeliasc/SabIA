@@ -1,0 +1,164 @@
+@model Proyecto_Final.ViewModels.ExploradorAcademico.ExploradorSeccionAcademico
+@using Proyecto_Final.ViewModels.ExploradorAcademico
+@{
+    ViewData["Title"] = "Detalle de sección";
+}
+<div class="container-fluid">
+    <div class="mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a asp-action="Index">Ciclo @Model.Contexto.Anio</a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a asp-action="Grado" asp-route-id="@Model.GradoId">@Model.Grado
+
+                    </a>
+                </li>
+                <li class="breadcrumb-item active">Sección @Model.Seccion</li>
+            </ol>
+        </nav>
+        <h2 class="fw-semibold mb-1">Ciclo @Model.Contexto.Anio / @Model.Grado / Sección @Model.Seccion</h2>
+        <p class="text-body-secondary mb-0">@Model.Carrera · @Model.Contexto.Estado</p>
+    </div>
+    <section class="row g-3 mb-4" aria-label="Resumen de sección">
+        <div class="col-6 col-lg-3">
+            <div class="ui-stat-card ui-stat-card-success h-100">
+                <div class="ui-stat-value">@Model.AlumnosVigentes</div>
+                <p class="ui-stat-label">Alumnos vigentes</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="ui-stat-card ui-stat-card-primary h-100">
+                <div class="ui-stat-value">@Model.Docentes</div>
+                <p class="ui-stat-label">Docentes</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="ui-stat-card ui-stat-card-info h-100">
+                <div class="ui-stat-value">@Model.Cursos</div>
+                <p class="ui-stat-label">Cursos asignados</p>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="ui-stat-card ui-stat-card-warning h-100">
+                <div class="ui-stat-value">@Model.Periodos</div>
+                <p class="ui-stat-label">Períodos del ciclo</p>
+            </div>
+        </div>
+    </section>
+    @if (Model.Accesos.Count > 0)
+    {
+        <section class="mb-4">
+            <h3 class="h5 mb-3">Gestión académica</h3>
+            <div class="row g-3">
+                @foreach (var acceso in Model.Accesos)
+                {
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <a asp-controller="@acceso.Controlador" asp-action="Index"
+                           class="app-card h-100 d-block text-decoration-none text-body">
+                            <div class="app-card-body">
+                                <i class="@acceso.Icono fs-4 text-primary"></i>
+                                <div class="small fw-semibold mt-2">@acceso.Titulo</div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+    <div class="row g-4">
+        <div class="col-12 col-xl-6">
+            <section class="app-card h-100">
+                <div class="app-card-header">
+                    <h3 class="app-card-title">Alumnos vigentes</h3>
+                </div>
+                <div class="app-card-body">@if (Model.Alumnos.Count == 0) {
+                    <p class="text-body-secondary mb-0">No hay
+                        alumnos visibles para su permiso.</p>
+                    } else
+                    {
+
+                        <div class="list-group list-group-flush">@foreach
+                            (var alumno in Model.Alumnos) {
+                                <a asp-controller="Alumnos" asp-action="Ver" asp-route-id="@alumno.Id"
+                                   class="list-group-item list-group-item-action"><span
+                                    class="fw-semibold">@alumno.Nombre</span>@if (!string.IsNullOrWhiteSpace(alumno.Codigo))
+                                    {
+                                        <span class="small text-body-secondary"> · @alumno.Codigo</span>
+                                    }
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+            </section>
+        </div>
+        <div class="col-12 col-xl-6">
+            <section class="app-card h-100">
+                <div class="app-card-header">
+                    <h3 class="app-card-title">Cursos y docentes</h3>
+                </div>
+                <div class="app-card-body">@if (Model.Asignaciones.Count == 0) {
+                    <p class="text-body-secondary mb-0">No
+                        hay asignaciones visibles para su permiso.</p>
+                    } else
+                    {
+
+                        <div class="list-group list-group-flush">
+                            @foreach (var asignacion in Model.Asignaciones)
+                            {
+                                <a asp-action="Curso" asp-route-id="@asignacion.Id" class="list-group-item list-group-item-action">
+                                    <div class="fw-semibold">@asignacion.Curso</div>
+                                    <div class="small text-body-secondary">@asignacion.Docente</div>
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+            </section>
+        </div>
+        @{
+            var listas = new List<ListaExploradorAcademico>
+            {
+                new() { Titulo = "Unidades", Elementos = Model.Unidades },
+                new() { Titulo = "Tareas", Elementos = Model.Tareas },
+                new() { Titulo = "Cuestionarios", Elementos = Model.Cuestionarios },
+                new() { Titulo = "Materiales", Elementos = Model.Materiales },
+                new() { Titulo = "Planificaciones", Elementos = Model.Planificaciones },
+                new() { Titulo = "Entregas", Elementos = Model.Entregas }
+            };
+        }
+        @foreach (var lista in listas)
+        {
+            <div class="col-12 col-xl-6">
+                <section class="app-card h-100">
+                    <div class="app-card-header">
+                        <h3 class="app-card-title">@lista.Titulo</h3>
+                    </div>
+                    <div class="app-card-body">
+                        @if (lista.Elementos.Count == 0)
+                        {
+                            <p class="text-body-secondary mb-0">Sin
+                                registros visibles para esta sección.
+                            </p>
+                        }
+                        else
+                        {
+
+                            <div class="list-group list-group-flush">
+                                @foreach (var elemento in lista.Elementos)
+                                {
+                                    <div class="list-group-item">
+                                        <div class="fw-semibold">@elemento.Titulo</div>
+                                        <div class="small text-body-secondary">@elemento.Detalle</div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </section>
+            </div>
+        }
+    </div>
+</div>

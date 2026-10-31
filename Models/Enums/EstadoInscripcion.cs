@@ -5,8 +5,13 @@ public enum EstadoInscripcion
 {
     [Display(Name = "Activa")]
     Activa = 1,
+
     [Display(Name = "Retirada")]
     Retirada = 2,
+
     [Display(Name = "Finalizada")]
-    Finalizada = 3
+    Finalizada = 3,
+
+    [Display(Name = "Trasladada")]
+    Trasladada = 4
 }

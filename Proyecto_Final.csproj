@@ -22,6 +22,10 @@
     <Compile Remove="Tests\**\*.cs" />
     <Content Remove="Tests\**\*" />
     <None Remove="Tests\**\*" />
+    <!-- Los artefactos de validación pueden contener código generado de otra compilación. -->
+    <Compile Remove="artifacts\**\*.cs" />
+    <Content Remove="artifacts\**\*" />
+    <None Remove="artifacts\**\*" />
   </ItemGroup>
 
 </Project>

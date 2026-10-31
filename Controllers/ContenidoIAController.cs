@@ -5,6 +5,7 @@ using Proyecto_Final.Data;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.GestionCuestionarios;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.Servicios.InteligenciaArtificial;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 using Proyecto_Final.ViewModels.Comunes;
@@ -16,7 +17,8 @@ namespace Proyecto_Final.Controllers;
 public class ContenidoIAController(
     IIaServicio iaServicio,
     Contexto contexto,
-    IAccesoAcademicoServicio acceso) : Controller
+    IAccesoAcademicoServicio acceso,
+    IContextoCicloEscolar contextoCiclo) : Controller
 {
     public async Task<IActionResult> Index() => View(await PrepararAsync(new GenerarContenidoIa()));
 
@@ -130,11 +132,13 @@ public class ContenidoIAController(
     private async Task<GenerarContenidoIa> PrepararAsync(GenerarContenidoIa modelo)
     {
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
+        var cicloId = (await contextoCiclo.ObtenerAsync()).CicloEscolarId;
         var consulta = contexto.Planificaciones.AsNoTracking()
             .Where(x =>
                 x.Asignaciones.Any(a =>
                     a.Asignacion.Estado == Proyecto_Final.Models.EstadoRegistro.Activo &&
-                    a.Asignacion.Seccion.CicloEscolar.Activo));
+                    cicloId.HasValue &&
+                    a.Asignacion.Seccion.CicloEscolarId == cicloId.Value));
         if (perfil.DocenteId.HasValue)
             consulta = consulta.Where(x => x.DocenteId == perfil.DocenteId.Value);
         else if (!acceso.EsOperadorInstitucional)

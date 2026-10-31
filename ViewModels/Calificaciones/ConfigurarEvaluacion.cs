@@ -19,6 +19,9 @@ public sealed class ConfigurarEvaluacion
 
     public int? PlantillaId { get; set; }
 
+    [StringLength(1000, ErrorMessage = "El motivo no puede superar los 1000 caracteres.")]
+    public string? MotivoCorreccion { get; set; }
+
     public bool GuardarComoPlantilla { get; set; }
 
     [StringLength(150, ErrorMessage = "El nombre de la plantilla no puede superar los 150 caracteres.")]
@@ -33,6 +36,8 @@ public sealed class ConfigurarEvaluacion
 
 public sealed class CategoriaEvaluacionFormulario
 {
+    public int Id { get; set; }
+
     [Required(ErrorMessage = "El nombre de la categoría es obligatorio."), StringLength(100, ErrorMessage = "El nombre de la categoría no puede superar los 100 caracteres.")]
     public string Nombre { get; set; } = string.Empty;
 
@@ -46,6 +51,8 @@ public sealed class CategoriaEvaluacionFormulario
 
 public sealed class ActividadEvaluableFormulario
 {
+    public int Id { get; set; }
+
     [Required(ErrorMessage = "El nombre de la actividad es obligatorio."), StringLength(200, ErrorMessage = "El nombre de la actividad no puede superar los 200 caracteres.")]
     public string Nombre { get; set; } = string.Empty;
 

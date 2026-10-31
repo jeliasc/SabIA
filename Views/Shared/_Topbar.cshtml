@@ -2,8 +2,10 @@
 @using Microsoft.AspNetCore.Authorization
 @using Proyecto_Final.Seguridad
 @using Proyecto_Final.Servicios.SeguridadAcademica
+@using Proyecto_Final.Servicios.GestionCiclos
 @inject IAuthorizationService Autorizacion
 @inject IAccesoAcademicoServicio AccesoAcademico
+@inject IContextoCicloEscolar ContextoCiclo
 
 @{
     var rolUsuario = User.FindFirst(ClaimTypes.Role)?.Value ?? "Sin rol";
@@ -13,6 +15,8 @@
     var contextoAcademico = await AccesoAcademico.ObtenerContextoUsuarioAsync();
     var esDocente = puedeConsultarContexto && contextoAcademico.DocenteId.HasValue;
     var esAlumno = puedeConsultarContexto && !esDocente && contextoAcademico.AlumnoId.HasValue;
+    var cicloSeleccionado = await ContextoCiclo.ObtenerAsync();
+    var retornoCiclo = Context.Request.PathBase + Context.Request.Path + Context.Request.QueryString;
 }
 
 <nav class="app-header navbar navbar-expand bg-body shadow-sm sticky-top">
@@ -30,6 +34,59 @@
         </ul>
 
         <ul class="navbar-nav ms-auto align-items-center">
+            @if (cicloSeleccionado.Disponible)
+            {
+                <li class="nav-item dropdown me-2">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#"
+                       data-bs-toggle="dropdown" aria-expanded="false" aria-label="Cambiar ciclo escolar">
+                        <i class="bi bi-calendar3"></i>
+                        <span class="d-none d-md-inline">Ciclo escolar:</span>
+                        <strong>@cicloSeleccionado.Anio</strong>
+                        @if (cicloSeleccionado.EsHistorico)
+                        {
+                            <span class="badge text-bg-secondary">Histórico</span>
+                        }
+                        else if (cicloSeleccionado.EsPreparacion)
+                        {
+                            <span class="badge text-bg-warning">Preparación</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-success">Activo</span>
+                        }
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        @foreach (var ciclo in cicloSeleccionado.Opciones)
+                        {
+                            <li>
+                                <form asp-controller="ContextoCiclo" asp-action="Seleccionar" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="cicloEscolarId" value="@ciclo.Id" />
+                                    <input type="hidden" name="retorno" value="@retornoCiclo" />
+                                    <button class="dropdown-item @(ciclo.Id == cicloSeleccionado.CicloEscolarId ? "active" : string.Empty)" type="submit">
+                                        @ciclo.Anio — @(ciclo.EsActivo ? "Activo" : ciclo.EsCerrado ? "Cerrado" : "Preparación")
+                                    </button>
+                                </form>
+                            </li>
+                        }
+                        @if (cicloSeleccionado.EsHistorico)
+                        {
+                            <li><hr class="dropdown-divider" /></li>
+                            <li>
+                                <form asp-controller="ContextoCiclo" asp-action="Restablecer" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="retorno" value="@retornoCiclo" />
+                                    <button class="dropdown-item" type="submit">Volver al ciclo activo</button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                </li>
+            }
+            else if (!string.IsNullOrWhiteSpace(cicloSeleccionado.Advertencia))
+            {
+                <li class="nav-item text-danger small me-2">@cicloSeleccionado.Advertencia</li>
+            }
             @await Component.InvokeAsync("Notificaciones")
 
             <li class="nav-item dropdown user-menu">

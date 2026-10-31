@@ -6,7 +6,7 @@ namespace Proyecto_Final.ViewModels.Alumnos;
 
 public sealed class EditarAlumno : FormularioAlumno
 {
-    [Required]
+    [Required(ErrorMessage = "El identificador del alumno es obligatorio.")]
     public int Id { get; set; }
 
     public List<EncargadoAlumnoEdicion> Encargados { get; set; } = [];

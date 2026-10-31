@@ -84,6 +84,11 @@
         Permisos.Secciones.Ver
     )).Succeeded;
 
+    var exploradorAcademico = (await Autorizacion.AuthorizeAsync(
+        User,
+        Permisos.Dashboard.CoordinacionVer
+    )).Succeeded && secciones;
+
     var cursos = (await Autorizacion.AuthorizeAsync(
         User,
         Permisos.Cursos.Ver
@@ -114,10 +119,14 @@
         Permisos.Planificaciones.Ver
     )).Succeeded;
 
-    var documentos = (await Autorizacion.AuthorizeAsync(
+    var tienePermisoDocumentos = (await Autorizacion.AuthorizeAsync(
         User,
         Permisos.Documentos.Ver
     )).Succeeded;
+
+    var perfilDocumentos = await AccesoAcademico.ObtenerContextoUsuarioAsync();
+    var documentos = tienePermisoDocumentos &&
+        (AccesoAcademico.EsOperadorInstitucional || perfilDocumentos.DocenteId.HasValue);
 
     var tareas = (await Autorizacion.AuthorizeAsync(
         User,
@@ -147,6 +156,11 @@
     var notificaciones = (await Autorizacion.AuthorizeAsync(
         User,
         Permisos.Notificaciones.Ver
+    )).Succeeded;
+
+    var resolucionesTraslados = (await Autorizacion.AuthorizeAsync(
+        User,
+        Permisos.ResolucionesTraslados.Ver
     )).Succeeded;
 
     var contextoAcademico = await AccesoAcademico.ObtenerContextoUsuarioAsync();
@@ -183,6 +197,16 @@
                         <p>Inicio</p>
                     </a>
                 </li>
+
+                @if (exploradorAcademico)
+                {
+                    <li class="nav-item">
+                        <a asp-controller="ExploradorAcademico" asp-action="Index" class="nav-link @Activo("ExploradorAcademico")">
+                            <i class="nav-icon bi bi-diagram-3"></i>
+                            <p>Explorador académico</p>
+                        </a>
+                    </li>
+                }
 
                 @if (usuarios || roles || permisos || auditoria)
                 {
@@ -400,10 +424,10 @@
                     </li>
                 }
 
-                @if (asignaciones || inscripciones)
+                @if (asignaciones || inscripciones || resolucionesTraslados)
                 {
-                    <li class="nav-item @Abierto("Asignaciones", "Inscripciones")">
-                        <a href="#" class="nav-link @Activo("Asignaciones", "Inscripciones")">
+                    <li class="nav-item @Abierto("Asignaciones", "Inscripciones", "ResolucionesTraslados")">
+                        <a href="#" class="nav-link @Activo("Asignaciones", "Inscripciones", "ResolucionesTraslados")">
                             <i class="nav-icon bi bi-person-workspace"></i>
 
                             <p>
@@ -434,7 +458,18 @@
                                     </a>
                                 </li>
                             }
+                            @if (resolucionesTraslados)
+                            {
+                                <li class="nav-item">
+                                    <a asp-controller="ResolucionesTraslados" asp-action="Index"
+                                       class="nav-link @Activo("ResolucionesTraslados")">
+                                        <i class="nav-icon bi bi-file-earmark-check"></i>
+                                        <p>Resoluciones académicas</p>
+                                    </a>
+                                </li>
+                            }
                         </ul>
+
                     </li>
                 }
 
@@ -498,7 +533,8 @@
                 @if (tareas || entregas || cuestionarios || calificaciones || ia)
                 {
                     <li class="nav-item @Abierto("Tareas", "Entregas", "Cuestionarios", "Calificaciones", "ContenidoIA")">
-                        <a href="#" class="nav-link @Activo("Tareas", "Entregas", "Cuestionarios", "Calificaciones", "ContenidoIA")">
+                        <a href="#"
+                           class="nav-link @Activo("Tareas", "Entregas", "Cuestionarios", "Calificaciones", "ContenidoIA")">
                             <i class="nav-icon bi bi-list-check"></i>
 
                             <p>
