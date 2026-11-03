@@ -25,6 +25,7 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
     private const string ConfirmacionEsperada = "BASE_DESCARTABLE";
     private const string UsuarioAlumnoId = "alumno-http-prueba";
     private const string UsuarioDocenteDelegadoId = "docente-delegado-http";
+    private const string UsuarioDocenteSoloReabrirId = "docente-solo-reabrir-http";
     private const string UsuarioDocenteSinDelegacionId = "docente-ajeno-alumno-http";
     private const string UsuarioOperadorCalificacionesId = "operador-calificaciones-http";
     private const string UsuarioSoloVerCalificacionesId = "solo-ver-calificaciones-http";
@@ -107,6 +108,127 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
         Assert.Equal(HttpStatusCode.Forbidden, crearPlanificacion.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, configurarCalificaciones.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, iniciarSinAntiforgery.StatusCode);
+    }
+
+    [Fact]
+    public async Task TareasEditar_ExigeGestionVigente_YNoExponeDelegacionSoloParaReabrir()
+    {
+        OmitirSinPostgresDescartable();
+        using var fabricaTitular = new FabricaSabiaAlumno(
+            fixture.ConexionAplicacion!, fixture.DirectorioClaves!, "docente-alumno-http");
+        using var titular = fabricaTitular.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        using var fabricaSoloReabrir = new FabricaSabiaAlumno(
+            fixture.ConexionAplicacion!, fixture.DirectorioClaves!, UsuarioDocenteSoloReabrirId);
+        using var soloReabrir = fabricaSoloReabrir.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        using var fabricaAjena = new FabricaSabiaAlumno(
+            fixture.ConexionAplicacion!, fixture.DirectorioClaves!, UsuarioDocenteSinDelegacionId);
+        using var ajena = fabricaAjena.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        using var fabricaOperador = new FabricaSabiaAlumno(
+            fixture.ConexionAplicacion!, fixture.DirectorioClaves!, UsuarioOperadorCalificacionesId);
+        using var operador = fabricaOperador.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        using var fabricaSinPermiso = new FabricaSabiaAlumno(
+            fixture.ConexionAplicacion!, fixture.DirectorioClaves!, UsuarioSinPermisoId);
+        using var sinPermiso = fabricaSinPermiso.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        var propia = await ajena.GetAsync(
+            $"/Tareas/Editar?id={escenario.TareaSoloReabrirId}", TestContext.Current.CancellationToken);
+        var operadorAutorizado = await operador.GetAsync(
+            $"/Tareas/Editar?id={escenario.TareaSoloReabrirId}", TestContext.Current.CancellationToken);
+        var soloReabrirRespuesta = await soloReabrir.GetAsync(
+            $"/Tareas/Editar?id={escenario.TareaSoloReabrirId}", TestContext.Current.CancellationToken);
+        var ajenaRespuesta = await titular.GetAsync(
+            $"/Tareas/Editar?id={escenario.TareaSoloReabrirId}", TestContext.Current.CancellationToken);
+        var inexistente = await ajena.GetAsync(
+            "/Tareas/Editar?id=2147483647", TestContext.Current.CancellationToken);
+        var historica = await titular.GetAsync(
+            $"/Tareas/Editar?id={escenario.TareaHistoricaId}", TestContext.Current.CancellationToken);
+        var cerrada = await titular.GetAsync(
+            $"/Tareas/Editar?id={escenario.TareaCerradaId}", TestContext.Current.CancellationToken);
+        var sinPermisoRespuesta = await sinPermiso.GetAsync(
+            $"/Tareas/Editar?id={escenario.TareaSoloReabrirId}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, propia.StatusCode);
+        Assert.Contains("Tarea con delegacion de reapertura HTTP", await propia.Content.ReadAsStringAsync(
+            TestContext.Current.CancellationToken));
+        Assert.Equal(HttpStatusCode.OK, operadorAutorizado.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, sinPermisoRespuesta.StatusCode);
+
+        foreach (var respuesta in new[]
+                 {
+                     soloReabrirRespuesta, ajenaRespuesta, inexistente, historica, cerrada
+                 })
+        {
+            Assert.Equal(HttpStatusCode.NotFound, respuesta.StatusCode);
+            Assert.Null(respuesta.Headers.Location);
+            Assert.DoesNotContain("Tarea con delegacion de reapertura HTTP", await respuesta.Content.ReadAsStringAsync(
+                TestContext.Current.CancellationToken));
+        }
+
+        Assert.Equal(
+            await inexistente.Content.ReadAsStringAsync(TestContext.Current.CancellationToken),
+            await soloReabrirRespuesta.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task ResolucionesTrasladosDetalle_ClasificaElCicloDespuesDeAutorizar()
+    {
+        OmitirSinPostgresDescartable();
+        using var autorizada = CrearCliente(sinRedireccion: true);
+        using var fabricaSinPermiso = new FabricaSabiaAlumno(
+            fixture.ConexionAplicacion!, fixture.DirectorioClaves!, UsuarioSinPermisoId);
+        using var sinPermiso = fabricaSinPermiso.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        var actual = await autorizada.GetAsync(
+            $"/ResolucionesTraslados/Detalle?id={escenario.ResolucionActualId}",
+            TestContext.Current.CancellationToken);
+        var historica = await autorizada.GetAsync(
+            $"/ResolucionesTraslados/Detalle?id={escenario.ResolucionHistoricaId}",
+            TestContext.Current.CancellationToken);
+        var inexistente = await autorizada.GetAsync(
+            "/ResolucionesTraslados/Detalle?id=2147483647", TestContext.Current.CancellationToken);
+        var prohibida = await sinPermiso.GetAsync(
+            $"/ResolucionesTraslados/Detalle?id={escenario.ResolucionActualId}",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, actual.StatusCode);
+        Assert.Equal(HttpStatusCode.Found, historica.StatusCode);
+        Assert.Equal("/ResolucionesTraslados", historica.Headers.Location?.OriginalString);
+        Assert.Equal(HttpStatusCode.NotFound, inexistente.StatusCode);
+        Assert.Null(inexistente.Headers.Location);
+        Assert.Equal(HttpStatusCode.Forbidden, prohibida.StatusCode);
+
+        var indice = await autorizada.GetAsync("/ResolucionesTraslados", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, indice.StatusCode);
+        var contenidoIndice = await indice.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var cabecerasTempData = historica.Headers.TryGetValues("Set-Cookie", out var valoresCookies)
+            ? string.Join(" | ", valoresCookies.Where(x => x.Contains("TempData", StringComparison.Ordinal)))
+            : "sin Set-Cookie";
+        var mensajesAlerta = string.Join(" | ", Regex.Matches(
+                contenidoIndice, "data-mensaje=\"(?<mensaje>[^\"]*)\"")
+            .Select(x => x.Groups["mensaje"].Value));
+        var contenidoDecodificado = WebUtility.HtmlDecode(contenidoIndice);
+
+        Assert.Contains(
+            "La resolución solicitada pertenece a otro ciclo escolar. Seleccione ese ciclo para consultarla.",
+            contenidoDecodificado);
     }
 
     [Fact]
@@ -720,6 +842,12 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
         public int EntregaHistoricaPropiaId { get; private init; }
         public int EntregaPendienteId { get; private init; }
         public int PeriodoId { get; private init; }
+        public int ResolucionActualId { get; private init; }
+        public int ResolucionHistoricaId { get; private init; }
+        public int TareaCerradaId { get; private init; }
+        public int TareaEditableId { get; private init; }
+        public int TareaHistoricaId { get; private init; }
+        public int TareaSoloReabrirId { get; private init; }
 
         public static async Task<EscenarioAlumno> CrearAsync(IServiceProvider servicios)
         {
@@ -744,6 +872,7 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
             await CrearUsuarioAsync(usuarios, "docente-alumno-http", "docente.alumno.http", "Docente", "Alumno");
             await CrearUsuarioAsync(usuarios, UsuarioDocenteSinDelegacionId, "docente.ajeno.alumno.http", "Docente", "Ajeno");
             await CrearUsuarioAsync(usuarios, UsuarioDocenteDelegadoId, "docente.delegado.http", "Docente", "Delegado");
+            await CrearUsuarioAsync(usuarios, UsuarioDocenteSoloReabrirId, "docente.solo.reabrir.http", "Docente", "Reapertura");
             var rolAsignado = await usuarios.AddToRoleAsync(
                 (await usuarios.FindByIdAsync(UsuarioAlumnoId))!, Roles.Alumno);
             Assert.True(rolAsignado.Succeeded, string.Join("; ", rolAsignado.Errors.Select(x => x.Description)));
@@ -758,6 +887,10 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
                 (await usuarios.FindByIdAsync("docente-alumno-http"))!, Roles.Docente);
             Assert.True(rolDocente.Succeeded,
                 string.Join("; ", rolDocente.Errors.Select(x => x.Description)));
+            var rolSoloReabrir = await usuarios.AddToRoleAsync(
+                (await usuarios.FindByIdAsync(UsuarioDocenteSoloReabrirId))!, Roles.Docente);
+            Assert.True(rolSoloReabrir.Succeeded,
+                string.Join("; ", rolSoloReabrir.Errors.Select(x => x.Description)));
             var rolSoloVer = new Rol { Name = "SoloVerCalificacionesHttp", Activo = true };
             var crearRolSoloVer = await roles.CreateAsync(rolSoloVer);
             Assert.True(crearRolSoloVer.Succeeded,
@@ -770,6 +903,18 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
                 (await usuarios.FindByIdAsync(UsuarioSoloVerCalificacionesId))!, rolSoloVer.Name!);
             Assert.True(asignarSoloVer.Succeeded,
                 string.Join("; ", asignarSoloVer.Errors.Select(x => x.Description)));
+            var rolResoluciones = new Rol { Name = "VerResolucionesHttp", Activo = true };
+            var crearRolResoluciones = await roles.CreateAsync(rolResoluciones);
+            Assert.True(crearRolResoluciones.Succeeded,
+                string.Join("; ", crearRolResoluciones.Errors.Select(x => x.Description)));
+            var permisoResoluciones = await roles.AddClaimAsync(rolResoluciones,
+                new Claim(TiposClaims.Permiso, Permisos.ResolucionesTraslados.Ver));
+            Assert.True(permisoResoluciones.Succeeded,
+                string.Join("; ", permisoResoluciones.Errors.Select(x => x.Description)));
+            var asignarRolResoluciones = await usuarios.AddToRoleAsync(
+                (await usuarios.FindByIdAsync(UsuarioAlumnoId))!, rolResoluciones.Name!);
+            Assert.True(asignarRolResoluciones.Succeeded,
+                string.Join("; ", asignarRolResoluciones.Errors.Select(x => x.Description)));
             var rolOperador = new Rol { Name = "OperadorCalificacionesHttp", Activo = true };
             var crearRolOperador = await roles.CreateAsync(rolOperador);
             Assert.True(crearRolOperador.Succeeded,
@@ -778,7 +923,10 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
             {
                 Permisos.Calificaciones.Ver,
                 Permisos.Dashboard.CoordinacionVer,
-                Permisos.Planificaciones.Revisar
+                Permisos.Planificaciones.Revisar,
+                Permisos.ResolucionesTraslados.Ver,
+                Permisos.Tareas.Ver,
+                Permisos.Tareas.Editar
             })
             {
                 var resultadoPermiso = await roles.AddClaimAsync(rolOperador,
@@ -824,6 +972,7 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
             var docentePropio = new Docente { UsuarioId = "docente-alumno-http", Carnet = "DOC-ALU-1" };
             var docenteAjeno = new Docente { UsuarioId = UsuarioDocenteSinDelegacionId, Carnet = "DOC-ALU-2" };
             var docenteDelegado = new Docente { UsuarioId = UsuarioDocenteDelegadoId, Carnet = "DOC-ALU-3" };
+            var docenteSoloReabrir = new Docente { UsuarioId = UsuarioDocenteSoloReabrirId, Carnet = "DOC-ALU-4" };
             var alumnoPropio = new Alumno { UsuarioId = UsuarioAlumnoId, CodigoPersonal = "ALU-HTTP-1" };
             var alumnoAjeno = new Alumno { UsuarioId = "alumno-ajeno-http", CodigoPersonal = "ALU-HTTP-2" };
             var alumnoCompanero = new Alumno { UsuarioId = "alumno-companero-http", CodigoPersonal = "ALU-HTTP-3" };
@@ -844,7 +993,7 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
                 FechaFin = new DateOnly(2025, 3, 15)
             };
             contexto.AddRange(seccionPropia, seccionAjena, seccionHistorica, cursoPropio, cursoAjeno,
-                cursoHistorico, docentePropio, docenteAjeno, docenteDelegado, alumnoPropio, alumnoAjeno,
+                cursoHistorico, docentePropio, docenteAjeno, docenteDelegado, docenteSoloReabrir, alumnoPropio, alumnoAjeno,
                 alumnoCompanero, periodo, periodoHistorico);
             await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
             var asignacionPropia = new Asignacion
@@ -886,6 +1035,21 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
             };
             contexto.RelevosAsignaciones.Add(relevo);
             await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+            var relevoSoloReabrir = new RelevoAsignacion
+            {
+                AsignacionAnteriorId = asignacionAjena.Id,
+                AsignacionNuevaId = asignacionAjena.Id,
+                DocenteAnteriorId = docenteAjeno.Id,
+                DocenteSustitutoId = docenteSoloReabrir.Id,
+                Tipo = TipoRelevoAsignacion.Excepcional,
+                FechaEfectivaUtc = DateTime.UtcNow.AddDays(-1),
+                Motivo = "Cobertura temporal limitada a reapertura para prueba HTTP",
+                UsuarioResponsableId = UsuarioDocenteSinDelegacionId,
+                FechaRegistroUtc = DateTime.UtcNow,
+                ConsecuenciasConfirmadas = true
+            };
+            contexto.RelevosAsignaciones.Add(relevoSoloReabrir);
+            await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
             contexto.DelegacionesAcademicas.Add(new DelegacionAcademica
             {
                 RelevoAsignacionId = relevo.Id,
@@ -893,6 +1057,18 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
                 DocenteId = docenteDelegado.Id,
                 Operaciones = OperacionDelegacionAcademica.CalificarEntregas |
                     OperacionDelegacionAcademica.GestionarEvaluaciones,
+                FechaInicioUtc = DateTime.UtcNow.AddDays(-1),
+                CreadaPorUsuarioId = "docente-alumno-http",
+                FechaCreacionUtc = DateTime.UtcNow,
+                Activa = true
+            });
+            await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+            contexto.DelegacionesAcademicas.Add(new DelegacionAcademica
+            {
+                RelevoAsignacionId = relevoSoloReabrir.Id,
+                AsignacionId = asignacionAjena.Id,
+                DocenteId = docenteSoloReabrir.Id,
+                Operaciones = OperacionDelegacionAcademica.ReabrirEntregas,
                 FechaInicioUtc = DateTime.UtcNow.AddDays(-1),
                 CreadaPorUsuarioId = "docente-alumno-http",
                 FechaCreacionUtc = DateTime.UtcNow,
@@ -935,6 +1111,32 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
             };
             contexto.AddRange(inscripcionPropia, inscripcionAjena, inscripcionCompanero, inscripcionHistorica, unidad);
             await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+            var resolucionActual = new ResolucionTrasladoAcademico
+            {
+                InscripcionId = inscripcionPropia.Id,
+                AlumnoId = alumnoPropio.Id,
+                CicloEscolarId = ciclo.Id,
+                PeriodoId = periodo.Id,
+                CursoId = cursoPropio.Id,
+                Tipo = TipoResolucionTraslado.Origen,
+                Justificacion = "Resolución vigente para validar navegación HTTP.",
+                CreadaPorUsuarioId = "docente-alumno-http",
+                FechaCreacionUtc = DateTime.UtcNow
+            };
+            var resolucionHistorica = new ResolucionTrasladoAcademico
+            {
+                InscripcionId = inscripcionHistorica.Id,
+                AlumnoId = alumnoPropio.Id,
+                CicloEscolarId = cicloHistorico.Id,
+                PeriodoId = periodoHistorico.Id,
+                CursoId = cursoHistorico.Id,
+                Tipo = TipoResolucionTraslado.Origen,
+                Justificacion = "Resolución histórica para validar navegación HTTP.",
+                CreadaPorUsuarioId = "docente-alumno-http",
+                FechaCreacionUtc = DateTime.UtcNow.AddYears(-1)
+            };
+            contexto.ResolucionesTrasladosAcademicos.AddRange(resolucionActual, resolucionHistorica);
+            await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
             contexto.UnidadesAsignaciones.Add(new UnidadAsignacion
             {
                 UnidadId = unidad.Id,
@@ -950,10 +1152,11 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
             var tareaHistorica = CrearTarea(asignacionHistorica.Id, "Tarea histórica HTTP", "docente-alumno-http");
             var tareaCuestionarioPropio = CrearTarea(asignacionPropia.Id, "Cuestionario propio HTTP", "docente-alumno-http", TipoTarea.Cuestionario);
             var tareaCuestionarioAjeno = CrearTarea(asignacionAjena.Id, "Cuestionario ajeno HTTP", "docente-ajeno-alumno-http", TipoTarea.Cuestionario);
+            var tareaSoloReabrir = CrearTarea(asignacionAjena.Id, "Tarea con delegacion de reapertura HTTP", UsuarioDocenteSinDelegacionId);
             var tareaControl = CrearTarea(asignacionPropia.Id, "Tarea confidencial HTTP", "docente-alumno-http");
             tareaControl.Estado = EstadoTarea.Cerrada;
             tareaControl.FechaCierre = DateTime.UtcNow;
-            contexto.AddRange(tareaArchivo, tareaHistorica, tareaCuestionarioPropio, tareaCuestionarioAjeno, tareaControl);
+            contexto.AddRange(tareaArchivo, tareaHistorica, tareaCuestionarioPropio, tareaCuestionarioAjeno, tareaSoloReabrir, tareaControl);
             await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
             var cuestionarioPropio = CrearCuestionario(tareaCuestionarioPropio.Id, "Pregunta propia HTTP");
             var cuestionarioAjeno = CrearCuestionario(tareaCuestionarioAjeno.Id, "Pregunta ajena HTTP");
@@ -1139,23 +1342,29 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
                 EntregaHistoricaAjenaId = entregaHistoricaAjena.Id,
                 EntregaHistoricaPropiaId = entregaHistorica.Id,
                 EntregaPendienteId = entregaPendiente.Id,
-                PeriodoId = periodo.Id
+                PeriodoId = periodo.Id,
+                ResolucionActualId = resolucionActual.Id,
+                ResolucionHistoricaId = resolucionHistorica.Id,
+                TareaCerradaId = tareaControl.Id,
+                TareaEditableId = tareaArchivo.Id,
+                TareaHistoricaId = tareaHistorica.Id,
+                TareaSoloReabrirId = tareaSoloReabrir.Id
             };
         }
 
         private static ResultadoCalificacionPeriodo CrearResultado(int configuracionId, int inscripcionId,
             int alumnoId, decimal nota) => new()
-        {
-            ConfiguracionEvaluacionId = configuracionId,
-            InscripcionId = inscripcionId,
-            AlumnoId = alumnoId,
-            Desempeno = nota,
-            Actitudinal = nota,
-            NotaBimestral = nota,
-            AbacusDesempeno = nota,
-            AbacusActitudinal = nota,
-            FechaCierre = DateTime.UtcNow
-        };
+            {
+                ConfiguracionEvaluacionId = configuracionId,
+                InscripcionId = inscripcionId,
+                AlumnoId = alumnoId,
+                Desempeno = nota,
+                Actitudinal = nota,
+                NotaBimestral = nota,
+                AbacusDesempeno = nota,
+                AbacusActitudinal = nota,
+                FechaCierre = DateTime.UtcNow
+            };
 
         private static Tarea CrearTarea(int asignacionId, string titulo, string creadoPor, TipoTarea tipo = TipoTarea.Archivo) => new()
         {

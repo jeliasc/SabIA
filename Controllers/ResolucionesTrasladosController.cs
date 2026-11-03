@@ -42,8 +42,15 @@ public sealed class ResolucionesTrasladosController(IResolucionTrasladoAcademico
 
     public async Task<IActionResult> Detalle(int id)
     {
-        var modelo = await servicio.ObtenerDetalleAsync(id);
-        return modelo is null ? NotFound() : View(modelo);
+        var consulta = await servicio.ObtenerDetalleParaNavegacionAsync(id);
+        if (consulta.Estado == EstadoConsultaDetalleResolucionTraslado.FueraDeCicloAutorizado)
+        {
+            TempData["Error"] =
+                "La resoluci\u00F3n solicitada pertenece a otro ciclo escolar. Seleccione ese ciclo para consultarla.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        return consulta.Detalle is null ? NotFound() : View(consulta.Detalle);
     }
 
     [HttpPost, ValidateAntiForgeryToken, Authorize(Policy = Permisos.ResolucionesTraslados.Aprobar)]

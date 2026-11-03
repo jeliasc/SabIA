@@ -191,16 +191,31 @@ public sealed class ResolucionTrasladoAcademicoServicio(
         }
     }
 
-    public async Task<DetalleResolucionTraslado?> ObtenerDetalleAsync(int id)
+    public async Task<DetalleResolucionTraslado?> ObtenerDetalleAsync(int id) =>
+        (await ObtenerDetalleParaNavegacionAsync(id)).Detalle;
+
+    public async Task<ResultadoConsultaDetalleResolucionTraslado> ObtenerDetalleParaNavegacionAsync(int id)
     {
-        if (!acceso.TienePermiso(Permisos.ResolucionesTraslados.Ver)) return null;
+        if (!acceso.TienePermiso(Permisos.ResolucionesTraslados.Ver))
+            return ResultadoConsultaDetalleResolucionTraslado.NoDisponible();
+
         var x = await contexto.ResolucionesTrasladosAcademicos.AsNoTracking().Include(x => x.Alumno).ThenInclude(x => x.Usuario)
             .Include(x => x.Curso).Include(x => x.Periodo).Include(x => x.CreadaPorUsuario).Include(x => x.Fuentes)
             .ThenInclude(x => x.Asignacion).ThenInclude(x => x.Seccion).Include(x => x.Fuentes).ThenInclude(x => x.HistorialTraslado)
             .ThenInclude(x => x.SeccionOrigen).SingleOrDefaultAsync(x => x.Id == id);
-        if (x is null || !await PerteneceAlCicloSeleccionadoAsync(x.CicloEscolarId)) return null;
+        if (x is null) return ResultadoConsultaDetalleResolucionTraslado.NoDisponible();
+
+        if (contextoCiclo is not null)
+        {
+            var cicloSeleccionadoId = await ObtenerCicloSeleccionadoIdAsync();
+            if (!cicloSeleccionadoId.HasValue)
+                return ResultadoConsultaDetalleResolucionTraslado.NoDisponible();
+            if (x.CicloEscolarId != cicloSeleccionadoId.Value)
+                return ResultadoConsultaDetalleResolucionTraslado.FueraDeCicloAutorizado();
+        }
+
         var cerrado = await PeriodoTieneCierreAsync(x.PeriodoId, x.Fuentes.Select(f => f.AsignacionId));
-        return new DetalleResolucionTraslado
+        return ResultadoConsultaDetalleResolucionTraslado.Disponible(new DetalleResolucionTraslado
         {
             Id = x.Id,
             InscripcionId = x.InscripcionId,
@@ -226,7 +241,7 @@ public sealed class ResolucionTrasladoAcademicoServicio(
                 Rol = f.Rol,
                 Evidencia = f.Evidencia
             }).ToList()
-        };
+        });
     }
 
     public async Task<ResultadoOperacion> DecidirAsync(DecidirResolucionTraslado modelo)

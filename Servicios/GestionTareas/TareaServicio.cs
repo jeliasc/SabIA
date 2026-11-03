@@ -514,11 +514,27 @@ public sealed class TareaServicio(
 
     public async Task<EditarTarea?> ObtenerEditarAsync(int id)
     {
-        var q = await Q();
-
-        var m = await q
+        // La consulta general Q incluye delegaciones para reaperturas, pero esa
+        // operacion no autoriza editar tareas. Confirmar primero la misma
+        // autorizacion de gestion vigente que exige el POST.
+        var referencia = await c.Tareas
+            .AsNoTracking()
             .Where(x =>
                 x.Id == id &&
+                (x.Estado == EstadoTarea.Borrador ||
+                 x.Estado == EstadoTarea.Publicada)
+            )
+            .Select(x => new { x.Id, x.AsignacionId })
+            .FirstOrDefaultAsync();
+
+        if (referencia is null || !await Puede(referencia.AsignacionId))
+            return null;
+
+        var m = await c.Tareas
+            .AsNoTracking()
+            .Where(x =>
+                x.Id == referencia.Id &&
+                x.AsignacionId == referencia.AsignacionId &&
                 (x.Estado == EstadoTarea.Borrador ||
                  x.Estado == EstadoTarea.Publicada)
             )

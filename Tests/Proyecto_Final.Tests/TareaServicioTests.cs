@@ -460,6 +460,68 @@ public sealed class TareaServicioTests
     }
 
     [Fact]
+    public async Task ObtenerEditar_ExigeGestionVigente_YNoAceptaDelegacionSoloParaReabrir()
+    {
+        await using var contexto = CrearContexto();
+        await SembrarEscenarioAsync(contexto);
+        var tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
+        tarea.Tipo = TipoTarea.Archivo;
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var delegacion = new DelegacionAcademica
+        {
+            RelevoAsignacionId = 1,
+            AsignacionId = tarea.AsignacionId,
+            DocenteId = 2,
+            Operaciones = OperacionDelegacionAcademica.ReabrirEntregas,
+            FechaInicioUtc = DateTime.UtcNow.AddDays(-1),
+            CreadaPorUsuarioId = "docente",
+            FechaCreacionUtc = DateTime.UtcNow,
+            Activa = true
+        };
+        contexto.DelegacionesAcademicas.Add(delegacion);
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var titular = new TareaServicio(contexto, new ArchivosPrueba(), new AccesoPrueba());
+        var operador = new TareaServicio(contexto, new ArchivosPrueba(),
+            new AccesoPrueba(docenteId: null, operador: true));
+        var delegadoSoloReabrir = new TareaServicio(contexto, new ArchivosPrueba(),
+            new AccesoPrueba(autorizado: false, docenteId: 2));
+        var docenteAjeno = new TareaServicio(contexto, new ArchivosPrueba(),
+            new AccesoPrueba(autorizado: false, docenteId: 3));
+
+        Assert.NotNull(await titular.ObtenerEditarAsync(tarea.Id));
+        Assert.NotNull(await operador.ObtenerEditarAsync(tarea.Id));
+        Assert.Null(await delegadoSoloReabrir.ObtenerEditarAsync(tarea.Id));
+        Assert.Null(await docenteAjeno.ObtenerEditarAsync(tarea.Id));
+        Assert.Null(await titular.ObtenerEditarAsync(999999));
+
+        var intentoManipulado = await delegadoSoloReabrir.EditarAsync(new EditarTarea
+        {
+            Id = tarea.Id,
+            AsignacionId = tarea.AsignacionId,
+            Titulo = "Tarea manipulada"
+        }, TestContext.Current.CancellationToken);
+
+        Assert.False(intentoManipulado.Exitoso);
+        Assert.Equal(tarea.Titulo, (await contexto.Tareas.FindAsync(
+            [tarea.Id], TestContext.Current.CancellationToken))!.Titulo);
+
+        delegacion.Activa = false;
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Assert.Null(await delegadoSoloReabrir.ObtenerEditarAsync(tarea.Id));
+
+        delegacion.Activa = true;
+        delegacion.FechaFinUtc = DateTime.UtcNow.AddMinutes(-1);
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Assert.Null(await delegadoSoloReabrir.ObtenerEditarAsync(tarea.Id));
+
+        tarea.Estado = EstadoTarea.Cerrada;
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Assert.Null(await titular.ObtenerEditarAsync(tarea.Id));
+    }
+
+    [Fact]
     public async Task Editar_PublicadaConEntrega_PermiteContenidoSinAlterarEntrega()
     {
         await using var contexto = CrearContexto();
@@ -633,14 +695,17 @@ public sealed class TareaServicioTests
             EstadoTarea.Borrador,
             sinCuestionario: true);
 
-    private sealed class AccesoPrueba(bool autorizado = true) : IAccesoAcademicoServicio
+    private sealed class AccesoPrueba(
+        bool autorizado = true,
+        int? docenteId = 1,
+        bool operador = false) : IAccesoAcademicoServicio
     {
         public string? UsuarioId => "docente";
-        public bool EsOperadorInstitucional => false;
+        public bool EsOperadorInstitucional => operador;
         public bool TienePermiso(string permiso) => true;
         public Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync() =>
-            Task.FromResult(new ContextoAcademicoUsuario(1, null));
-        public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult<int?>(1);
+            Task.FromResult(new ContextoAcademicoUsuario(docenteId, null));
+        public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult(docenteId);
         public Task<int?> ObtenerAlumnoIdAsync() => Task.FromResult<int?>(null);
         public Task<bool> EsDocenteDeAsignacionAsync(int asignacionId) => Task.FromResult(autorizado);
         public Task<bool> AlumnoPerteneceAsignacionAsync(int asignacionId) => Task.FromResult(false);
