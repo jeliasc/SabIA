@@ -42,8 +42,16 @@ public class EntregasController(
     [HttpGet]
     public async Task<IActionResult> Detalle(int id)
     {
-        var modelo = await s.ObtenerDetalleAsync(id);
-        return modelo == null ? NotFound() : View(modelo);
+        var consulta = await s.ObtenerDetalleParaNavegacionAsync(id);
+
+        if (consulta.Estado == EstadoConsultaDetalleEntrega.FueraDeCicloAutorizado)
+        {
+            TempData["Error"] =
+                "La entrega solicitada no corresponde al ciclo escolar seleccionado.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        return consulta.Detalle is null ? NotFound() : View(consulta.Detalle);
     }
 
     [HttpPost]

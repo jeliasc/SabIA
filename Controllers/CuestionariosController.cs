@@ -180,6 +180,17 @@ public class CuestionariosController(
     {
         var r = await s.GuardarRespuestaAsync(m.IntentoId, m.Respuesta);
 
+        if (!r.Exitoso)
+        {
+            var estado = r.Tipo switch
+            {
+                Servicios.Comunes.TipoResultadoOperacion.NoEncontrado => StatusCodes.Status404NotFound,
+                Servicios.Comunes.TipoResultadoOperacion.Conflicto => StatusCodes.Status409Conflict,
+                _ => StatusCodes.Status400BadRequest
+            };
+            return StatusCode(estado, new { exitoso = false, mensaje = r.Mensaje, status = estado });
+        }
+
         return Json(new
         {
             exitoso = r.Exitoso,

@@ -15,7 +15,7 @@ namespace Proyecto_Final.Tests;
 public sealed class TareaServicioTests
 {
     [Fact]
-    public async Task Cerrar_ConservarPendientes_NoRegistraCerosAdministrativos()
+    public async Task Cerrar_SinCalificarAlumnosSinActividad_RechazaElCierre()
     {
         await using var contexto = CrearContexto();
         await SembrarEscenarioAsync(contexto);
@@ -28,8 +28,8 @@ public sealed class TareaServicioTests
         var resultado = await servicio.CerrarAsync(new CerrarTarea { Id = creada.Datos });
 
         Assert.NotNull(previo);
-        Assert.True(resultado.Exitoso, resultado.Mensaje);
-        Assert.Equal(EstadoTarea.Cerrada, (await contexto.Tareas.FindAsync(
+        Assert.False(resultado.Exitoso);
+        Assert.Equal(EstadoTarea.Publicada, (await contexto.Tareas.FindAsync(
             [creada.Datos], TestContext.Current.CancellationToken))!.Estado);
         Assert.All(await contexto.Entregas.Where(x => x.TareaId == creada.Datos)
             .ToListAsync(TestContext.Current.CancellationToken),
@@ -259,6 +259,7 @@ public sealed class TareaServicioTests
         await CuestionarioServicioTests.SembrarAsync(contexto, _ => { }, sinCuestionario: true);
         var tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
         tarea.Tipo = TipoTarea.Archivo;
+        tarea.Estado = EstadoTarea.Cerrada;
         await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
         var servicio = new TareaServicio(contexto, new ArchivosPrueba(), new AccesoPrueba());
 
@@ -283,6 +284,7 @@ public sealed class TareaServicioTests
         await CuestionarioServicioTests.SembrarAsync(contexto, _ => { }, sinCuestionario: true);
         var tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
         tarea.Tipo = TipoTarea.Archivo;
+        tarea.Estado = EstadoTarea.Cerrada;
         await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
         var servicio = new TareaServicio(contexto, new ArchivosPrueba(), new AccesoPrueba());
 
@@ -306,6 +308,7 @@ public sealed class TareaServicioTests
         await CuestionarioServicioTests.SembrarAsync(contexto, _ => { }, sinCuestionario: true);
         var tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
         tarea.Tipo = TipoTarea.Archivo;
+        tarea.Estado = EstadoTarea.Cerrada;
         var alumno = await contexto.Alumnos.SingleAsync(TestContext.Current.CancellationToken);
         var inscripcion = await contexto.Inscripciones.SingleAsync(TestContext.Current.CancellationToken);
         contexto.Entregas.AddRange(
@@ -337,6 +340,7 @@ public sealed class TareaServicioTests
         await CuestionarioServicioTests.SembrarAsync(contexto, _ => { }, sinCuestionario: true);
         var tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
         tarea.Tipo = TipoTarea.Archivo;
+        tarea.Estado = EstadoTarea.Cerrada;
         var alumno = await contexto.Alumnos.SingleAsync(TestContext.Current.CancellationToken);
         var inscripcion = await contexto.Inscripciones.SingleAsync(TestContext.Current.CancellationToken);
         contexto.Entregas.Add(new Entrega
@@ -524,6 +528,7 @@ public sealed class TareaServicioTests
         var tarea = new Tarea
         {
             AsignacionId = 1,
+            UnidadAsignacionId = 1,
             Tipo = tipoOriginal,
             Titulo = "Actividad existente",
             Estado = EstadoTarea.Borrador,
@@ -564,6 +569,7 @@ public sealed class TareaServicioTests
         var tarea = new Tarea
         {
             AsignacionId = 1,
+            UnidadAsignacionId = 1,
             Tipo = tipo,
             Titulo = "Actividad existente",
             Estado = EstadoTarea.Borrador,
@@ -595,6 +601,7 @@ public sealed class TareaServicioTests
     private static CrearTarea Modelo(TipoTarea tipo) => new()
     {
         AsignacionId = 1,
+        UnidadAsignacionId = 1,
         Tipo = tipo,
         TokenCreacion = Guid.NewGuid(),
         Titulo = tipo == TipoTarea.Cuestionario ? "Cuestionario nuevo" : "Entrega nueva",

@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using System.ComponentModel.DataAnnotations;
 using Proyecto_Final.Controllers;
 using Proyecto_Final.Servicios.Comunes;
@@ -9,6 +11,48 @@ namespace Proyecto_Final.Tests;
 
 public sealed class EntregasControllerTests
 {
+    [Fact]
+    public async Task Detalle_NoDisponible_ConservaNotFound()
+    {
+        var controlador = CrearControlador(new EntregaServicioPrueba());
+
+        var resultado = await controlador.Detalle(18);
+
+        Assert.IsType<NotFoundResult>(resultado);
+    }
+
+    [Fact]
+    public async Task Detalle_FueraDeCicloAutorizado_RedirigeAlIndiceConMensajeInstitucional()
+    {
+        var controlador = CrearControlador(new EntregaServicioPrueba
+        {
+            ResultadoDetalle = ResultadoConsultaDetalleEntrega.FueraDeCicloAutorizado()
+        });
+
+        var resultado = await controlador.Detalle(18);
+
+        var redireccion = Assert.IsType<RedirectToActionResult>(resultado);
+        Assert.Equal(nameof(EntregasController.Index), redireccion.ActionName);
+        Assert.Null(redireccion.ControllerName);
+        Assert.Equal(
+            "La entrega solicitada no corresponde al ciclo escolar seleccionado.",
+            controlador.TempData["Error"]);
+    }
+
+    [Fact]
+    public async Task Detalle_Disponible_MuestraLaVista()
+    {
+        var detalle = new DetalleEntrega { EntregaSeleccionadaId = 18 };
+        var controlador = CrearControlador(new EntregaServicioPrueba
+        {
+            ResultadoDetalle = ResultadoConsultaDetalleEntrega.Disponible(detalle)
+        });
+
+        var resultado = await controlador.Detalle(18);
+
+        Assert.Same(detalle, Assert.IsType<ViewResult>(resultado).Model);
+    }
+
     [Fact]
     public void CalificarCero_ConfirmacionMarcada_NoEsRechazadaPorLaValidacionDelModelo()
     {
@@ -84,11 +128,23 @@ public sealed class EntregasControllerTests
         Assert.Equal([18], servicio.SolicitudesCalificar);
     }
 
+    private static EntregasController CrearControlador(IEntregaServicio servicio)
+    {
+        var http = new DefaultHttpContext();
+        return new EntregasController(servicio, null!, null!)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, new TempDataPrueba())
+        };
+    }
+
     private sealed class EntregaServicioPrueba : IEntregaServicio
     {
         public List<int> SolicitudesCalificar { get; } = [];
         public ResultadoOperacion ResultadoCalificar { get; init; } =
             ResultadoOperacion.Error("No usado.");
+        public ResultadoConsultaDetalleEntrega ResultadoDetalle { get; init; } =
+            ResultadoConsultaDetalleEntrega.NoDisponible();
 
         public Task<List<EntregaLista>> ObtenerTodasAsync(int? asignacionId = null) =>
             Task.FromResult(new List<EntregaLista>());
@@ -101,6 +157,9 @@ public sealed class EntregasControllerTests
 
         public Task<DetalleEntrega?> ObtenerDetalleAsync(int id) =>
             Task.FromResult<DetalleEntrega?>(null);
+
+        public Task<ResultadoConsultaDetalleEntrega> ObtenerDetalleParaNavegacionAsync(int id) =>
+            Task.FromResult(ResultadoDetalle);
 
         public Task<ResultadoOperacion> EntregarAsync(EntregarTarea m, CancellationToken ct) =>
             Task.FromResult(ResultadoOperacion.Error("No usado."));
@@ -154,5 +213,15 @@ public sealed class EntregasControllerTests
 
         public Task<(Stream Stream, string Mime, string Nombre)?> DescargarArchivoTareaAsync(int archivoId) =>
             Task.FromResult<(Stream Stream, string Mime, string Nombre)?>(null);
+    }
+
+    private sealed class TempDataPrueba : ITempDataProvider
+    {
+        public IDictionary<string, object> LoadTempData(HttpContext context) =>
+            new Dictionary<string, object>();
+
+        public void SaveTempData(HttpContext context, IDictionary<string, object> values)
+        {
+        }
     }
 }

@@ -55,6 +55,14 @@ public sealed class DocenteHttpTests : IAsyncLifetime
         await using var comando = new NpgsqlCommand($"CREATE DATABASE \"{nombreBase}\"", administrador);
         await comando.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
 
+        var opcionesContexto = new DbContextOptionsBuilder<Contexto>()
+            .UseNpgsql(conexionAplicacion)
+            .Options;
+        await using (var contextoMigracion = new Contexto(opcionesContexto))
+        {
+            await contextoMigracion.Database.MigrateAsync(TestContext.Current.CancellationToken);
+        }
+
         fabrica = new FabricaSabiaDocente(conexionAplicacion, directorioClaves, UsuarioDocenteId);
         using var ambito = fabrica.Services.CreateScope();
         escenario = await EscenarioDocente.CrearAsync(ambito.ServiceProvider);
@@ -173,6 +181,8 @@ public sealed class DocenteHttpTests : IAsyncLifetime
                     ["SuperusuarioInicial:Correo"] = "superusuario.docente@example.test",
                     ["SuperusuarioInicial:Contrasena"] = $"A!a1{Guid.NewGuid():N}",
                     ["Correo:Habilitado"] = "false",
+                    ["Logging:LogLevel:Default"] = "Warning",
+                    ["Logging:LogLevel:Microsoft.EntityFrameworkCore.Database.Command"] = "Warning",
                     ["Logging:EventLog:LogLevel:Default"] = "None"
                 }));
             builder.ConfigureServices(servicios =>

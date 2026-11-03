@@ -233,7 +233,7 @@ public sealed class IaServicio(
             !cache.TryGetValue<string>(ObtenerClavePropietario(jobId), out var propietario) ||
             !string.Equals(propietario, acceso.UsuarioId, StringComparison.Ordinal))
         {
-            return ResultadoOperacion<EstadoTrabajoIa>.Error("El trabajo solicitado no pertenece a la sesión actual o ya expiró.");
+            return ResultadoOperacion<EstadoTrabajoIa>.NoEncontrado("El trabajo solicitado no está disponible.");
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"estado/{Uri.EscapeDataString(jobId)}/");

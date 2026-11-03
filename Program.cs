@@ -197,6 +197,13 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 
+// Una modificación de rol o permiso actualiza el SecurityStamp de los
+// afectados. Esta ventana evita consultar la base en cada acción, pero hace
+// que una cookie vigente se regenere como máximo un minuto después.
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+    options.ValidationInterval = TimeSpan.FromMinutes(1));
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<Usuario>, PrincipalClaimsFactory>();
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(Permisos.Dashboard.CoordinacionVer, politica =>
@@ -230,6 +237,10 @@ builder.Services.AddAuthorization(options =>
         politica => politica.RequireRole(Roles.Superusuario));
     options.AddPolicy(Politicas.ComentariosAcademicos,
         politica => politica.RequireAuthenticatedUser());
+    options.AddPolicy(Politicas.UsuariosValidarDatos, politica =>
+        politica.RequireAuthenticatedUser().RequireAssertion(contexto =>
+            contexto.User.HasClaim(TiposClaims.Permiso, Permisos.Usuarios.Crear) ||
+            contexto.User.HasClaim(TiposClaims.Permiso, Permisos.Usuarios.Editar)));
 
     // EXIGIR AUTENTICACIÓN EN TODO EL SISTEMA
     // excepto en las acciones marcadas con AllowAnonymous.
@@ -418,6 +429,38 @@ app.UseRequestLocalization();
 app.UseRouting();
 app.UseSession();
 app.UseAuthentication();
+
+// Authorize corta la solicitud antes de que los filtros de acción puedan
+// registrar el rechazo. Este middleware cubre únicamente 401/403 y respeta
+// la marca del filtro para no duplicar registros.
+app.Use(async (contexto, siguiente) =>
+{
+    await siguiente();
+    if (contexto.Response.StatusCode is not (StatusCodes.Status401Unauthorized or StatusCodes.Status403Forbidden) ||
+        contexto.Items.ContainsKey("Auditoria.RechazoRegistrado"))
+    {
+        return;
+    }
+
+    contexto.Items["Auditoria.RechazoRegistrado"] = true;
+    try
+    {
+        var auditoria = contexto.RequestServices.GetRequiredService<IAuditoriaServicio>();
+        var registro = auditoria.CrearRegistro(
+            contexto.Request.RouteValues["controller"]?.ToString() ?? "Autorización",
+            contexto.Request.RouteValues["action"]?.ToString() ?? "Acceso denegado",
+            TipoEventoAuditoria.Seguridad,
+            ResultadoAuditoria.Rechazado,
+            $"La solicitud fue rechazada con estado HTTP {contexto.Response.StatusCode}.");
+        await auditoria.RegistrarIndependienteAsync(registro);
+    }
+    catch (Exception errorAuditoria)
+    {
+        contexto.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("AuditoriaRechazos")
+            .LogError(errorAuditoria, "No fue posible registrar un rechazo de autorización.");
+    }
+});
 
 // Solo las solicitudes HTML reciben una pantalla segura. AJAX, fetch y API
 // conservan su código y formato de respuesta original.

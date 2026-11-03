@@ -151,7 +151,8 @@
     var ia = (await Autorizacion.AuthorizeAsync(
         User,
         Permisos.ContenidoIA.Generar
-    )).Succeeded;
+    )).Succeeded &&
+        (AccesoAcademico.EsOperadorInstitucional || perfilDocumentos.DocenteId.HasValue);
 
     var notificaciones = (await Autorizacion.AuthorizeAsync(
         User,

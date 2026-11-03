@@ -5,6 +5,7 @@ using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.Archivos;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.GestionDocumentos;
+using Proyecto_Final.ViewModels.Documentos;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 
 namespace Proyecto_Final.Tests;

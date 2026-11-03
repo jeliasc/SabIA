@@ -66,8 +66,16 @@ public sealed class CalificacionesController(
             User, Permisos.Calificaciones.Registrar)).Succeeded;
         var puedeCerrar = (await autorizacion.AuthorizeAsync(
             User, Permisos.Calificaciones.Cerrar)).Succeeded;
-        var modelo = await servicio.ObtenerLibroAsync(id, puedeRegistrar, puedeCerrar);
-        return modelo == null ? NotFound() : View(modelo);
+        var consulta = await servicio.ObtenerLibroParaNavegacionAsync(
+            id, puedeRegistrar, puedeCerrar);
+        if (consulta.Estado == EstadoConsultaLibroCalificaciones.FueraDeCicloAutorizado)
+        {
+            TempData["Error"] =
+                "El libro solicitado pertenece a otro ciclo escolar. Seleccione ese ciclo para consultarlo.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        return consulta.Libro == null ? NotFound() : View(consulta.Libro);
     }
 
     [HttpGet]
@@ -106,13 +114,19 @@ public sealed class CalificacionesController(
     [HttpGet]
     public async Task<IActionResult> Abacus(int id)
     {
-        var modelo = await servicio.ObtenerResumenAbacusAsync(id);
-        if (modelo == null) return NotFound();
+        var consulta = await servicio.ObtenerResumenAbacusParaNavegacionAsync(id);
+        if (consulta.Estado == EstadoConsultaLibroCalificaciones.FueraDeCicloAutorizado)
+        {
+            TempData["Error"] =
+                "El resumen Abacus solicitado pertenece a otro ciclo escolar. Seleccione ese ciclo para consultarlo.";
+            return RedirectToAction(nameof(Index));
+        }
+        if (consulta.Resumen == null) return NotFound();
 
-        modelo.PuedeSolicitarCorreccion = modelo.EsResultadoCerrado &&
+        consulta.Resumen.PuedeSolicitarCorreccion = consulta.Resumen.EsResultadoCerrado &&
             (await autorizacion.AuthorizeAsync(
                 User, Permisos.Calificaciones.SolicitarCorreccion)).Succeeded;
-        return View(modelo);
+        return View(consulta.Resumen);
     }
 
     [HttpGet]

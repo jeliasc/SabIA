@@ -12,6 +12,8 @@ public interface IEntregaServicio
 
     Task<DetalleEntrega?> ObtenerDetalleAsync(int id);
 
+    Task<ResultadoConsultaDetalleEntrega> ObtenerDetalleParaNavegacionAsync(int id);
+
     Task<ResultadoOperacion> EntregarAsync(
         EntregarTarea m,
         CancellationToken ct
@@ -46,4 +48,35 @@ public interface IEntregaServicio
     Task<(Stream Stream, string Mime, string Nombre)?> DescargarArchivoTareaAsync(
         int archivoId
     );
+}
+
+public enum EstadoConsultaDetalleEntrega
+{
+    NoDisponible,
+    Disponible,
+    FueraDeCicloAutorizado
+}
+
+public sealed class ResultadoConsultaDetalleEntrega
+{
+    private ResultadoConsultaDetalleEntrega(
+        EstadoConsultaDetalleEntrega estado,
+        DetalleEntrega? detalle = null)
+    {
+        Estado = estado;
+        Detalle = detalle;
+    }
+
+    public EstadoConsultaDetalleEntrega Estado { get; }
+
+    public DetalleEntrega? Detalle { get; }
+
+    public static ResultadoConsultaDetalleEntrega NoDisponible() =>
+        new(EstadoConsultaDetalleEntrega.NoDisponible);
+
+    public static ResultadoConsultaDetalleEntrega Disponible(DetalleEntrega detalle) =>
+        new(EstadoConsultaDetalleEntrega.Disponible, detalle);
+
+    public static ResultadoConsultaDetalleEntrega FueraDeCicloAutorizado() =>
+        new(EstadoConsultaDetalleEntrega.FueraDeCicloAutorizado);
 }

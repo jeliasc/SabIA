@@ -60,6 +60,12 @@ public sealed class CalificacionServicio(
                 i.SeccionId == x.SeccionId &&
                 i.CicloEscolarId == x.CicloEscolarId));
         }
+        else if (!acceso.EsOperadorInstitucional)
+        {
+            // El permiso general permite acceder al módulo, pero no otorga por
+            // sí mismo un ámbito académico sobre todas las configuraciones.
+            consulta = consulta.Where(_ => false);
+        }
 
         return new CalificacionesIndex
         {
@@ -206,8 +212,14 @@ public sealed class CalificacionServicio(
             .Select(x => new { x.Id, x.Titulo, x.PunteoMaximo, x.CriterioCalificacionEntrega })
             .ToListAsync();
         var tareaIds = tareas.Select(x => x.Id).ToList();
-        var entregas = await contexto.Entregas.AsNoTracking()
-            .Where(x => tareaIds.Contains(x.TareaId))
+        var perfil = await acceso.ObtenerContextoUsuarioAsync();
+        var restringirAlAlumno = EsConsultaExclusivaDeAlumno(perfil) &&
+            !acceso.EsOperadorInstitucional;
+        var consultaEntregas = contexto.Entregas.AsNoTracking()
+            .Where(x => tareaIds.Contains(x.TareaId));
+        if (restringirAlAlumno)
+            consultaEntregas = consultaEntregas.Where(x => x.AlumnoId == perfil.AlumnoId.Value);
+        var entregas = await consultaEntregas
             .Select(x => new { x.TareaId, x.AlumnoId, x.Calificacion, x.NumeroEnvio,
                 x.OrigenCalificacionAdministrativa, x.InscripcionId,
                 Alumno = x.Alumno.Usuario.PrimerNombre + " " + x.Alumno.Usuario.PrimerApellido,
@@ -629,6 +641,7 @@ public sealed class CalificacionServicio(
             .FirstOrDefaultAsync(x => x.ConfiguracionEvaluacionId == configuracionId);
         var cerrado = cierre?.Estado == EstadoCierreCalificaciones.Cerrado;
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
+        var restringirAlAlumno = EsConsultaExclusivaDeAlumno(perfil);
         var pertenenciasDelPeriodo = cerrado
             ? new Dictionary<int, TipoPertenenciaLibro>()
             : (await PertenenciaHistorica.ObtenerParaSeccionAsync(configuracion, soloActivas: true))
@@ -641,7 +654,7 @@ public sealed class CalificacionServicio(
             inscripciones = inscripciones.Where(x =>
                 x.Estado == EstadoInscripcion.Activa &&
                 pertenenciasDelPeriodo.Keys.Contains(x.Id));
-        if (perfil.AlumnoId.HasValue)
+        if (restringirAlAlumno)
             inscripciones = inscripciones.Where(x => x.AlumnoId == perfil.AlumnoId.Value);
 
         var alumnos = await inscripciones
@@ -659,12 +672,16 @@ public sealed class CalificacionServicio(
         var resultadosCerrados = new Dictionary<int, ResultadoCalificacionPeriodo>();
         if (cerrado)
         {
-            resultadosCerrados = await contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
-                .Where(x => x.ConfiguracionEvaluacionId == configuracionId)
+            var consultaResultadosCerrados = contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
+                .Where(x => x.ConfiguracionEvaluacionId == configuracionId);
+            if (restringirAlAlumno)
+                consultaResultadosCerrados = consultaResultadosCerrados
+                    .Where(x => x.AlumnoId == perfil.AlumnoId.Value);
+            resultadosCerrados = await consultaResultadosCerrados
                 .ToDictionaryAsync(x => x.InscripcionId);
             alumnos = await contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
                 .Where(x => x.ConfiguracionEvaluacionId == configuracionId &&
-                    (!perfil.AlumnoId.HasValue || x.AlumnoId == perfil.AlumnoId.Value))
+                    (!restringirAlAlumno || x.AlumnoId == perfil.AlumnoId.Value))
                 .OrderBy(x => x.Alumno.Usuario.PrimerApellido)
                 .ThenBy(x => x.Alumno.Usuario.PrimerNombre)
                 .Select(x => new
@@ -795,6 +812,37 @@ public sealed class CalificacionServicio(
             libro.Alumnos.Add(fila);
         }
         return libro;
+    }
+
+    public async Task<ResultadoConsultaLibroCalificaciones> ObtenerLibroParaNavegacionAsync(
+        int configuracionId,
+        bool permisoRegistrar,
+        bool permisoCerrar)
+    {
+        var configuracion = await contexto.ConfiguracionesEvaluacion.AsNoTracking()
+            .Include(x => x.Asignacion)
+            .FirstOrDefaultAsync(x => x.Id == configuracionId);
+
+        // La autorización contextual se comprueba antes del ciclo: un recurso
+        // ajeno no puede convertirse en una señal de que existe en otro ciclo.
+        if (configuracion == null || !await PuedeConsultarAsync(configuracion))
+            return ResultadoConsultaLibroCalificaciones.NoDisponible();
+
+        if (contextoCiclo is not null)
+        {
+            var cicloSeleccionadoId = await ObtenerCicloSeleccionadoIdAsync();
+            if (!cicloSeleccionadoId.HasValue)
+                return ResultadoConsultaLibroCalificaciones.NoDisponible();
+            if (configuracion.CicloEscolarId != cicloSeleccionadoId.Value)
+                return ResultadoConsultaLibroCalificaciones.FueraDeCicloAutorizado();
+        }
+
+        // Se conserva ObtenerLibroAsync como la única construcción del libro;
+        // Abacus continúa usando su contrato actual sin cambios.
+        var libro = await ObtenerLibroAsync(configuracionId, permisoRegistrar, permisoCerrar);
+        return libro == null
+            ? ResultadoConsultaLibroCalificaciones.NoDisponible()
+            : ResultadoConsultaLibroCalificaciones.Disponible(libro);
     }
 
     public async Task<ResultadoOperacion> GuardarLibroAsync(GuardarLibroCalificaciones modelo)
@@ -993,9 +1041,36 @@ public sealed class CalificacionServicio(
     public async Task<ResumenAbacus?> ObtenerResumenAbacusAsync(int configuracionId)
     {
         var libro = await ObtenerLibroAsync(configuracionId, false, false);
-        if (libro == null) return null;
-        var cerrados = await contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
-            .Where(x => x.ConfiguracionEvaluacionId == configuracionId)
+        return libro == null ? null : await ConstruirResumenAbacusAsync(libro);
+    }
+
+    public async Task<ResultadoConsultaResumenAbacus> ObtenerResumenAbacusParaNavegacionAsync(
+        int configuracionId)
+    {
+        var consultaLibro = await ObtenerLibroParaNavegacionAsync(
+            configuracionId, false, false);
+        if (consultaLibro.Estado == EstadoConsultaLibroCalificaciones.NoDisponible)
+            return ResultadoConsultaResumenAbacus.NoDisponible();
+        if (consultaLibro.Estado == EstadoConsultaLibroCalificaciones.FueraDeCicloAutorizado)
+            return ResultadoConsultaResumenAbacus.FueraDeCicloAutorizado();
+
+        // El libro ya fue autorizado y construido por la consulta de navegación.
+        // No se vuelve a calcular para formar el resumen Abacus.
+        return ResultadoConsultaResumenAbacus.Disponible(
+            await ConstruirResumenAbacusAsync(consultaLibro.Libro!));
+    }
+
+    private async Task<ResumenAbacus> ConstruirResumenAbacusAsync(LibroCalificaciones libro)
+    {
+        var configuracionId = libro.ConfiguracionId;
+        var perfil = await acceso.ObtenerContextoUsuarioAsync();
+        var restringirAlAlumno = EsConsultaExclusivaDeAlumno(perfil);
+        var consultaResultadosCerrados = contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
+            .Where(x => x.ConfiguracionEvaluacionId == configuracionId);
+        if (restringirAlAlumno)
+            consultaResultadosCerrados = consultaResultadosCerrados
+                .Where(x => x.AlumnoId == perfil.AlumnoId.Value);
+        var cerrados = await consultaResultadosCerrados
             .Select(x => new FilaResumenAbacus
             {
                 ResultadoId = x.Id,
@@ -1622,6 +1697,9 @@ public sealed class CalificacionServicio(
 
     private async Task<int?> ObtenerCicloSeleccionadoIdAsync() =>
         contextoCiclo is null ? null : (await contextoCiclo.ObtenerAsync()).CicloEscolarId;
+
+    private static bool EsConsultaExclusivaDeAlumno(ContextoAcademicoUsuario perfil) =>
+        perfil.AlumnoId.HasValue && !perfil.DocenteId.HasValue;
 
     private async Task<bool> PerteneceAlCicloSeleccionadoAsync(int cicloEscolarId) =>
         contextoCiclo is null || (await contextoCiclo.ObtenerAsync()).CicloEscolarId == cicloEscolarId;

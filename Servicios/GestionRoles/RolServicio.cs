@@ -11,13 +11,16 @@ namespace Proyecto_Final.Servicios.GestionRoles;
 public class RolServicio : IRolServicio
 {
     private readonly RoleManager<Rol> administradorRoles;
+    private readonly UserManager<Usuario> administradorUsuarios;
     private readonly Contexto contexto;
 
     public RolServicio(
         RoleManager<Rol> administradorRoles,
+        UserManager<Usuario> administradorUsuarios,
         Contexto contexto)
     {
         this.administradorRoles = administradorRoles;
+        this.administradorUsuarios = administradorUsuarios;
         this.contexto = contexto;
     }
 
@@ -119,6 +122,7 @@ public class RolServicio : IRolServicio
                 }
             }
 
+            await InvalidarSesionesDelRolAsync(rol);
             await transaccion.CommitAsync();
 
             return ResultadoRol<bool>
@@ -367,6 +371,7 @@ public class RolServicio : IRolServicio
                 }
             }
 
+            await InvalidarSesionesDelRolAsync(rol);
             await transaccion.CommitAsync();
 
             return ResultadoRol<bool>
@@ -525,6 +530,19 @@ public class RolServicio : IRolServicio
         };
     }
 
+    private async Task InvalidarSesionesDelRolAsync(Rol rol)
+    {
+        if (string.IsNullOrWhiteSpace(rol.Name)) return;
+
+        foreach (var usuario in await administradorUsuarios.GetUsersInRoleAsync(rol.Name))
+        {
+            var resultado = await administradorUsuarios.UpdateSecurityStampAsync(usuario);
+            if (!resultado.Succeeded)
+                throw new InvalidOperationException(
+                    "No fue posible invalidar las sesiones afectadas por el cambio de rol.");
+        }
+    }
+
     // DESACTIVAR ROL
     public async Task<ResultadoRol<bool>>
         DesactivarAsync(string id)
@@ -594,6 +612,7 @@ public class RolServicio : IRolServicio
                     );
             }
 
+            await InvalidarSesionesDelRolAsync(rol);
             await transaccion.CommitAsync();
 
             return ResultadoRol<bool>
@@ -678,6 +697,7 @@ public class RolServicio : IRolServicio
                     );
             }
 
+            await InvalidarSesionesDelRolAsync(rol);
             await transaccion.CommitAsync();
 
             return ResultadoRol<bool>

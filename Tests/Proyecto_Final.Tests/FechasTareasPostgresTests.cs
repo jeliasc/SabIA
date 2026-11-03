@@ -57,6 +57,7 @@ public sealed class FechasTareasPostgresTests
             var resultado = await servicio.CrearAsync(new CrearTarea
             {
                 AsignacionId = 1,
+                UnidadAsignacionId = 1,
                 Tipo = TipoTarea.Cuestionario,
                 TokenCreacion = Guid.NewGuid(),
                 Titulo = "Tarea con fechas",

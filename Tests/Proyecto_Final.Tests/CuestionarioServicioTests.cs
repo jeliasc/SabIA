@@ -913,6 +913,32 @@ public sealed class CuestionarioServicioTests
             Docente = docente,
             Estado = EstadoRegistro.Activo
         };
+        var periodo = new Periodo
+        {
+            Id = 1,
+            CicloEscolar = ciclo,
+            Numero = 1,
+            Nombre = "Primer período",
+            FechaInicio = ciclo.FechaInicio,
+            FechaFin = ciclo.FechaFin
+        };
+        var unidad = new Unidad
+        {
+            Id = 1,
+            Titulo = "Unidad de prueba",
+            CreadoPorUsuario = usuarioDocente,
+            FechaCreacion = DateTime.UtcNow
+        };
+        var unidadAsignacion = new UnidadAsignacion
+        {
+            Id = 1,
+            Unidad = unidad,
+            Asignacion = asignacion,
+            Periodo = periodo,
+            Orden = 1,
+            Estado = EstadoPublicacionUnidad.Publicada,
+            AsignadoPorUsuario = usuarioDocente
+        };
         var inscripcion = new Inscripcion
         {
             Id = 1,
@@ -926,6 +952,7 @@ public sealed class CuestionarioServicioTests
         {
             Id = 1,
             Asignacion = asignacion,
+            UnidadAsignacion = unidadAsignacion,
             Tipo = TipoTarea.Cuestionario,
             Titulo = "Cuestionario de prueba",
             Estado = estadoTarea,
@@ -938,7 +965,7 @@ public sealed class CuestionarioServicioTests
 
         contexto.AddRange(
             usuarioDocente, usuarioAlumno, ciclo, grado, seccion, curso,
-            docente, alumno, asignacion, inscripcion, tarea);
+            docente, alumno, asignacion, periodo, unidad, unidadAsignacion, inscripcion, tarea);
 
         if (!sinCuestionario)
         {

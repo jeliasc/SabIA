@@ -582,7 +582,23 @@ public sealed class CuestionarioServicio(
         var terminados = intentosPrevios.Count(x =>
             x.Estado is EstadoIntentoCuestionario.Finalizado or EstadoIntentoCuestionario.Expirado);
 
-        if (cuestionario.MaximoIntentos > 0 && terminados >= cuestionario.MaximoIntentos)
+        // Una reapertura individual posterior a una entrega terminada permite
+        // un intento extraordinario y se enlaza al intento que la consume.
+        var reaperturaExtraId = await contexto.ReaperturasEntregas
+            .Where(x =>
+                x.AutorizaOportunidadAdicional &&
+                x.FechaLimite >= ahora &&
+                x.Entrega.TareaId == cuestionario.TareaId &&
+                x.Entrega.AlumnoId == alumnoId.Value &&
+                x.Entrega.InscripcionId == inscripcionId.Value &&
+                !contexto.IntentosCuestionarios.Any(intento =>
+                    intento.ReaperturaEntregaId == x.Id))
+            .OrderBy(x => x.FechaReapertura)
+            .Select(x => (int?)x.Id)
+            .FirstOrDefaultAsync();
+
+        if (cuestionario.MaximoIntentos > 0 &&
+            terminados >= cuestionario.MaximoIntentos && !reaperturaExtraId.HasValue)
             return ResultadoOperacion<int>.Error("Ya alcanzó el máximo de intentos.");
 
         var orden = cuestionario.Preguntas
@@ -598,6 +614,7 @@ public sealed class CuestionarioServicio(
             CuestionarioId = cuestionario.Id,
             AlumnoId = alumnoId.Value,
             InscripcionId = inscripcionId.Value,
+            ReaperturaEntregaId = reaperturaExtraId,
             NumeroIntento = intentosPrevios
                 .Where(x => x.InscripcionId == inscripcionId.Value)
                 .Select(x => x.NumeroIntento)
@@ -712,7 +729,7 @@ public sealed class CuestionarioServicio(
     {
         var intento = await CargarIntentoAlumnoAsync(intentoId);
         if (intento is null)
-            return ResultadoOperacion<bool>.Error("El intento no está disponible.");
+            return ResultadoOperacion<bool>.NoEncontrado("El intento no está disponible.");
 
         if (intento.Estado != EstadoIntentoCuestionario.EnCurso)
             return ResultadoOperacion<bool>.Correcto(true, "El intento ya fue finalizado.");
@@ -725,11 +742,11 @@ public sealed class CuestionarioServicio(
         }
 
         if (!intento.Cuestionario.PermitirNavegacion)
-            return ResultadoOperacion<bool>.Error("Este cuestionario se responde pregunta por pregunta.");
+            return ResultadoOperacion<bool>.Conflicto("Este cuestionario se responde pregunta por pregunta.");
 
         var pregunta = PreguntaDelIntento(intento, respuesta.PreguntaId);
         if (pregunta is null)
-            return ResultadoOperacion<bool>.Error("La pregunta no pertenece al intento.");
+            return ResultadoOperacion<bool>.Conflicto("La pregunta no pertenece al intento.");
 
         AplicarRespuesta(ObtenerOCrearRespuesta(intento, pregunta.Id, ahora), pregunta, respuesta, ahora);
         await contexto.SaveChangesAsync();
@@ -1877,14 +1894,27 @@ public sealed class CuestionarioServicio(
         var tareaActual = await contexto.Tareas.AsNoTracking().Where(x => x.Id == tareaId)
             .Select(x => new { x.Estado, x.FechaDisponibilidad, x.FechaLimite, x.PermitirEntregaTardia })
             .FirstOrDefaultAsync();
-        if (tareaActual is null || tareaActual.Estado != EstadoTarea.Publicada ||
+        var entregaTardiaCerrada = tareaActual?.Estado == EstadoTarea.Cerrada &&
+            tareaActual.PermitirEntregaTardia;
+        if (tareaActual is null ||
+            (tareaActual.Estado != EstadoTarea.Publicada && !entregaTardiaCerrada) ||
             (tareaActual.FechaDisponibilidad.HasValue && tareaActual.FechaDisponibilidad > ahora) ||
             (tareaActual.FechaLimite.HasValue && tareaActual.FechaLimite < ahora &&
              !tareaActual.PermitirEntregaTardia))
             return new DisponibilidadAlumno(false, tareaActual?.FechaLimite);
 
-        // Una reapertura general publica nuevamente la tarea, pero no crea ni
-        // consume autorizaciones individuales ni oportunidades extraordinarias.
+        var limiteIndividual = await contexto.Entregas
+            .Where(x => x.TareaId == tareaId &&
+                x.AlumnoId == alumnoId &&
+                x.InscripcionId == inscripcionId)
+            .OrderByDescending(x => x.NumeroEnvio)
+            .Select(x => x.FechaLimiteIndividual)
+            .FirstOrDefaultAsync();
+        if (limiteIndividual.HasValue)
+            return new DisponibilidadAlumno(
+                limiteIndividual.Value >= ahora,
+                limiteIndividual.Value);
+
         return new DisponibilidadAlumno(true, tareaActual.FechaLimite);
     }
 

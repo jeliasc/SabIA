@@ -1033,9 +1033,6 @@ public sealed class TareaServicio(
                 return ResultadoOperacion.Error("No existen alumnos inscritos para reabrir la actividad.");
             }
 
-            // La reapertura general vuelve a publicar la actividad, pero no genera
-            // entregas ni oportunidades extraordinarias por alumno.
-            alumnos = [];
             var reapertura = new ReaperturaTarea
             {
                 TareaId = tarea.Id,

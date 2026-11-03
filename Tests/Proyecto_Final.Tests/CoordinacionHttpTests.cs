@@ -6,11 +6,14 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using Proyecto_Final.Data;
+using Proyecto_Final.Models;
 using Proyecto_Final.Seguridad;
 using Proyecto_Final.Seguridad.Filtros;
 
@@ -20,6 +23,7 @@ namespace Proyecto_Final.Tests;
 public sealed class CoordinacionHttpTests : IAsyncLifetime
 {
     private const string ConfirmacionEsperada = "BASE_DESCARTABLE";
+    private const string UsuarioCoordinacionId = "coordinacion-http";
     private readonly string? conexionAdministrador =
         Environment.GetEnvironmentVariable("SABIA_PRUEBAS_PG");
     private readonly bool destinoConfirmado =
@@ -50,6 +54,25 @@ public sealed class CoordinacionHttpTests : IAsyncLifetime
         await administrador.OpenAsync(TestContext.Current.CancellationToken);
         await using var comando = new NpgsqlCommand($"CREATE DATABASE \"{nombreBase}\"", administrador);
         await comando.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+
+        var opcionesContexto = new DbContextOptionsBuilder<Contexto>()
+            .UseNpgsql(conexionAplicacion)
+            .Options;
+        await using (var contextoMigracion = new Contexto(opcionesContexto))
+        {
+            await contextoMigracion.Database.MigrateAsync(TestContext.Current.CancellationToken);
+            contextoMigracion.Set<Usuario>().Add(new Usuario
+            {
+                Id = UsuarioCoordinacionId,
+                UserName = "coordinacion.http",
+                NormalizedUserName = "COORDINACION.HTTP",
+                Email = "coordinacion.http@example.test",
+                NormalizedEmail = "COORDINACION.HTTP@EXAMPLE.TEST",
+                PrimerNombre = "Coordinacion",
+                PrimerApellido = "Prueba"
+            });
+            await contextoMigracion.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
 
         fabrica = new FabricaSabia(conexionAplicacion, directorioClaves);
     }
@@ -88,6 +111,19 @@ public sealed class CoordinacionHttpTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, calificaciones.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, usuarios.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, postSinAntiforgery.StatusCode);
+    }
+
+    [Fact]
+    public async Task Coordinacion_SinPermisoDeSecciones_NoAccedeAlExploradorAcademico()
+    {
+        OmitirSinPostgresDescartable();
+        using var cliente = CrearCliente(sinRedireccion: true);
+
+        var explorador = await cliente.GetAsync(
+            "/ExploradorAcademico",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, explorador.StatusCode);
     }
 
     public async ValueTask DisposeAsync()
@@ -139,6 +175,8 @@ public sealed class CoordinacionHttpTests : IAsyncLifetime
                     ["SuperusuarioInicial:Correo"] = "superusuario.http@example.test",
                     ["SuperusuarioInicial:Contrasena"] = $"A!a1{Guid.NewGuid():N}",
                     ["Correo:Habilitado"] = "false",
+                    ["Logging:LogLevel:Default"] = "Warning",
+                    ["Logging:LogLevel:Microsoft.EntityFrameworkCore.Database.Command"] = "Warning",
                     ["Logging:EventLog:LogLevel:Default"] = "None"
                 }));
             builder.ConfigureServices(servicios =>
@@ -196,7 +234,7 @@ public sealed class CoordinacionHttpTests : IAsyncLifetime
             };
             var claims = new List<Claim>
             {
-                new(ClaimTypes.NameIdentifier, "coordinacion-http"),
+                new(ClaimTypes.NameIdentifier, UsuarioCoordinacionId),
                 new(ClaimTypes.Name, "coordinacion.http")
             };
             claims.AddRange(permisos.Select(permiso => new Claim(TiposClaims.Permiso, permiso)));

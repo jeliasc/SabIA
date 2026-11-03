@@ -120,6 +120,13 @@ public class ContenidoIAController(
     public async Task<IActionResult> Estado(string id, CancellationToken cancellationToken)
     {
         var resultado = await iaServicio.ConsultarEstadoAsync(id, cancellationToken);
+        if (!resultado.Exitoso)
+        {
+            var estado = resultado.Tipo == TipoResultadoOperacion.NoEncontrado
+                ? StatusCodes.Status404NotFound
+                : StatusCodes.Status409Conflict;
+            return StatusCode(estado, new { exitoso = false, mensaje = resultado.Mensaje, status = estado });
+        }
         return Json(new
         {
             exitoso = resultado.Exitoso,

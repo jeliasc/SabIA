@@ -39,12 +39,7 @@ public class ForzarCambioContrasenaFiltro : IAsyncActionFilter
         if (usuario == null || !usuario.Activo)
         {
             await administradorSesion.SignOutAsync();
-
-            contexto.Result = new RedirectToActionResult(
-                "Login",
-                "Login",
-                null
-            );
+            contexto.Result = ResultadoNoAutenticado(contexto);
 
             return;
         }
@@ -94,15 +89,37 @@ public class ForzarCambioContrasenaFiltro : IAsyncActionFilter
         // no puede acceder al resto del sistema.
         if (usuario.CambiarContrasena)
         {
-            contexto.Result = new RedirectToActionResult(
-                "CambiarContrasena",
-                "Login",
-                null
-            );
+            contexto.Result = EsNavegacionHtmlGet(contexto)
+                ? new RedirectToActionResult("CambiarContrasena", "Login", null)
+                : new ObjectResult(new
+                {
+                    status = StatusCodes.Status403Forbidden,
+                    title = "Debe cambiar su contraseña para continuar.",
+                    detail = "Complete el cambio obligatorio de contraseña antes de realizar esta operación."
+                })
+                {
+                    StatusCode = StatusCodes.Status403Forbidden
+                };
 
             return;
         }
 
         await siguiente();
     }
+
+    private static IActionResult ResultadoNoAutenticado(ActionExecutingContext contexto) =>
+        EsNavegacionHtmlGet(contexto)
+            ? new RedirectToActionResult("Login", "Login", null)
+            : new ObjectResult(new
+            {
+                status = StatusCodes.Status401Unauthorized,
+                title = "La sesión ya no está disponible.",
+                detail = "Inicie sesión nuevamente para continuar."
+            }) { StatusCode = StatusCodes.Status401Unauthorized };
+
+    private static bool EsNavegacionHtmlGet(ActionExecutingContext contexto) =>
+        HttpMethods.IsGet(contexto.HttpContext.Request.Method) &&
+        !string.Equals(contexto.HttpContext.Request.Headers.XRequestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase) &&
+        contexto.HttpContext.Request.Headers.Accept.Any(x =>
+            x?.Contains("text/html", StringComparison.OrdinalIgnoreCase) == true);
 }

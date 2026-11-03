@@ -324,7 +324,6 @@ public sealed class EntregaServicio(
                         x.Tarea.Asignacion.Seccion.CicloEscolarId &&
                     inscripcion.Estado == EstadoInscripcion.Activa &&
                     inscripcion.Seccion.CicloEscolar.Activo) &&
-                x.Tarea.Estado == EstadoTarea.Publicada &&
                 ((x.FechaLimiteIndividual.HasValue &&
                   x.FechaLimiteIndividual >= ahora &&
                   x.Reaperturas.Any(r => r.FechaLimite >= ahora)) ||
@@ -357,7 +356,10 @@ public sealed class EntregaServicio(
         return modelo;
     }
 
-    public async Task<DetalleEntrega?> ObtenerDetalleAsync(int id)
+    public async Task<DetalleEntrega?> ObtenerDetalleAsync(int id) =>
+        (await ObtenerDetalleParaNavegacionAsync(id)).Detalle;
+
+    public async Task<ResultadoConsultaDetalleEntrega> ObtenerDetalleParaNavegacionAsync(int id)
     {
         var ahora = DateTime.UtcNow;
         var seleccionada = await contexto.Entregas
@@ -367,17 +369,23 @@ public sealed class EntregaServicio(
                     .ThenInclude(x => x.Seccion)
             .FirstOrDefaultAsync(x => x.Id == id);
 
-        if (seleccionada is not null && contextoCiclo is not null)
+        // La autorización se resuelve antes de evaluar el ciclo seleccionado.
+        // Así, una entrega ajena nunca puede clasificarse como de otro ciclo.
+        if (seleccionada == null || !await PuedeConsultarEntregaAsync(seleccionada))
+        {
+            return ResultadoConsultaDetalleEntrega.NoDisponible();
+        }
+
+        if (contextoCiclo is not null)
         {
             var ciclo = await contextoCiclo.ObtenerAsync();
             if (!ciclo.CicloEscolarId.HasValue ||
                 seleccionada.Tarea.Asignacion.Seccion.CicloEscolarId != ciclo.CicloEscolarId.Value)
-                return null;
-        }
-
-        if (seleccionada == null || !await PuedeConsultarEntregaAsync(seleccionada))
-        {
-            return null;
+            {
+                return ciclo.CicloEscolarId.HasValue
+                    ? ResultadoConsultaDetalleEntrega.FueraDeCicloAutorizado()
+                    : ResultadoConsultaDetalleEntrega.NoDisponible();
+            }
         }
 
         var entregas = await contexto.Entregas.AsNoTracking()
@@ -415,7 +423,7 @@ public sealed class EntregaServicio(
 
         var ultima = entregas.FirstOrDefault();
         if (ultima is null)
-            return null;
+            return ResultadoConsultaDetalleEntrega.NoDisponible();
 
         var informacion = await contexto.Entregas.AsNoTracking()
             .Where(x => x.Id == id)
@@ -482,7 +490,7 @@ public sealed class EntregaServicio(
         var calificacionCero = await ObtenerParaCalificarCeroAsync(ultima.Id);
         var perfil = await acceso.ObtenerContextoUsuarioAsync();
 
-        return new DetalleEntrega
+        return ResultadoConsultaDetalleEntrega.Disponible(new DetalleEntrega
         {
             EntregaSeleccionadaId = id,
             TareaId = seleccionada.TareaId,
@@ -524,7 +532,7 @@ public sealed class EntregaServicio(
             ArchivosApoyo = informacion.Archivos,
             Intentos = entregas,
             IntentosCuestionario = intentosCuestionario
-        };
+        });
     }
 
     public async Task<ResultadoOperacion> EntregarAsync(
@@ -556,7 +564,9 @@ public sealed class EntregaServicio(
         }
 
         var ahora = DateTime.UtcNow;
-        if (entrega.Tarea.Estado != EstadoTarea.Publicada)
+        var entregaTardiaCerrada = entrega.Tarea.Estado == EstadoTarea.Cerrada &&
+            entrega.Tarea.PermitirEntregaTardia;
+        if (entrega.Tarea.Estado != EstadoTarea.Publicada && !entregaTardiaCerrada)
         {
             return ResultadoOperacion.Error("La actividad está cerrada y no admite nuevas entregas.");
         }
@@ -588,9 +598,6 @@ public sealed class EntregaServicio(
             await contexto.ReaperturasEntregas.AnyAsync(r =>
                 r.EntregaId == entrega.Id && r.FechaLimite >= ahora,
                 cancellationToken);
-        var entregaTardiaCerrada = entrega.Tarea.Estado == EstadoTarea.Cerrada &&
-            entrega.Tarea.PermitirEntregaTardia;
-
         if (!reaperturaVigente && !entregaTardiaCerrada &&
             entrega.Tarea.Estado != EstadoTarea.Publicada)
         {
@@ -1248,12 +1255,6 @@ public sealed class EntregaServicio(
         {
             return ResultadoOperacion.Error(
                 "Solo el docente responsable puede reabrir esta entrega.");
-        }
-
-        if (docenteId.HasValue)
-        {
-            return ResultadoOperacion.Error(
-                "Las reaperturas individuales no conceden intentos adicionales. Use la reapertura general de la tarea.");
         }
 
         var fechaLimite = HoraGuatemala.ParaGuardar(modelo.FechaLimite);

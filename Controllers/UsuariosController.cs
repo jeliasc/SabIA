@@ -440,7 +440,7 @@ public class UsuariosController : Controller
     }
 
     // VALIDAR CORREO ELECTRÓNICO
-    [Authorize]
+    [Authorize(Policy = Politicas.UsuariosValidarDatos)]
     [HttpGet]
     public IActionResult ValidarCorreo(string correo)
     {
@@ -456,7 +456,7 @@ public class UsuariosController : Controller
 
 
     // VALIDAR DATOS DE USUARIO
-    [Authorize]
+    [Authorize(Policy = Politicas.UsuariosValidarDatos)]
     [HttpGet]
     public async Task<IActionResult> ValidarDatos(
         string usuario,

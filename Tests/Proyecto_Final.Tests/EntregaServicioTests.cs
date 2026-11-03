@@ -5,6 +5,7 @@ using Proyecto_Final.Models;
 using Proyecto_Final.Servicios.GestionAsignaciones;
 using Proyecto_Final.Servicios.GestionCuestionarios;
 using Proyecto_Final.Servicios.GestionEntregas;
+using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.Servicios.Archivos;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.SeguridadAcademica;
@@ -553,7 +554,94 @@ public sealed class EntregaServicioTests
             responsable: false,
             delegacion: new DelegacionPrueba(true, OperacionDelegacionAcademica.GestionarEvaluaciones));
 
-        Assert.Null(await servicio.ObtenerDetalleAsync(entregaId));
+        var consulta = await servicio.ObtenerDetalleParaNavegacionAsync(entregaId);
+
+        Assert.Equal(EstadoConsultaDetalleEntrega.NoDisponible, consulta.Estado);
+        Assert.Null(consulta.Detalle);
+    }
+
+    [Fact]
+    public async Task DetalleEntrega_ConsultaContextual_DistingueCicloAutorizadoDeNoDisponible()
+    {
+        await using var contexto = CrearContexto();
+        var entregaId = await SembrarEntregaAsync(contexto);
+        var cicloEntregaId = await contexto.Entregas
+            .Where(x => x.Id == entregaId)
+            .Select(x => x.Tarea.Asignacion.Seccion.CicloEscolarId)
+            .SingleAsync(TestContext.Current.CancellationToken);
+
+        var autorizado = CrearServicio(
+            contexto,
+            responsable: true,
+            contextoCiclo: new ContextoCicloPrueba(cicloEntregaId));
+        var dentroDelCiclo = await autorizado.ObtenerDetalleParaNavegacionAsync(entregaId);
+
+        Assert.Equal(EstadoConsultaDetalleEntrega.Disponible, dentroDelCiclo.Estado);
+        Assert.NotNull(dentroDelCiclo.Detalle);
+
+        var fueraDelCiclo = CrearServicio(
+            contexto,
+            responsable: true,
+            contextoCiclo: new ContextoCicloPrueba(cicloEntregaId + 1));
+        var autorizadaEnOtroCiclo = await fueraDelCiclo.ObtenerDetalleParaNavegacionAsync(entregaId);
+
+        Assert.Equal(EstadoConsultaDetalleEntrega.FueraDeCicloAutorizado,
+            autorizadaEnOtroCiclo.Estado);
+        Assert.Null(autorizadaEnOtroCiclo.Detalle);
+
+        var ajeno = CrearServicio(
+            contexto,
+            responsable: false,
+            contextoCiclo: new ContextoCicloPrueba(cicloEntregaId));
+        var inexistente = await ajeno.ObtenerDetalleParaNavegacionAsync(int.MaxValue);
+        var ajenaMismoCiclo = await ajeno.ObtenerDetalleParaNavegacionAsync(entregaId);
+
+        Assert.Equal(EstadoConsultaDetalleEntrega.NoDisponible, inexistente.Estado);
+        Assert.Equal(EstadoConsultaDetalleEntrega.NoDisponible, ajenaMismoCiclo.Estado);
+        Assert.Null(inexistente.Detalle);
+        Assert.Null(ajenaMismoCiclo.Detalle);
+    }
+
+    [Fact]
+    public async Task DetalleEntrega_DelegacionValida_ConservaAccesoSoloEnSuAmbito()
+    {
+        await using var contexto = CrearContexto();
+        var entregaId = await SembrarEntregaAsync(contexto);
+        var cicloEntregaId = await contexto.Entregas
+            .Where(x => x.Id == entregaId)
+            .Select(x => x.Tarea.Asignacion.Seccion.CicloEscolarId)
+            .SingleAsync(TestContext.Current.CancellationToken);
+        var servicio = CrearServicio(
+            contexto,
+            responsable: false,
+            delegacion: new DelegacionPrueba(true),
+            contextoCiclo: new ContextoCicloPrueba(cicloEntregaId));
+
+        var consulta = await servicio.ObtenerDetalleParaNavegacionAsync(entregaId);
+
+        Assert.Equal(EstadoConsultaDetalleEntrega.Disponible, consulta.Estado);
+        Assert.NotNull(consulta.Detalle);
+    }
+
+    [Fact]
+    public async Task DetalleEntrega_HistoricaAutorizada_ConservaElDetalleYRestringeControlesVigentes()
+    {
+        await using var contexto = CrearContexto();
+        var entregaId = await SembrarEntregaAsync(contexto);
+        var ciclo = await contexto.CiclosEscolares.SingleAsync(TestContext.Current.CancellationToken);
+        ciclo.Activo = false;
+        ciclo.Estado = EstadoCicloEscolar.Cerrado;
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var servicio = CrearServicio(
+            contexto,
+            responsable: true,
+            contextoCiclo: new ContextoCicloPrueba(ciclo.Id));
+        var consulta = await servicio.ObtenerDetalleParaNavegacionAsync(entregaId);
+
+        Assert.Equal(EstadoConsultaDetalleEntrega.Disponible, consulta.Estado);
+        Assert.NotNull(consulta.Detalle);
+        Assert.False(consulta.Detalle!.PuedeEntregarse);
     }
 
     [Fact]
@@ -1015,8 +1103,9 @@ public sealed class EntregaServicioTests
     private static EntregaServicio CrearServicio(
         Contexto contexto,
         bool responsable,
-        IDelegacionAcademicaServicio? delegacion = null) =>
-        new(contexto, null!, new AccesoPrueba(responsable), delegacion);
+        IDelegacionAcademicaServicio? delegacion = null,
+        IContextoCicloEscolar? contextoCiclo = null) =>
+        new(contexto, null!, new AccesoPrueba(responsable), delegacion, contextoCiclo);
 
     private static Contexto CrearContexto() => new(
         new DbContextOptionsBuilder<Contexto>()
@@ -1153,6 +1242,19 @@ public sealed class EntregaServicioTests
         public Task<bool> PuedeConsultarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(false);
         public Task<bool> PuedeConsultarAsignacionHistoricaAsync(int asignacionId) => Task.FromResult(false);
         public Task<bool> PuedeGestionarAsignacionVigenteAsync(int asignacionId) => Task.FromResult(false);
+    }
+
+    private sealed class ContextoCicloPrueba(int? cicloEscolarId) : IContextoCicloEscolar
+    {
+        public Task<ContextoCicloEscolar> ObtenerAsync() =>
+            Task.FromResult(new ContextoCicloEscolar { CicloEscolarId = cicloEscolarId });
+
+        public Task<ResultadoOperacion> SeleccionarAsync(int cicloEscolarId) =>
+            Task.FromResult(ResultadoOperacion.Correcto("No usado."));
+
+        public void Restablecer()
+        {
+        }
     }
 
     private static IFormFile ArchivoFormulario()

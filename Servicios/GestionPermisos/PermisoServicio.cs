@@ -12,13 +12,16 @@ public class PermisoServicio : IPermisoServicio
 {
     private readonly Contexto contexto;
     private readonly RoleManager<Rol> administradorRoles;
+    private readonly UserManager<Usuario> administradorUsuarios;
 
     public PermisoServicio(
         Contexto contexto,
-        RoleManager<Rol> administradorRoles)
+        RoleManager<Rol> administradorRoles,
+        UserManager<Usuario> administradorUsuarios)
     {
         this.contexto = contexto;
         this.administradorRoles = administradorRoles;
+        this.administradorUsuarios = administradorUsuarios;
     }
 
     // OBTENER TODOS LOS PERMISOS
@@ -397,6 +400,8 @@ public class PermisoServicio : IPermisoServicio
             };
         }
 
+        await InvalidarSesionesDelRolAsync(rolSuperusuario);
+
         return new ResultadoPermiso
         {
             Exitoso = true,
@@ -452,6 +457,8 @@ public class PermisoServicio : IPermisoServicio
                         $"No fue posible retirar el permiso del rol {rol.Name}: {errores}"
                 };
             }
+
+            await InvalidarSesionesDelRolAsync(rol);
         }
 
         return new ResultadoPermiso
@@ -459,5 +466,17 @@ public class PermisoServicio : IPermisoServicio
             Exitoso = true,
             Mensaje = string.Empty
         };
+    }
+
+    private async Task InvalidarSesionesDelRolAsync(Rol rol)
+    {
+        if (string.IsNullOrWhiteSpace(rol.Name)) return;
+        foreach (var usuario in await administradorUsuarios.GetUsersInRoleAsync(rol.Name))
+        {
+            var resultado = await administradorUsuarios.UpdateSecurityStampAsync(usuario);
+            if (!resultado.Succeeded)
+                throw new InvalidOperationException(
+                    "No fue posible invalidar las sesiones afectadas por el cambio de permiso.");
+        }
     }
 }
