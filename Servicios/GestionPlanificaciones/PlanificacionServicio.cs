@@ -438,7 +438,7 @@ public sealed class PlanificacionServicio(
         if (!acceso.EsOperadorInstitucional ||
             !acceso.TienePermiso(Seguridad.Permisos.Planificaciones.Revisar))
         {
-            return ResultadoOperacion.Error("No tiene autorizaciÃ³n institucional para revisar planificaciones.");
+            return ResultadoOperacion.Error("No tiene autorización institucional para revisar planificaciones.");
         }
 
         var planificacion = await contexto.Planificaciones

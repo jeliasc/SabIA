@@ -217,8 +217,15 @@ public sealed class CalificacionServicio(
             !acceso.EsOperadorInstitucional;
         var consultaEntregas = contexto.Entregas.AsNoTracking()
             .Where(x => tareaIds.Contains(x.TareaId));
+        // EsConsultaExclusivaDeAlumno comprueba AlumnoId, pero conservar la
+        // comprobación junto a la consulta evita que un contexto incompleto
+        // pueda ampliar el conjunto de entregas consultado.
         if (restringirAlAlumno)
-            consultaEntregas = consultaEntregas.Where(x => x.AlumnoId == perfil.AlumnoId.Value);
+        {
+            consultaEntregas = perfil.AlumnoId is int alumnoId
+                ? consultaEntregas.Where(x => x.AlumnoId == alumnoId)
+                : consultaEntregas.Where(_ => false);
+        }
         var entregas = await consultaEntregas
             .Select(x => new { x.TareaId, x.AlumnoId, x.Calificacion, x.NumeroEnvio,
                 x.OrigenCalificacionAdministrativa, x.InscripcionId,
@@ -655,7 +662,11 @@ public sealed class CalificacionServicio(
                 x.Estado == EstadoInscripcion.Activa &&
                 pertenenciasDelPeriodo.Keys.Contains(x.Id));
         if (restringirAlAlumno)
-            inscripciones = inscripciones.Where(x => x.AlumnoId == perfil.AlumnoId.Value);
+        {
+            inscripciones = perfil.AlumnoId is int alumnoId
+                ? inscripciones.Where(x => x.AlumnoId == alumnoId)
+                : inscripciones.Where(_ => false);
+        }
 
         var alumnos = await inscripciones
             .OrderBy(x => x.Alumno.Usuario.PrimerApellido)
@@ -675,13 +686,22 @@ public sealed class CalificacionServicio(
             var consultaResultadosCerrados = contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
                 .Where(x => x.ConfiguracionEvaluacionId == configuracionId);
             if (restringirAlAlumno)
-                consultaResultadosCerrados = consultaResultadosCerrados
-                    .Where(x => x.AlumnoId == perfil.AlumnoId.Value);
+            {
+                consultaResultadosCerrados = perfil.AlumnoId is int alumnoId
+                    ? consultaResultadosCerrados.Where(x => x.AlumnoId == alumnoId)
+                    : consultaResultadosCerrados.Where(_ => false);
+            }
             resultadosCerrados = await consultaResultadosCerrados
                 .ToDictionaryAsync(x => x.InscripcionId);
-            alumnos = await contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
-                .Where(x => x.ConfiguracionEvaluacionId == configuracionId &&
-                    (!restringirAlAlumno || x.AlumnoId == perfil.AlumnoId.Value))
+            var consultaAlumnosCerrados = contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
+                .Where(x => x.ConfiguracionEvaluacionId == configuracionId);
+            if (restringirAlAlumno)
+            {
+                consultaAlumnosCerrados = perfil.AlumnoId is int alumnoId
+                    ? consultaAlumnosCerrados.Where(x => x.AlumnoId == alumnoId)
+                    : consultaAlumnosCerrados.Where(_ => false);
+            }
+            alumnos = await consultaAlumnosCerrados
                 .OrderBy(x => x.Alumno.Usuario.PrimerApellido)
                 .ThenBy(x => x.Alumno.Usuario.PrimerNombre)
                 .Select(x => new
@@ -1068,8 +1088,11 @@ public sealed class CalificacionServicio(
         var consultaResultadosCerrados = contexto.ResultadosCalificacionesPeriodos.AsNoTracking()
             .Where(x => x.ConfiguracionEvaluacionId == configuracionId);
         if (restringirAlAlumno)
-            consultaResultadosCerrados = consultaResultadosCerrados
-                .Where(x => x.AlumnoId == perfil.AlumnoId.Value);
+        {
+            consultaResultadosCerrados = perfil.AlumnoId is int alumnoId
+                ? consultaResultadosCerrados.Where(x => x.AlumnoId == alumnoId)
+                : consultaResultadosCerrados.Where(_ => false);
+        }
         var cerrados = await consultaResultadosCerrados
             .Select(x => new FilaResumenAbacus
             {

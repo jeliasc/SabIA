@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Proyecto_Final.Servicios.Dashboard;
 using Proyecto_Final.ViewModels;
@@ -28,8 +29,13 @@ public class HomeController(IDashboardServicio dashboardServicio) : Controller
     [AcceptVerbs("GET", "POST")]
     public IActionResult Estado(int id)
     {
-        Response.StatusCode = id;
-        return View("EstadoHttp", id);
+        // En una reejecución, la ruta puede haber sido resuelta nuevamente.
+        // El feature conserva el estado original y evita degradar un 403 a
+        // otro código durante la presentación institucional.
+        var estado = HttpContext.Features
+            .Get<IStatusCodeReExecuteFeature>()?.OriginalStatusCode ?? id;
+        Response.StatusCode = estado;
+        return View("EstadoHttp", estado);
     }
 
     [AllowAnonymous]

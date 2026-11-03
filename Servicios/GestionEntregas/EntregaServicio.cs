@@ -267,8 +267,8 @@ public sealed class EntregaServicio(
                 var resumen = resumenes[ClaveContexto(vigente.TareaId,
                     vigente.AlumnoId, vigente.InscripcionId)];
                 vigente.CantidadIntentos = resumen.IntentosOrdinariosUsados;
-                // Estos valores tambiÃ©n son histÃ³ricos: no se pueden derivar
-                // del subconjunto visible (por ejemplo, cuando sÃ³lo queda una
+                // Estos valores también son históricos: no se pueden derivar
+                // del subconjunto visible (por ejemplo, cuando solo queda una
                 // reapertura pendiente). El detalle usa esta misma regla.
                 vigente.FechaEntrega = resumen.UltimaFechaEntrega;
                 var intentoActualTieneCalificacion = vigente.Calificacion.HasValue;
@@ -1448,9 +1448,9 @@ public sealed class EntregaServicio(
         if (ids.Length == 0)
             return [];
 
-        // La subconsulta se ancla en una fila que ya superÃ³ las reglas de
-        // acceso del listado/detalle. AsÃ­ se consulta el historial completo,
-        // pero nunca se incorporan contextos acadÃ©micos ajenos.
+        // La subconsulta se ancla en una fila que ya superó las reglas de
+        // acceso del listado/detalle. Así­ se consulta el historial completo,
+        // pero nunca se incorporan contextos académicos ajenos.
         var entregas = await contexto.Entregas.AsNoTracking()
             .Where(x => contexto.Entregas.Any(contextoAutorizado =>
                 ids.Contains(contextoAutorizado.Id) &&

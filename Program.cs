@@ -426,6 +426,11 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRequestLocalization();
+
+// PRESENTACIÓN INSTITUCIONAL DE ERRORES HTTP
+app.UseWhen(EsNavegacionHtml, rama =>
+    rama.UseStatusCodePagesWithReExecute("/Home/Estado/{0}"));
+
 app.UseRouting();
 app.UseSession();
 app.UseAuthentication();
@@ -461,11 +466,6 @@ app.Use(async (contexto, siguiente) =>
             .LogError(errorAuditoria, "No fue posible registrar un rechazo de autorización.");
     }
 });
-
-// Solo las solicitudes HTML reciben una pantalla segura. AJAX, fetch y API
-// conservan su código y formato de respuesta original.
-app.UseWhen(EsNavegacionHtml, rama =>
-    rama.UseStatusCodePagesWithReExecute("/Home/Estado/{0}"));
 
 app.UseAuthorization();
 

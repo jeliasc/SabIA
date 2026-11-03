@@ -872,9 +872,9 @@ public sealed class EntregaServicioTests
         primero!.Estado = EstadoEntrega.Calificada;
         primero.Calificacion = 88;
 
-        // Los dos envÃ­os anteriores quedan fuera del filtro visual al cerrar
+        // Los dos envíos anteriores quedan fuera del filtro visual al cerrar
         // la tarea; la reapertura individual pendiente mantiene la actividad
-        // visible. El contador debe seguir viendo los tres envÃ­os ordinarios.
+        // visible. El contador debe seguir viendo los tres envíos ordinarios.
         contexto.Entregas.AddRange(
             new Entrega
             {
@@ -1002,7 +1002,7 @@ public sealed class EntregaServicioTests
             FechaReapertura = DateTime.UtcNow,
             FechaLimite = limite,
             AutorizaOportunidadAdicional = true,
-            Motivo = "AutorizaciÃ³n extraordinaria de cuestionario.",
+            Motivo = "Autorización extraordinaria de cuestionario.",
             ReabiertaPorUsuarioId = "docente"
         };
         contexto.ReaperturasEntregas.Add(reapertura);

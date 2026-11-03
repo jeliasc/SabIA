@@ -1255,7 +1255,7 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
             var categoriaPropia = new CategoriaEvaluacion
             {
                 ConfiguracionEvaluacionId = configuracionCalificaciones.Id,
-                Nombre = "DesempeÃ±o",
+                Nombre = "Desempeño",
                 Tipo = TipoCategoriaEvaluacion.Desempeno,
                 Porcentaje = 100,
                 Orden = 1
@@ -1263,7 +1263,7 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
             var categoriaAjena = new CategoriaEvaluacion
             {
                 ConfiguracionEvaluacionId = configuracionCalificacionesAjena.Id,
-                Nombre = "DesempeÃ±o",
+                Nombre = "Desempeño",
                 Tipo = TipoCategoriaEvaluacion.Desempeno,
                 Porcentaje = 100,
                 Orden = 1
@@ -1271,7 +1271,7 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
             var categoriaHistorica = new CategoriaEvaluacion
             {
                 ConfiguracionEvaluacionId = configuracionCalificacionesHistorica.Id,
-                Nombre = "DesempeÃ±o",
+                Nombre = "Desempeño",
                 Tipo = TipoCategoriaEvaluacion.Desempeno,
                 Porcentaje = 100,
                 Orden = 1
