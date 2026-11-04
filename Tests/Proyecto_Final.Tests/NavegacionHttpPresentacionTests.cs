@@ -1,16 +1,92 @@
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace Proyecto_Final.Tests;
 
 [Collection("PostgreSQL temporal")]
 public sealed class NavegacionHttpPresentacionTests : IClassFixture<AlumnoHttpTests.Fixture>
 {
+    [Fact]
+    public async Task CambioObligatorio_PostHtml_PresentaErrorInstitucionalCon403()
+    {
+        fixture.OmitirSinPostgresDescartable();
+        using var cliente = fixture.CrearCliente(sinRedireccion: true);
+        cliente.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "text/html");
+        var token = await ObtenerAntiforgeryAsync(cliente);
+
+        await fixture.EstablecerCambioContrasenaAsync(true);
+        try
+        {
+            using var respuesta = await cliente.PostAsync("/Entregas/Entregar",
+                CrearFormulario(token), TestContext.Current.CancellationToken);
+            var contenido = await respuesta.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+            Assert.Contains("text/html", respuesta.Content.Headers.ContentType?.MediaType);
+            Assert.Contains("Acceso denegado", contenido);
+            Assert.Contains("Ir al inicio", contenido);
+        }
+        finally
+        {
+            await fixture.EstablecerCambioContrasenaAsync(false);
+        }
+    }
+
+    [Fact]
+    public async Task CambioObligatorio_PostAjax_ConservaRespuestaJson403()
+    {
+        fixture.OmitirSinPostgresDescartable();
+        using var cliente = fixture.CrearCliente(sinRedireccion: true);
+        cliente.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "application/json");
+        var token = await ObtenerAntiforgeryAsync(cliente);
+
+        await fixture.EstablecerCambioContrasenaAsync(true);
+        try
+        {
+            using var solicitud = new HttpRequestMessage(HttpMethod.Post, "/Entregas/Entregar")
+            {
+                Content = CrearFormulario(token)
+            };
+            solicitud.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+
+            using var respuesta = await cliente.SendAsync(solicitud, TestContext.Current.CancellationToken);
+            var contenido = await respuesta.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
+            Assert.Equal("application/json", respuesta.Content.Headers.ContentType?.MediaType);
+            Assert.Contains("Debe cambiar su contraseña para continuar", contenido);
+        }
+        finally
+        {
+            await fixture.EstablecerCambioContrasenaAsync(false);
+        }
+    }
+
     private readonly AlumnoHttpTests.Fixture fixture;
 
     public NavegacionHttpPresentacionTests(AlumnoHttpTests.Fixture fixture)
     {
         this.fixture = fixture;
     }
+
+    private async Task<string> ObtenerAntiforgeryAsync(HttpClient cliente)
+    {
+        using var respuesta = await cliente.GetAsync(
+            $"/Entregas/Entregar?id={fixture.Escenario.EntregaPendienteId}",
+            TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        var contenido = await respuesta.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var coincidencia = Regex.Match(contenido,
+            "name=\\\"__RequestVerificationToken\\\"[^>]*value=\\\"(?<token>[^\\\"]+)\\\"",
+            RegexOptions.CultureInvariant);
+        Assert.True(coincidencia.Success, "No se encontró el token antiforgery del formulario de entrega.");
+        return WebUtility.HtmlDecode(coincidencia.Groups["token"].Value);
+    }
+
+    private FormUrlEncodedContent CrearFormulario(string token) => new([
+        new KeyValuePair<string, string>("__RequestVerificationToken", token),
+        new KeyValuePair<string, string>("Id", fixture.Escenario.EntregaPendienteId.ToString())
+    ]);
 
     [Fact]
     public async Task NavegacionHtml_PresentaErroresInstitucionales_YPreservaEstadosHttp()

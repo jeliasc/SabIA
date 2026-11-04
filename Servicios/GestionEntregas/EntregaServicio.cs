@@ -1403,14 +1403,23 @@ public sealed class EntregaServicio(
         var stream = await fisico.AbrirLecturaAsync(relacion.Archivo.ClaveAlmacenamiento);
         return stream == null
             ? null
-            : (stream, relacion.Archivo.TipoMime, relacion.Archivo.NombreOriginal);
+            : (stream, ArchivoFisicoServicio.ObtenerTipoMimeSeguro(relacion.Archivo.NombreOriginal),
+                relacion.Archivo.NombreOriginal);
     }
 
     public async Task<(Stream Stream, string Mime, string Nombre)?>
         VisualizarArchivoAsync(int archivoId)
     {
         var archivo = await DescargarArchivoAsync(archivoId);
-        if (archivo == null || EsVistaPreviaCompatible(archivo.Value.Mime))
+        if (archivo == null)
+        {
+            return archivo;
+        }
+
+        if (EsVistaPreviaCompatible(archivo.Value.Mime) &&
+            await ArchivoFisicoServicio.TieneFirmaCompatibleParaVistaPreviaAsync(
+                archivo.Value.Stream,
+                archivo.Value.Mime))
         {
             return archivo;
         }
@@ -1439,7 +1448,8 @@ public sealed class EntregaServicio(
         var stream = await fisico.AbrirLecturaAsync(relacion.Archivo.ClaveAlmacenamiento);
         return stream == null
             ? null
-            : (stream, relacion.Archivo.TipoMime, relacion.Archivo.NombreOriginal);
+            : (stream, ArchivoFisicoServicio.ObtenerTipoMimeSeguro(relacion.Archivo.NombreOriginal),
+                relacion.Archivo.NombreOriginal);
     }
     private async Task<Dictionary<string, ResumenIntentos>> ObtenerResumenesIntentosAsync(
         IEnumerable<int> entregasDeContextosAutorizados, DateTime ahora)
@@ -1449,7 +1459,7 @@ public sealed class EntregaServicio(
             return [];
 
         // La subconsulta se ancla en una fila que ya superó las reglas de
-        // acceso del listado/detalle. Así­ se consulta el historial completo,
+        // acceso del listado/detalle. Así se consulta el historial completo,
         // pero nunca se incorporan contextos académicos ajenos.
         var entregas = await contexto.Entregas.AsNoTracking()
             .Where(x => contexto.Entregas.Any(contextoAutorizado =>

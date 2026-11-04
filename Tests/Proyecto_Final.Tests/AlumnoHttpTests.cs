@@ -742,6 +742,20 @@ public sealed class AlumnoHttpTests : IClassFixture<AlumnoHttpTests.Fixture>
             Assert.SkipWhen(
                 string.IsNullOrWhiteSpace(conexionAdministrador) || !destinoConfirmado,
                 "PostgreSQL descartable no configurado o no confirmado.");
+
+        internal async Task EstablecerCambioContrasenaAsync(bool obligatorio)
+        {
+            Assert.NotNull(ConexionAplicacion);
+
+            var opciones = new DbContextOptionsBuilder<Contexto>()
+                .UseNpgsql(ConexionAplicacion)
+                .Options;
+            await using var contexto = new Contexto(opciones);
+            var usuario = await contexto.Set<Usuario>().SingleAsync(x => x.Id == UsuarioAlumnoId,
+                TestContext.Current.CancellationToken);
+            usuario.CambiarContrasena = obligatorio;
+            await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
     }
 
     private sealed class FabricaSabiaAlumno(

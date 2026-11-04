@@ -17,6 +17,28 @@ public sealed class ArchivoFisicoServicio : IArchivoFisicoServicio
             ".mp3", ".wav", ".mp4", ".webm"
         };
 
+    private static readonly IReadOnlyDictionary<string, string> TiposMimeConfiables =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [".pdf"] = "application/pdf",
+            [".doc"] = "application/msword",
+            [".docx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            [".xls"] = "application/vnd.ms-excel",
+            [".xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            [".ppt"] = "application/vnd.ms-powerpoint",
+            [".pptx"] = "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            [".txt"] = "text/plain",
+            [".csv"] = "text/csv",
+            [".png"] = "image/png",
+            [".jpg"] = "image/jpeg",
+            [".jpeg"] = "image/jpeg",
+            [".webp"] = "image/webp",
+            [".mp3"] = "audio/mpeg",
+            [".wav"] = "audio/wav",
+            [".mp4"] = "video/mp4",
+            [".webm"] = "video/webm"
+        };
+
     private readonly string rutaBase;
 
     public ArchivoFisicoServicio(IWebHostEnvironment ambiente)
@@ -60,6 +82,17 @@ public sealed class ArchivoFisicoServicio : IArchivoFisicoServicio
                 "El tipo de archivo seleccionado no está permitido."
             );
         }
+
+        var validacionFirma = await ValidarFirmaAsync(
+            archivo,
+            extension,
+            cancellationToken);
+        if (validacionFirma is not null)
+        {
+            return validacionFirma;
+        }
+
+        var tipoMime = ObtenerTipoMimeSeguro(archivo.FileName);
 
         categoria = NormalizarCategoria(categoria);
 
@@ -127,9 +160,7 @@ public sealed class ArchivoFisicoServicio : IArchivoFisicoServicio
             {
                 NombreOriginal = Path.GetFileName(archivo.FileName),
                 ClaveAlmacenamiento = clave,
-                TipoMime = string.IsNullOrWhiteSpace(archivo.ContentType)
-                    ? "application/octet-stream"
-                    : archivo.ContentType,
+                TipoMime = tipoMime,
                 TamanoBytes = archivo.Length,
                 HashSha256 = hash
             }
@@ -171,6 +202,97 @@ public sealed class ArchivoFisicoServicio : IArchivoFisicoServicio
         }
 
         return Task.CompletedTask;
+    }
+
+    public static string ObtenerTipoMimeSeguro(string? nombreArchivo)
+    {
+        var extension = Path.GetExtension(nombreArchivo ?? string.Empty);
+        return TiposMimeConfiables.TryGetValue(extension, out var tipoMime)
+            ? tipoMime
+            : "application/octet-stream";
+    }
+
+    public static async Task<bool> TieneFirmaCompatibleParaVistaPreviaAsync(
+        Stream stream,
+        string tipoMime,
+        CancellationToken cancellationToken = default)
+    {
+        if (!stream.CanSeek)
+        {
+            return false;
+        }
+
+        var posicion = stream.Position;
+        try
+        {
+            var encabezado = new byte[12];
+            var leidos = await stream.ReadAsync(encabezado.AsMemory(), cancellationToken);
+            return tipoMime.ToLowerInvariant() switch
+            {
+                "application/pdf" => leidos >= 5 && Coincide(encabezado, "%PDF-"u8),
+                "image/png" => leidos >= 8 && Coincide(encabezado,
+                    [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+                "image/jpeg" => leidos >= 3 && Coincide(encabezado,
+                    [0xFF, 0xD8, 0xFF]),
+                "image/webp" => leidos >= 12 && Coincide(encabezado, "RIFF"u8) &&
+                    Coincide(encabezado.AsSpan(8), "WEBP"u8),
+                _ => false
+            };
+        }
+        finally
+        {
+            stream.Position = posicion;
+        }
+    }
+
+    private static async Task<ResultadoOperacion<ArchivoGuardado>?> ValidarFirmaAsync(
+        IFormFile archivo,
+        string extension,
+        CancellationToken cancellationToken)
+    {
+        if (extension is not (".pdf" or ".png" or ".jpg" or ".jpeg" or ".webp"))
+        {
+            return null;
+        }
+
+        await using var stream = archivo.OpenReadStream();
+        var encabezado = new byte[12];
+        var leidos = await stream.ReadAsync(encabezado.AsMemory(), cancellationToken);
+        var esValido = extension switch
+        {
+            ".pdf" => leidos >= 5 && Coincide(encabezado, "%PDF-"u8),
+            ".png" => leidos >= 8 && Coincide(encabezado,
+                [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+            ".jpg" or ".jpeg" => leidos >= 3 && Coincide(encabezado,
+                [0xFF, 0xD8, 0xFF]),
+            ".webp" => leidos >= 12 && Coincide(encabezado, "RIFF"u8) &&
+                Coincide(encabezado.AsSpan(8), "WEBP"u8),
+            _ => false
+        };
+
+        return esValido
+            ? null
+            : ResultadoOperacion<ArchivoGuardado>.Validacion(
+                "Archivo",
+                "El contenido del archivo no coincide con el formato permitido.");
+    }
+
+    private static bool Coincide(ReadOnlySpan<byte> recibido, ReadOnlySpan<byte> esperado)
+    {
+        if (recibido.Length < esperado.Length)
+        {
+            return false;
+        }
+
+        for (var indice = 0; indice < esperado.Length; indice++)
+        {
+            if (recibido[indice] != esperado[indice])
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private string? ResolverRutaSegura(string clave)

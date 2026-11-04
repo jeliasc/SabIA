@@ -54,6 +54,28 @@ public sealed class EntregasControllerTests
     }
 
     [Fact]
+    public async Task VisualizarArchivo_UsaCabecerasDefensivasParaContenidoInline()
+    {
+        var servicio = new EntregaServicioPrueba
+        {
+            ArchivoVisualizable = (
+                new MemoryStream("%PDF-1.7 prueba"u8.ToArray()),
+                "application/pdf",
+                "entrega.pdf")
+        };
+        var controlador = CrearControlador(servicio);
+
+        var resultado = await controlador.VisualizarArchivo(18);
+
+        var archivo = Assert.IsType<FileStreamResult>(resultado);
+        Assert.Equal("application/pdf", archivo.ContentType);
+        Assert.Equal("nosniff", controlador.Response.Headers["X-Content-Type-Options"].ToString());
+        Assert.Equal("sandbox", controlador.Response.Headers["Content-Security-Policy"].ToString());
+        Assert.Contains("inline", controlador.Response.Headers.ContentDisposition.ToString(),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void CalificarCero_ConfirmacionMarcada_NoEsRechazadaPorLaValidacionDelModelo()
     {
         var modelo = new CalificarCeroEntrega { Id = 18, Confirmado = true };
@@ -145,6 +167,7 @@ public sealed class EntregasControllerTests
             ResultadoOperacion.Error("No usado.");
         public ResultadoConsultaDetalleEntrega ResultadoDetalle { get; init; } =
             ResultadoConsultaDetalleEntrega.NoDisponible();
+        public (Stream Stream, string Mime, string Nombre)? ArchivoVisualizable { get; init; }
 
         public Task<List<EntregaLista>> ObtenerTodasAsync(int? asignacionId = null) =>
             Task.FromResult(new List<EntregaLista>());
@@ -209,7 +232,7 @@ public sealed class EntregasControllerTests
             Task.FromResult<(Stream Stream, string Mime, string Nombre)?>(null);
 
         public Task<(Stream Stream, string Mime, string Nombre)?> VisualizarArchivoAsync(int archivoId) =>
-            Task.FromResult<(Stream Stream, string Mime, string Nombre)?>(null);
+            Task.FromResult(ArchivoVisualizable);
 
         public Task<(Stream Stream, string Mime, string Nombre)?> DescargarArchivoTareaAsync(int archivoId) =>
             Task.FromResult<(Stream Stream, string Mime, string Nombre)?>(null);

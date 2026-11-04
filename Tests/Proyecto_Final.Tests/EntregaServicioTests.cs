@@ -516,6 +516,94 @@ public sealed class EntregaServicioTests
     }
 
     [Fact]
+    public async Task VisualizarArchivoAsync_ArchivoHistoricoConFirmaIncompatible_NoSePresentaInline()
+    {
+        await using var contexto = CrearContexto();
+        var entregaId = await SembrarEntregaAsync(contexto);
+        var archivo = new Archivo
+        {
+            NombreOriginal = "evidencia.pdf",
+            ClaveAlmacenamiento = "entregas/evidencia.pdf",
+            TipoMime = "text/html",
+            TamanoBytes = 1,
+            HashSha256 = "hash",
+            SubidoPorUsuarioId = "alumno",
+            FechaCreacion = DateTime.UtcNow
+        };
+        contexto.Archivos.Add(archivo);
+        contexto.EntregasArchivos.Add(new EntregaArchivo { EntregaId = entregaId, Archivo = archivo });
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var servicio = new EntregaServicio(contexto,
+            new ArchivosLecturaPrueba("<script>alert(1)</script>"u8.ToArray()),
+            new AccesoPrueba(responsable: true));
+
+        Assert.Null(await servicio.VisualizarArchivoAsync(archivo.Id));
+    }
+
+    [Fact]
+    public async Task VisualizarArchivoAsync_ArchivoHistoricoPdfValido_ConservaVistaPrevia()
+    {
+        await using var contexto = CrearContexto();
+        var entregaId = await SembrarEntregaAsync(contexto);
+        var archivo = new Archivo
+        {
+            NombreOriginal = "evidencia.pdf",
+            ClaveAlmacenamiento = "entregas/evidencia.pdf",
+            TipoMime = "text/html",
+            TamanoBytes = 1,
+            HashSha256 = "hash",
+            SubidoPorUsuarioId = "alumno",
+            FechaCreacion = DateTime.UtcNow
+        };
+        contexto.Archivos.Add(archivo);
+        contexto.EntregasArchivos.Add(new EntregaArchivo { EntregaId = entregaId, Archivo = archivo });
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var servicio = new EntregaServicio(contexto,
+            new ArchivosLecturaPrueba("%PDF-1.7 prueba"u8.ToArray()),
+            new AccesoPrueba(responsable: true));
+
+        var vistaPrevia = await servicio.VisualizarArchivoAsync(archivo.Id);
+
+        Assert.NotNull(vistaPrevia);
+        Assert.Equal("application/pdf", vistaPrevia.Value.Mime);
+        await vistaPrevia.Value.Stream.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task DescargarArchivoTareaAsync_DerivaMimeSeguroParaArchivoHistorico()
+    {
+        await using var contexto = CrearContexto();
+        await CuestionarioServicioTests.SembrarAsync(contexto, _ => { }, sinCuestionario: true);
+        var tarea = await contexto.Tareas.SingleAsync(TestContext.Current.CancellationToken);
+        var archivo = new Archivo
+        {
+            NombreOriginal = "guia.pdf",
+            ClaveAlmacenamiento = "tareas/guia.pdf",
+            TipoMime = "text/html",
+            TamanoBytes = 1,
+            HashSha256 = "hash",
+            SubidoPorUsuarioId = "docente",
+            FechaCreacion = DateTime.UtcNow
+        };
+        contexto.Archivos.Add(archivo);
+        contexto.TareasArchivos.Add(new TareaArchivo { Tarea = tarea, Archivo = archivo });
+        await contexto.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var servicio = new EntregaServicio(
+            contexto,
+            new ArchivosLecturaPrueba(),
+            new AlumnoAccesoPrueba(pertenece: true));
+
+        var descarga = await servicio.DescargarArchivoTareaAsync(archivo.Id);
+
+        Assert.NotNull(descarga);
+        Assert.Equal("application/pdf", descarga.Value.Mime);
+        await descarga.Value.Stream.DisposeAsync();
+    }
+
+    [Fact]
     public async Task DescargarArchivoTareaAsync_AlumnoNoPuedeAbrirAdjuntoDeBorrador()
     {
         await using var contexto = CrearContexto();
@@ -1286,13 +1374,13 @@ public sealed class EntregaServicioTests
             CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
-    private sealed class ArchivosLecturaPrueba : IArchivoFisicoServicio
+    private sealed class ArchivosLecturaPrueba(byte[]? contenido = null) : IArchivoFisicoServicio
     {
         public Task<ResultadoOperacion<ArchivoGuardado>> GuardarAsync(IFormFile archivo, string categoria,
             CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<Stream?> AbrirLecturaAsync(string claveAlmacenamiento,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<Stream?>(new MemoryStream("contenido"u8.ToArray()));
+            Task.FromResult<Stream?>(new MemoryStream(contenido ?? "contenido"u8.ToArray()));
         public Task EliminarAsync(string claveAlmacenamiento,
             CancellationToken cancellationToken = default) => Task.CompletedTask;
     }

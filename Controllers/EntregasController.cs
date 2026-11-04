@@ -263,6 +263,8 @@ public class EntregasController(
             return NotFound();
         }
 
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
+        Response.Headers["Content-Security-Policy"] = "sandbox";
         Response.Headers.ContentDisposition =
             $"inline; filename*=UTF-8''{Uri.EscapeDataString(a.Value.Nombre)}";
         return File(a.Value.Stream, a.Value.Mime, enableRangeProcessing: true);

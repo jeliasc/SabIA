@@ -53,31 +53,16 @@ public class ForzarCambioContrasenaFiltro : IAsyncActionFilter
         // Estas acciones deben permanecer disponibles mientras
         // el usuario realiza el cambio obligatorio de contraseña.
         var accionPermitida =
-            string.Equals(
-                controlador,
-                "Login",
-                StringComparison.OrdinalIgnoreCase
-            )
-            &&
-            (
-                string.Equals(
-                    accion,
-                    "CambiarContrasena",
-                    StringComparison.OrdinalIgnoreCase
-                )
-                ||
-                string.Equals(
-                    accion,
-                    "CerrarSesion",
-                    StringComparison.OrdinalIgnoreCase
-                )
-                ||
-                string.Equals(
-                    accion,
-                    "AccesoDenegado",
-                    StringComparison.OrdinalIgnoreCase
-                )
-            );
+            (string.Equals(controlador, "Login", StringComparison.OrdinalIgnoreCase)
+             &&
+             (string.Equals(accion, "CambiarContrasena", StringComparison.OrdinalIgnoreCase)
+              || string.Equals(accion, "CerrarSesion", StringComparison.OrdinalIgnoreCase)
+              || string.Equals(accion, "AccesoDenegado", StringComparison.OrdinalIgnoreCase)))
+            // UseStatusCodePagesWithReExecute conserva el método original. Sin esta
+            // excepción, un POST HTML 403 se bloquea otra vez al reejecutar la
+            // presentación institucional y termina como una respuesta vacía.
+            || (string.Equals(controlador, "Home", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(accion, "Estado", StringComparison.OrdinalIgnoreCase));
 
         if (accionPermitida)
         {
@@ -89,8 +74,10 @@ public class ForzarCambioContrasenaFiltro : IAsyncActionFilter
         // no puede acceder al resto del sistema.
         if (usuario.CambiarContrasena)
         {
-            contexto.Result = EsNavegacionHtmlGet(contexto)
-                ? new RedirectToActionResult("CambiarContrasena", "Login", null)
+            contexto.Result = EsNavegacionHtml(contexto)
+                ? HttpMethods.IsGet(contexto.HttpContext.Request.Method)
+                    ? new RedirectToActionResult("CambiarContrasena", "Login", null)
+                    : new ForbidResult()
                 : new ObjectResult(new
                 {
                     status = StatusCodes.Status403Forbidden,
@@ -119,6 +106,9 @@ public class ForzarCambioContrasenaFiltro : IAsyncActionFilter
 
     private static bool EsNavegacionHtmlGet(ActionExecutingContext contexto) =>
         HttpMethods.IsGet(contexto.HttpContext.Request.Method) &&
+        EsNavegacionHtml(contexto);
+
+    private static bool EsNavegacionHtml(ActionExecutingContext contexto) =>
         !string.Equals(contexto.HttpContext.Request.Headers.XRequestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase) &&
         contexto.HttpContext.Request.Headers.Accept.Any(x =>
             x?.Contains("text/html", StringComparison.OrdinalIgnoreCase) == true);
