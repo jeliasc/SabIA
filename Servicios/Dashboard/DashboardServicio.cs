@@ -689,7 +689,7 @@ public sealed class DashboardServicio(
             {
                 modelo.Indicadores.Add(Indicador(
                     "Última nota cerrada",
-                    resultados[0].NotaBimestral.ToString("0.####"),
+                    resultados[0].NotaBimestral.ToString("0"),
                     "bi bi-award", "ui-stat-card-success"));
             }
         }
