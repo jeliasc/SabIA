@@ -4,6 +4,7 @@
 @inject IAuthorizationService A
 
 @{
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
 
     ViewData["Title"] = soloLectura
@@ -74,11 +75,11 @@
         <div class="d-grid d-md-flex align-items-center gap-2">
             @if (!soloLectura && c)
             {
-                <a asp-action="Crear" class="app-btn app-btn-soft-primary">
+                <a asp-action="Crear" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-primary">
                     Nueva planificación
                 </a>
             }
-            <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-secondary">
+            <a asp-action="@(soloLectura ? "Index" : "Historial")" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-secondary">
                 @(soloLectura ? "Ver vigentes" : "Ver historial")
             </a>
         </div>
@@ -152,7 +153,7 @@
                                                 (x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Borrador ||
                                                  x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta))
                                             {
-                                                <a asp-action="Editar" asp-route-id="@x.Id"
+                                                <a asp-action="Editar" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion"
                                                    class="app-btn app-btn-soft-secondary app-btn-sm">
                                                     Editar
                                                 </a>
@@ -162,7 +163,7 @@
                                                 (x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Borrador ||
                                                  x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta))
                                             {
-                                                <form asp-action="EnviarRevision" asp-route-id="@x.Id" method="post"
+                                                <form asp-action="EnviarRevision" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion" method="post"
                                                       data-confirmar-accion-academica data-confirmar-titulo="Enviar a revisión"
                                                       data-confirmar-mensaje="La planificación quedará pendiente de revisión y no podrá editarse mientras esté en ese estado."
                                                       data-confirmar-texto="Enviar" data-confirmar-color="#198754">
@@ -177,7 +178,7 @@
                                             @if (!soloLectura && revisar &&
                                                 x.Estado == Proyecto_Final.Models.EstadoPlanificacion.EnRevision)
                                             {
-                                                <a asp-action="Revisar" asp-route-id="@x.Id"
+                                                <a asp-action="Revisar" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion"
                                                    class="app-btn app-btn-soft-success app-btn-sm">
                                                     Revisar
                                                 </a>
@@ -288,7 +289,7 @@
                                 (x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Borrador ||
                                  x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta))
                             {
-                                <a asp-action="Editar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary app-btn-sm">
+                                <a asp-action="Editar" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-secondary app-btn-sm">
                                     Editar
                                 </a>
                             }
@@ -297,7 +298,7 @@
                                 (x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Borrador ||
                                  x.Estado == Proyecto_Final.Models.EstadoPlanificacion.Devuelta))
                             {
-                                <form asp-action="EnviarRevision" asp-route-id="@x.Id" method="post" data-confirmar-accion-academica
+                                <form asp-action="EnviarRevision" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion" method="post" data-confirmar-accion-academica
                                       data-confirmar-titulo="Enviar a revisión"
                                       data-confirmar-mensaje="La planificación quedará pendiente de revisión y no podrá editarse mientras esté en ese estado."
                                       data-confirmar-texto="Enviar" data-confirmar-color="#198754">
@@ -313,7 +314,7 @@
                             @if (!soloLectura && revisar &&
                                 x.Estado == Proyecto_Final.Models.EstadoPlanificacion.EnRevision)
                             {
-                                <a asp-action="Revisar" asp-route-id="@x.Id" class="app-btn app-btn-soft-success app-btn-sm">
+                                <a asp-action="Revisar" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-success app-btn-sm">
                                     Revisar
                                 </a>
                             }

@@ -7,6 +7,7 @@
         segundos >= 60
             ? $"{segundos / 60} min{(segundos % 60 > 0 ? $" {segundos % 60} s" : "")}"
             : $"{segundos} s";
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
 }
 
 <div class="container-fluid">
@@ -82,11 +83,11 @@
                     }
 
                     <div class="d-flex flex-column flex-md-row justify-content-end gap-2">
-                        <a asp-action="Index" class="app-btn app-btn-secondary">Volver</a>
+                        <a asp-action="Index" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-secondary">Volver</a>
 
                         @if (Model.UltimoIntentoId.HasValue)
                         {
-                            <a asp-action="Resultado" asp-route-id="@Model.UltimoIntentoId"
+                            <a asp-action="Resultado" asp-route-id="@Model.UltimoIntentoId" asp-route-asignacionId="@contextoAsignacion"
                                class="app-btn app-btn-soft-secondary">
                                 Ver último resultado
                             </a>
@@ -94,7 +95,7 @@
 
                         @if (Model.PuedeIniciar)
                         {
-                            <form asp-action="Iniciar" asp-route-id="@Model.CuestionarioId" method="post">
+                            <form asp-action="Iniciar" asp-route-id="@Model.CuestionarioId" asp-route-asignacionId="@contextoAsignacion" method="post">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="app-btn app-btn-soft-primary w-100">
                                     @(Model.IntentoEnCursoId.HasValue ? "Continuar intento" : "Comenzar")

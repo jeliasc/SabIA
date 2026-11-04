@@ -6,9 +6,9 @@ using Proyecto_Final.ViewModels.Asignaciones;
 
 namespace Proyecto_Final.Controllers;
 
-[Authorize(Policy = Permisos.Asignaciones.Ver)]
 public class AsignacionesController(IAsignacionServicio s) : Controller
 {
+    [Authorize(Policy = Permisos.Asignaciones.Ver)]
     public async Task<IActionResult> Index() =>
         View(await s.ObtenerTodosAsync());
 
@@ -18,7 +18,7 @@ public class AsignacionesController(IAsignacionServicio s) : Controller
     {
         var m = new CrearAsignacion();
 
-        await s.PrepararAsync(m);
+        await s.PrepararAsync(m, Permisos.Asignaciones.Crear);
 
         return View(m);
     }
@@ -41,7 +41,7 @@ public class AsignacionesController(IAsignacionServicio s) : Controller
             Err(r);
         }
 
-        await s.PrepararAsync(m);
+        await s.PrepararAsync(m, Permisos.Asignaciones.Crear);
 
         return View(m);
     }
@@ -75,7 +75,7 @@ public class AsignacionesController(IAsignacionServicio s) : Controller
             Err(r);
         }
 
-        await s.PrepararAsync(m);
+        await s.PrepararAsync(m, Permisos.Asignaciones.Editar);
 
         return View(m);
     }

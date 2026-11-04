@@ -1,0 +1,82 @@
+@model Proyecto_Final.ViewModels.Calificaciones.CalificacionesCursoContextual
+
+@{
+    ViewData["Title"] = "Calificaciones";
+}
+
+<div class="container-fluid">
+    <partial name="_AlertasResultado" />
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Calificaciones</h2>
+            <p class="text-muted mb-0">@Model.Curso · @Model.GradoSeccion · Ciclo @Model.Ciclo</p>
+        </div>
+        <a asp-controller="MisCursos" asp-action="Espacio" asp-route-asignacionId="@Model.AsignacionId"
+           class="app-btn app-btn-soft-secondary">Regresar al curso</a>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <section class="col-12 col-lg-5">
+            <div class="app-card h-100">
+                <div class="app-card-header"><h3 class="app-card-title">Control de tareas</h3></div>
+                <div class="app-card-body d-flex flex-column">
+                    <p class="text-muted">Consulte entregas, estados y calificaciones asociadas. Esta vista es informativa y no modifica el libro oficial.</p>
+                    <a asp-action="ControlTareas" asp-route-asignacionId="@Model.AsignacionId"
+                       class="app-btn app-btn-soft-secondary mt-auto align-self-start">Ver control de tareas</a>
+                </div>
+            </div>
+        </section>
+        <section class="col-12 col-lg-7">
+            <div class="app-card h-100">
+                <div class="app-card-header"><h3 class="app-card-title">Libro oficial de calificaciones</h3></div>
+                <div class="app-card-body">
+                    <p class="text-muted">Seleccione un período para consultar su libro, configurar la evaluación o revisar el estado de cierre.</p>
+                    @if (Model.Periodos.Count == 0)
+                    {
+                        <div class="app-alert app-alert-info mb-0" role="status">No hay períodos académicos disponibles para este ciclo.</div>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var periodo in Model.Periodos)
+                            {
+                                <div class="list-group-item px-0 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                                    <div>
+                                        <h5 class="mb-1">@periodo.Nombre</h5>
+                                        @if (periodo.ConfiguracionId.HasValue)
+                                        {
+                                            <span class="text-muted small">@periodo.Actividades actividades evaluables</span>
+                                            <span class="app-badge ms-2 @(periodo.EstadoCierre == EstadoCierreCalificaciones.Cerrado ? "app-badge-secondary" : "app-badge-success")">@periodo.EstadoCierre.GetDisplayName()</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">Libro aún no configurado</span>
+                                        }
+                                    </div>
+                                    <div class="app-actions flex-wrap">
+                                        @if (periodo.ConfiguracionId.HasValue)
+                                        {
+                                            <a asp-action="Libro" asp-route-id="@periodo.ConfiguracionId" asp-route-asignacionId="@Model.AsignacionId"
+                                               class="app-btn app-btn-soft-primary app-btn-sm">Abrir libro</a>
+                                            @if (Model.PuedeConfigurar && periodo.EstadoCierre != EstadoCierreCalificaciones.Cerrado)
+                                            {
+                                                <a asp-action="Configurar" asp-route-asignacionId="@Model.AsignacionId" asp-route-periodoId="@periodo.PeriodoId" asp-route-origenAsignacionId="@Model.AsignacionId"
+                                                   class="app-btn app-btn-soft-secondary app-btn-sm">Configurar</a>
+                                            }
+                                        }
+                                        else if (Model.PuedeConfigurar)
+                                        {
+                                            <a asp-action="Configurar" asp-route-asignacionId="@Model.AsignacionId" asp-route-periodoId="@periodo.PeriodoId" asp-route-origenAsignacionId="@Model.AsignacionId"
+                                               class="app-btn app-btn-soft-primary app-btn-sm">Crear libro</a>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

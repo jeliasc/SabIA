@@ -46,6 +46,7 @@
            x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador && cuest) ||
           (x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada && cerrar) ||
           (x.PuedeReabrirse && reabrir));
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
 }
 
 <div class="container-fluid">
@@ -67,20 +68,20 @@
 
             @if (!soloLectura && c)
             {
-                <a asp-action="Crear" class="app-btn app-btn-soft-primary">
+                <a asp-action="Crear" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-primary">
                     Nueva tarea
                 </a>
             }
 
             @if (soloLectura)
             {
-                <a asp-action="Index" class="app-btn app-btn-soft-secondary">
+                <a asp-action="Index" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-secondary">
                     Ver vigentes
                 </a>
             }
             else
             {
-                <a asp-action="Historial" class="app-btn app-btn-soft-secondary">
+                <a asp-action="Historial" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-secondary">
                     Ver historial
                 </a>
             }
@@ -166,7 +167,7 @@
                                                 (x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador ||
                                                  x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada))
                                             {
-                                                <a asp-action="Editar" asp-route-id="@x.Id"
+                                                <a asp-action="Editar" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion"
                                                    class="app-btn app-btn-soft-secondary app-btn-sm">
                                                     Editar
                                                 </a>
@@ -176,7 +177,7 @@
                                                 x.Tipo == Proyecto_Final.Models.TipoTarea.Cuestionario &&
                                                 x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador)
                                             {
-                                                <a asp-controller="Cuestionarios" asp-action="Configurar" asp-route-tareaId="@x.Id"
+                                                <a asp-controller="Cuestionarios" asp-action="Configurar" asp-route-tareaId="@x.Id" asp-route-asignacionId="@contextoAsignacion"
                                                    class="app-btn app-btn-soft-secondary app-btn-sm">
                                                     Continuar configuración
                                                 </a>
@@ -185,7 +186,7 @@
                                             @if (p &&
                                                 x.Estado == Proyecto_Final.Models.EstadoTarea.Borrador)
                                             {
-                                                <form asp-action="Publicar" asp-route-id="@x.Id" method="post"
+                                                <form asp-action="Publicar" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion" method="post"
                                                       data-confirmar-accion-academica data-confirmar-titulo="Publicar tarea"
                                                       data-confirmar-mensaje="La tarea se habilitará para los alumnos vigentes de la sección."
                                                       data-confirmar-texto="Publicar" data-confirmar-color="#198754">
@@ -200,14 +201,14 @@
                                             @if (cerrar &&
                                                 x.Estado == Proyecto_Final.Models.EstadoTarea.Publicada)
                                             {
-                                                <a asp-action="Cerrar" asp-route-id="@x.Id"
+                                                <a asp-action="Cerrar" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion"
                                                    class="app-btn app-btn-soft-danger app-btn-sm">Cerrar</a>
                                             }
 
                                             @if (reabrir && x.PuedeReabrirse &&
                                                 (!soloLectura || x.Estado == Proyecto_Final.Models.EstadoTarea.Cerrada))
                                             {
-                                                <a asp-action="Reabrir" asp-route-id="@x.Id"
+                                                <a asp-action="Reabrir" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion"
                                                    class="app-btn app-btn-soft-warning app-btn-sm">Reabrir para todos</a>
                                             }
                                         </div>
@@ -286,16 +287,16 @@
                         <div class="d-grid gap-2">
                             @if (e && (esBorrador || esPublicada))
                             {
-                                <a asp-action="Editar" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary">Editar</a>
+                                <a asp-action="Editar" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-secondary">Editar</a>
                             }
                             @if (cuest && x.Tipo == Proyecto_Final.Models.TipoTarea.Cuestionario && esBorrador)
                             {
-                                <a asp-controller="Cuestionarios" asp-action="Configurar" asp-route-tareaId="@x.Id"
+                                <a asp-controller="Cuestionarios" asp-action="Configurar" asp-route-tareaId="@x.Id" asp-route-asignacionId="@contextoAsignacion"
                                    class="app-btn app-btn-soft-secondary">Continuar configuración</a>
                             }
                             @if (p && esBorrador)
                             {
-                                <form asp-action="Publicar" asp-route-id="@x.Id" method="post" data-confirmar-accion-academica
+                                <form asp-action="Publicar" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion" method="post" data-confirmar-accion-academica
                                       data-confirmar-titulo="Publicar tarea"
                                       data-confirmar-mensaje="La tarea se habilitará para los alumnos vigentes de la sección."
                                       data-confirmar-texto="Publicar" data-confirmar-color="#198754">
@@ -305,12 +306,12 @@
                             }
                             @if (cerrar && esPublicada)
                             {
-                                <a asp-action="Cerrar" asp-route-id="@x.Id" class="app-btn app-btn-soft-danger w-100">Cerrar</a>
+                                <a asp-action="Cerrar" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-danger w-100">Cerrar</a>
                             }
                             @if (reabrir && x.PuedeReabrirse &&
                                 (!soloLectura || x.Estado == Proyecto_Final.Models.EstadoTarea.Cerrada))
                             {
-                                <a asp-action="Reabrir" asp-route-id="@x.Id" class="app-btn app-btn-soft-warning">Reabrir para
+                                <a asp-action="Reabrir" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-warning">Reabrir para
                                     todos
                                 </a>
                             }

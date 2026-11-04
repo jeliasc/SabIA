@@ -157,6 +157,9 @@ public sealed class MaterialServicio(
                 x.Asignacion.Estado == EstadoRegistro.Activo &&
                 x.Asignacion.Seccion.CicloEscolar.Activo);
 
+        if (modelo.AsignacionId > 0)
+            consulta = consulta.Where(x => x.AsignacionId == modelo.AsignacionId);
+
         modelo.Unidades = await consulta
             .GroupBy(x => new { x.UnidadId, x.Unidad.Titulo })
             .Select(grupo => new OpcionSeleccion
@@ -170,7 +173,8 @@ public sealed class MaterialServicio(
 
     public async Task<ResultadoOperacion> CrearAsync(CrearMaterial modelo, CancellationToken cancellationToken)
     {
-        if (!await PuedeGestionarUnidadAsync(modelo.UnidadId, cancellationToken))
+        if (!await PuedeGestionarUnidadAsync(modelo.UnidadId, cancellationToken) ||
+            !await UnidadPerteneceAlContextoAsync(modelo.UnidadId, modelo.AsignacionId, cancellationToken))
             return ResultadoOperacion.Error("No tiene acceso a esa unidad.");
 
         var validacion = ValidarOrigen(modelo, existeArchivoActual: false);
@@ -297,7 +301,9 @@ public sealed class MaterialServicio(
 
         if (material is null ||
             !await PuedeGestionarUnidadAsync(material.UnidadId, cancellationToken) ||
-            !await PuedeGestionarUnidadAsync(modelo.UnidadId, cancellationToken))
+            !await PuedeGestionarUnidadAsync(modelo.UnidadId, cancellationToken) ||
+            !await UnidadPerteneceAlContextoAsync(material.UnidadId, modelo.AsignacionId, cancellationToken) ||
+            !await UnidadPerteneceAlContextoAsync(modelo.UnidadId, modelo.AsignacionId, cancellationToken))
         {
             return ResultadoOperacion.Error("El material no existe o no tiene acceso.");
         }
@@ -532,6 +538,21 @@ public sealed class MaterialServicio(
                 material.Archivo.TipoMime,
                 material.Archivo.NombreOriginal,
                 puedeDescargar);
+    }
+
+    private async Task<bool> UnidadPerteneceAlContextoAsync(
+        int unidadId,
+        int asignacionId,
+        CancellationToken ct = default)
+    {
+        if (asignacionId <= 0)
+            return true;
+
+        return await acceso.PuedeGestionarAsignacionVigenteAsync(asignacionId) &&
+            await contexto.UnidadesAsignaciones.AnyAsync(x =>
+                x.UnidadId == unidadId &&
+                x.AsignacionId == asignacionId,
+                ct);
     }
 
     private async Task<bool> PuedeGestionarUnidadAsync(

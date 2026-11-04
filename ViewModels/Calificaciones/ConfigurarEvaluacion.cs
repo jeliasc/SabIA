@@ -8,6 +8,10 @@ public sealed class ConfigurarEvaluacion
 {
     public int Id { get; set; }
 
+    // Sólo controla el retorno visual al curso de origen; nunca se usa para
+    // resolver la asignación que se guarda.
+    public int? OrigenAsignacionId { get; set; }
+
     [Range(1, int.MaxValue, ErrorMessage = "Seleccione una asignación.")]
     public int AsignacionId { get; set; }
 

@@ -6,9 +6,10 @@ namespace Proyecto_Final.ViewModels.Calificaciones;
 public sealed class ControlTareas
 {
     public int AsignacionId { get; set; }
+    public int? PeriodoIdSeleccionado { get; set; }
     public string Curso { get; set; } = string.Empty;
     public string GradoSeccion { get; set; } = string.Empty;
-    public List<OpcionSeleccion> Asignaciones { get; set; } = [];
+    public List<OpcionSeleccion> Periodos { get; set; } = [];
     public List<ControlTareaColumna> Tareas { get; set; } = [];
     public List<ControlTareaFila> Alumnos { get; set; } = [];
 }

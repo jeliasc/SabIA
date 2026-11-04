@@ -21,6 +21,7 @@
         EstadoIntentoCuestionario.Anulado => "Anulado",
         _ => "Finalizado"
     };
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
 }
 
 <div class="container-fluid">
@@ -31,7 +32,7 @@
             <h2 class="fw-bold mb-1">@Model.Titulo</h2>
             <p class="text-muted mb-0">@Model.Curso · @Model.GradoSeccion</p>
         </div>
-        <a asp-action="Index" class="app-btn app-btn-soft-secondary">Volver a cuestionarios</a>
+        <a asp-action="Index" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-secondary">Volver a cuestionarios</a>
     </div>
 
     <div class="row g-3 mb-4">
@@ -135,7 +136,7 @@
                                     <div class="d-flex flex-wrap gap-1">
                                         @foreach (var i in a.Intentos)
                                         {
-                                            <a asp-action="RevisarIntento" asp-route-id="@i.IntentoId"
+                                            <a asp-action="RevisarIntento" asp-route-id="@i.IntentoId" asp-route-asignacionId="@contextoAsignacion"
                                                class="app-btn app-btn-soft-secondary app-btn-sm"
                                                title="@EstadoIntento(i.Estado) · @(i.Fecha?.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))">
                                                 #@i.Numero ·

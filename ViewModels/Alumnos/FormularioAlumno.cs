@@ -9,4 +9,5 @@ public abstract class FormularioAlumno : FormularioPersona
     [StringLength(20, ErrorMessage = "El código personal MINEDUC no puede superar los 20 caracteres.")]
     [Display(Name = "Código personal MINEDUC")]
     public string? CodigoPersonal { get; set; }
+
 }

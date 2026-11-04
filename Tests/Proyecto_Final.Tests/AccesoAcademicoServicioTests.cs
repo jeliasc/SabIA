@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
+using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.SeguridadAcademica;
 
 namespace Proyecto_Final.Tests;
@@ -28,5 +29,33 @@ public sealed class AccesoAcademicoServicioTests
         Assert.False(await servicio.PuedeConsultarAsignacionVigenteAsync(1));
         Assert.False(await servicio.PuedeConsultarAsignacionHistoricaAsync(1));
         Assert.False(await servicio.PuedeGestionarAsignacionVigenteAsync(1));
+    }
+
+    [Fact]
+    public void AdministradorSinDashboardCoordinacion_ConservaAmbitoAdministrativo()
+    {
+        var opciones = new DbContextOptionsBuilder<Contexto>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        using var contexto = new Contexto(opciones);
+        var identidad = new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, "administrador"),
+                new Claim(ClaimTypes.Role, Roles.Administrador),
+                new Claim(TiposClaims.Permiso, Permisos.Alumnos.Ver)
+            ],
+            "prueba");
+        var servicio = new AccesoAcademicoServicio(
+            contexto,
+            new HttpContextAccessor
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(identidad)
+                }
+            });
+
+        Assert.True(servicio.EsAdministradorInstitucional);
+        Assert.False(servicio.EsOperadorInstitucional);
     }
 }

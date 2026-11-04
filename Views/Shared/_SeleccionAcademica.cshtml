@@ -1,0 +1,55 @@
+@model Proyecto_Final.ViewModels.Comunes.ISeleccionAcademica
+
+<div class="row g-3" data-seleccion-academica>
+    <div class="col-12 col-md-3">
+        <label asp-for="CicloEscolarId" class="form-label"> Ciclo escolar </label>
+        <select asp-for="CicloEscolarId" class="form-select" data-select-busqueda data-academico-ciclo>
+            <option value="">Seleccione...</option>
+            @foreach (var ciclo in Model.CiclosEscolares)
+            {
+                <option value="@ciclo.Id">@ciclo.Texto</option>
+            }
+        </select>
+        <span asp-validation-for="CicloEscolarId" class="text-danger"></span>
+    </div>
+
+    <div class="col-12 col-md-3">
+        <label asp-for="Carrera" class="form-label">Carrera</label>
+        <select asp-for="Carrera" class="form-select" data-select-busqueda data-academico-carrera disabled>
+            <option value="">Seleccione...</option>
+            @foreach (var carrera in Model.Carreras)
+            {
+                <option value="@carrera.Valor" data-ciclo-escolar-id="@carrera.CicloEscolarId">@carrera.Texto</option>
+            }
+        </select>
+        <span asp-validation-for="Carrera" class="text-danger"></span>
+    </div>
+
+    <div class="col-12 col-md-3">
+        <label asp-for="GradoId" class="form-label">Grado</label>
+        <select asp-for="GradoId" class="form-select" data-select-busqueda data-academico-grado disabled>
+            <option value="">Seleccione...</option>
+            @foreach (var grado in Model.Grados)
+            {
+                <option value="@grado.Id" data-ciclo-escolar-id="@grado.CicloEscolarId" data-carrera="@grado.Carrera">
+                    @grado.Texto
+                </option>
+            }
+        </select>
+        <span asp-validation-for="GradoId" class="text-danger"></span>
+    </div>
+
+    <div class="col-12 col-md-3">
+        <label asp-for="SeccionId" class="form-label">Sección</label>
+        <select asp-for="SeccionId" class="form-select" data-select-busqueda data-academico-seccion disabled>
+            <option value="">Seleccione...</option>
+            @foreach (var seccion in Model.SeccionesAcademicas)
+            {
+                <option value="@seccion.Id" data-ciclo-escolar-id="@seccion.CicloEscolarId" data-carrera="@seccion.Carrera"
+                        data-grado-id="@seccion.GradoId">@seccion.Texto
+                </option>
+            }
+        </select>
+        <span asp-validation-for="SeccionId" class="text-danger"></span>
+    </div>
+</div>

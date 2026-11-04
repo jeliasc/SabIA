@@ -18,7 +18,7 @@
                 </div>
 
                 <div class="row g-3">
-                    <div class="col-md-5">
+                    <div class="col-md-5" data-alumnos-inscripcion>
                         <label asp-for="AlumnoId" class="form-label">
                             Alumno
                         </label>
@@ -29,34 +29,13 @@
 
                             @foreach (var x in Model.Alumnos)
                             {
-                                <option value="@x.Id">
+                                <option value="@x.Id" data-ciclos-no-disponibles="@string.Join(",", x.CiclosConInscripcionActiva)">
                                     @x.Texto
                                 </option>
                             }
                         </select>
 
                         <span asp-validation-for="AlumnoId" class="text-danger">
-                        </span>
-                    </div>
-
-                    <div class="col-md-5">
-                        <label asp-for="SeccionId" class="form-label">
-                            Sección
-                        </label>
-
-                        <select asp-for="SeccionId" class="form-select" data-select-busqueda
-                                data-search-placeholder="Buscar por ciclo, grado o sección...">
-                            <option value="">Seleccione...</option>
-
-                            @foreach (var x in Model.Secciones)
-                            {
-                                <option value="@x.Id">
-                                    @x.Texto
-                                </option>
-                            }
-                        </select>
-
-                        <span asp-validation-for="SeccionId" class="text-danger">
                         </span>
                     </div>
 
@@ -67,6 +46,14 @@
 
                         <input asp-for="Fecha" type="date" class="form-control" />
                     </div>
+                </div>
+
+                <div class="alert alert-info mt-3 d-none" role="status" data-no-alumnos-inscripcion>
+                    No hay alumnos disponibles para inscripción en el ciclo seleccionado.
+                </div>
+
+                <div class="mt-3">
+                    <partial name="_SeleccionAcademica" model="Model" />
                 </div>
 
                 <div class="d-flex justify-content-end gap-2 mt-4">
@@ -86,4 +73,6 @@
 @section Scripts
 {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/seleccion-academica.js" asp-append-version="true"></script>
+    <script src="~/js/alumnos-inscripcion.js" asp-append-version="true"></script>
 }

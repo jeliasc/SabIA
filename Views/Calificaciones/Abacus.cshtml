@@ -3,6 +3,7 @@
 
 @{
     ViewData["Title"] = "Resumen de calificaciones";
+    var origenAsignacionId = ViewData["OrigenAsignacionId"] as int?;
     string Numero(decimal valor) => valor.ToString("0.####", CultureInfo.InvariantCulture);
     string NotaFinal(decimal valor) =>
     Math.Round(valor, 0, MidpointRounding.AwayFromZero)
@@ -22,7 +23,7 @@
             <span class="app-badge @(Model.EsResultadoCerrado ? "app-badge-success" : "app-badge-warning")">
                 @(Model.EsResultadoCerrado ? "Resultado cerrado" : "Vista preliminar")
             </span>
-            <a asp-action="Libro" asp-route-id="@Model.ConfiguracionId" class="app-btn app-btn-soft-secondary">Volver al
+            <a asp-action="Libro" asp-route-id="@Model.ConfiguracionId" asp-route-asignacionId="@origenAsignacionId" class="app-btn app-btn-soft-secondary">Volver al
                 libro</a>
             </div>
         </div>

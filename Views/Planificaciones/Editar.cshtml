@@ -1,6 +1,7 @@
 @model Proyecto_Final.ViewModels.Planificaciones.EditarPlanificacion
 
 @{
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
     ViewData["Title"] = "Editar planificación";
 }
 
@@ -22,7 +23,7 @@
                 <partial name="Formulario" model="Model" />
 
                 <div class="d-flex justify-content-end gap-2 mt-4">
-                    <a asp-action="Index" class="app-btn app-btn-secondary">
+                    <a asp-action="Index" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-secondary">
                         Cancelar
                     </a>
 

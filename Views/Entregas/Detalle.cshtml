@@ -9,6 +9,7 @@
         (Model.TieneIntentoPendienteEvaluacion &&
          Model.EstadoActual is Proyecto_Final.Models.EstadoEntrega.Enviada or
              Proyecto_Final.Models.EstadoEntrega.Tardia);
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
 }
 
 <div class="container-fluid">
@@ -18,7 +19,7 @@
             <p class="text-muted mb-0">@Model.Tarea · @Model.Curso</p>
         </div>
 
-        <a asp-action="Index" class="app-btn app-btn-secondary">Volver</a>
+        <a asp-action="Index" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-secondary">Volver</a>
     </div>
 
     @if (Model.CalificacionEfectiva.HasValue)
@@ -212,14 +213,14 @@
                                 {
                                     var enCurso = Model.IntentosCuestionario.FirstOrDefault(x => x.EnCurso);
 
-                                    <a asp-controller="Cuestionarios" asp-action="Resolver" asp-route-id="@Model.CuestionarioId"
+                                    <a asp-controller="Cuestionarios" asp-action="Resolver" asp-route-id="@Model.CuestionarioId" asp-route-asignacionId="@contextoAsignacion"
                                        class="app-btn app-btn-soft-primary app-btn-sm">
                                         @(enCurso is null ? "Resolver cuestionario" : "Continuar cuestionario")
                                     </a>
                                 }
                                 else
                                 {
-                                    <a asp-action="Entregar" asp-route-id="@intento.Id" class="app-btn app-btn-soft-primary app-btn-sm">
+                                    <a asp-action="Entregar" asp-route-id="@intento.Id" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-primary app-btn-sm">
                                         Entregar tarea
                                     </a>
                                 }
@@ -227,7 +228,7 @@
 
                             @if (intento.PuedeCalificarse)
                             {
-                                <a asp-action="Calificar" asp-route-id="@intento.Id"
+                                <a asp-action="Calificar" asp-route-id="@intento.Id" asp-route-asignacionId="@contextoAsignacion"
                                    class="app-btn app-btn-soft-secondary app-btn-sm">
                                     @(intento.Calificacion.HasValue ? "Modificar calificación" : "Calificar")
                                 </a>
@@ -236,7 +237,7 @@
                             @if (Model.PuedeCalificarseConCero &&
                                  Model.EntregaCalificableConCeroId == intento.Id)
                             {
-                                <a asp-action="CalificarCero" asp-route-id="@intento.Id"
+                                <a asp-action="CalificarCero" asp-route-id="@intento.Id" asp-route-asignacionId="@contextoAsignacion"
                                    class="app-btn app-btn-soft-danger app-btn-sm">
                                     Calificar con cero
                                 </a>
@@ -244,7 +245,7 @@
 
                             @if (intento.PuedeRectificarseCero)
                             {
-                                <a asp-action="RectificarCero" asp-route-id="@intento.Id"
+                                <a asp-action="RectificarCero" asp-route-id="@intento.Id" asp-route-asignacionId="@contextoAsignacion"
                                    class="app-btn app-btn-soft-warning app-btn-sm">
                                     Rectificar cero
                                 </a>
@@ -252,7 +253,7 @@
 
                             @if (Model.PuedeReabrirse && esIntentoVigente)
                             {
-                                <a asp-action="Reabrir" asp-route-id="@intento.Id" class="app-btn app-btn-soft-warning app-btn-sm">
+                                <a asp-action="Reabrir" asp-route-id="@intento.Id" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-warning app-btn-sm">
                                     Reabrir entrega
                                 </a>
                             }
@@ -261,7 +262,7 @@
                                  Model.PuedeVerRespuestasCuestionario &&
                                  intento.Estado != Proyecto_Final.Models.EstadoEntrega.Pendiente)
                             {
-                                <a asp-controller="Cuestionarios" asp-action="RespuestasEntrega" asp-route-id="@intento.Id"
+                                <a asp-controller="Cuestionarios" asp-action="RespuestasEntrega" asp-route-id="@intento.Id" asp-route-asignacionId="@contextoAsignacion"
                                    class="app-btn app-btn-soft-secondary app-btn-sm">
                                     Ver respuestas
                                 </a>

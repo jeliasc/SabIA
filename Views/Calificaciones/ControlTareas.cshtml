@@ -3,9 +3,42 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-start mb-4">
         <div><h2 class="fw-bold mb-1">Control de tareas</h2><p class="text-muted mb-0">@Model.Curso · @Model.GradoSeccion · Consulta académica, no afecta el libro oficial.</p></div>
-        <a asp-action="Index" class="app-btn app-btn-soft-secondary">Regresar</a>
+        <a asp-controller="MisCursos" asp-action="Espacio" asp-route-asignacionId="@Model.AsignacionId" class="app-btn app-btn-soft-secondary">Regresar al curso</a>
     </div>
-    <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Alumno</th>@foreach(var tarea in Model.Tareas){<th class="text-center">@tarea.Titulo<br/><small>/@tarea.PunteoMaximo</small></th>}</tr></thead><tbody>
-    @foreach(var fila in Model.Alumnos){<tr><td>@fila.Alumno <small class="d-block text-muted">@fila.CodigoPersonal @if(fila.EsHistorico){<text>· Histórico</text>}</small></td>@foreach(var tarea in Model.Tareas){var nota=fila.Notas.GetValueOrDefault(tarea.Id);<td class="text-center">@(nota.HasValue ? nota.Value.ToString("0.##") : "Sin calificación")</td>}</tr>}
-    </tbody></table></div>
+    <div class="app-card mb-4">
+        <div class="app-card-body">
+            <form asp-action="ControlTareas" method="get" class="row g-3 align-items-end">
+                <input type="hidden" name="asignacionId" value="@Model.AsignacionId" />
+                <div class="col-12 col-md-6 col-lg-4">
+                    <label for="periodoId" class="form-label">Período académico</label>
+                    <select id="periodoId" name="periodoId" class="form-select" onchange="this.form.submit()">
+                        <option value="0" selected="@(!Model.PeriodoIdSeleccionado.HasValue ? "selected" : null)">Todos los bimestres</option>
+                        @foreach (var periodo in Model.Periodos)
+                        {
+                            <option value="@periodo.Id" selected="@(Model.PeriodoIdSeleccionado == periodo.Id ? "selected" : null)">
+                                @periodo.Texto
+                            </option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-md-auto">
+                    <button type="submit" class="app-btn app-btn-soft-primary">Filtrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @if (Model.Tareas.Count == 0)
+    {
+        <div class="app-alert app-alert-info" role="status">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+            <div>No hay tareas cerradas para el período seleccionado.</div>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Alumno</th>@foreach(var tarea in Model.Tareas){<th class="text-center">@tarea.Titulo<br/><small>/@tarea.PunteoMaximo</small></th>}</tr></thead><tbody>
+        @foreach(var fila in Model.Alumnos){<tr><td>@fila.Alumno <small class="d-block text-muted">@fila.CodigoPersonal @if(fila.EsHistorico){<text>· Histórico</text>}</small></td>@foreach(var tarea in Model.Tareas){var nota=fila.Notas.GetValueOrDefault(tarea.Id);<td class="text-center">@(nota.HasValue ? nota.Value.ToString("0.##") : "Sin calificación")</td>}</tr>}
+        </tbody></table></div>
+    }
 </div>

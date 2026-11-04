@@ -749,6 +749,8 @@ public sealed class DashboardServicio(
             "Alumnos", "Consulte alumnos autorizados.", "Alumnos", "bi bi-people");
         AgregarAcceso(accesos, usuario, Permisos.Docentes.Ver,
             "Docentes", "Consulte el personal docente.", "Docentes", "bi bi-person-badge");
+        AgregarAcceso(accesos, usuario, Permisos.Encargados.Ver,
+            "Encargados", "Consulte los encargados registrados.", "Encargados", "bi bi-person-vcard");
         AgregarAcceso(accesos, usuario, Permisos.Asignaciones.Ver,
             "Asignaciones", "Revise cursos y secciones asignados.", "Asignaciones", "bi bi-journal-bookmark");
         AgregarAcceso(accesos, usuario, Permisos.Planificaciones.Ver,

@@ -1,6 +1,7 @@
 @model Proyecto_Final.ViewModels.Cuestionarios.CrearPregunta
 
 @{
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
     ViewData["Title"] = "Agregar pregunta";
 }
 
@@ -128,7 +129,7 @@
                 </div>
 
                 <div class="d-flex flex-column flex-md-row justify-content-end gap-2 mt-4">
-                    <a asp-action="Index" class="app-btn app-btn-secondary">
+                    <a asp-action="Index" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-secondary">
                         Finalizar
                     </a>
 

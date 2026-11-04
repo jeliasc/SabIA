@@ -311,15 +311,31 @@ public sealed class AccesoContextualAlumnosTests
         Assert.Null(await servicio.ObtenerParaEditarAsync(2));
     }
 
+    [Fact]
+    public async Task AdministradorSinPermisoEfectivo_NoEjecutaOperacionesAdministrativas()
+    {
+        await using var escenario = await Escenario.CrearAsync();
+        var servicio = escenario.CrearServicio(new Acceso(
+            operador: true,
+            docenteId: null,
+            alumnoId: null,
+            tienePermiso: false));
+
+        Assert.False((await servicio.CrearAsync(new CrearAlumno())).Exitoso);
+        Assert.Null(await servicio.ObtenerParaEditarAsync(1));
+        Assert.False((await servicio.CambiarEstadoAsync(1, false)).Exitoso);
+    }
+
     private sealed class Acceso(
         bool operador,
         int? docenteId,
         int? alumnoId,
-        IReadOnlySet<int>? seccionesDelegadas = null) : IAccesoAcademicoServicio
+        IReadOnlySet<int>? seccionesDelegadas = null,
+        bool tienePermiso = true) : IAccesoAcademicoServicio
     {
         public string? UsuarioId => "usuario-prueba";
         public bool EsOperadorInstitucional => operador;
-        public bool TienePermiso(string permiso) => true;
+        public bool TienePermiso(string permiso) => tienePermiso;
         public Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync() =>
             Task.FromResult(new ContextoAcademicoUsuario(docenteId, alumnoId));
         public Task<int?> ObtenerDocenteIdAsync() => Task.FromResult(docenteId);

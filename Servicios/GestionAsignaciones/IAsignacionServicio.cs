@@ -7,7 +7,7 @@ public interface IAsignacionServicio
 {
     Task<List<AsignacionLista>> ObtenerTodosAsync();
 
-    Task PrepararAsync(FormularioAsignacion m);
+    Task PrepararAsync(FormularioAsignacion m, string? permisoRequerido = null);
 
     Task<ResultadoOperacion> CrearAsync(CrearAsignacion m);
 

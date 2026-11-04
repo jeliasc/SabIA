@@ -1,6 +1,7 @@
 @model Proyecto_Final.ViewModels.Planificaciones.RevisarPlanificacion
 
 @{
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
     ViewData["Title"] = "Revisar planificación";
 }
 
@@ -53,7 +54,7 @@
 
     <div class="card shadow-sm border-0">
         <div class="card-body">
-            <form method="post">
+            <form asp-action="Revisar" asp-route-asignacionId="@contextoAsignacion" method="post">
                 @Html.AntiForgeryToken()
 
                 <input asp-for="Id" type="hidden" />

@@ -49,9 +49,9 @@ public class PlanificacionesController(IPlanificacionServicio s) : Controller
 
     [HttpGet]
     [Authorize(Policy = Permisos.Planificaciones.Crear)]
-    public async Task<IActionResult> Crear()
+    public async Task<IActionResult> Crear(int? asignacionId = null)
     {
-        var m = new CrearPlanificacion();
+        var m = new CrearPlanificacion { AsignacionId = asignacionId.GetValueOrDefault() };
 
         await s.PrepararAsync(m);
 
@@ -63,8 +63,11 @@ public class PlanificacionesController(IPlanificacionServicio s) : Controller
     [Authorize(Policy = Permisos.Planificaciones.Crear)]
     public async Task<IActionResult> Crear(
         CrearPlanificacion m,
-        CancellationToken ct)
+        CancellationToken ct,
+        int? asignacionId = null)
     {
+        ValidarContextoAsignacion(asignacionId, m.AsignacionId);
+
         if (ModelState.IsValid)
         {
             var r = await s.CrearAsync(m, ct);
@@ -72,7 +75,7 @@ public class PlanificacionesController(IPlanificacionServicio s) : Controller
             if (r.Exitoso)
             {
                 TempData["Exito"] = r.Mensaje;
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { asignacionId = m.AsignacionId });
             }
 
             Err(r);
@@ -85,7 +88,7 @@ public class PlanificacionesController(IPlanificacionServicio s) : Controller
 
     [HttpGet]
     [Authorize(Policy = Permisos.Planificaciones.Editar)]
-    public async Task<IActionResult> Editar(int id)
+    public async Task<IActionResult> Editar(int id, int? asignacionId = null)
     {
         var m = await s.ObtenerEditarAsync(id);
 
@@ -99,8 +102,11 @@ public class PlanificacionesController(IPlanificacionServicio s) : Controller
     [Authorize(Policy = Permisos.Planificaciones.Editar)]
     public async Task<IActionResult> Editar(
         EditarPlanificacion m,
-        CancellationToken ct)
+        CancellationToken ct,
+        int? asignacionId = null)
     {
+        ValidarContextoAsignacion(asignacionId, m.AsignacionId);
+
         if (ModelState.IsValid)
         {
             var r = await s.EditarAsync(m, ct);
@@ -108,7 +114,7 @@ public class PlanificacionesController(IPlanificacionServicio s) : Controller
             if (r.Exitoso)
             {
                 TempData["Exito"] = r.Mensaje;
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { asignacionId = m.AsignacionId });
             }
 
             Err(r);
@@ -122,18 +128,18 @@ public class PlanificacionesController(IPlanificacionServicio s) : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Planificaciones.EnviarRevision)]
-    public async Task<IActionResult> EnviarRevision(int id)
+    public async Task<IActionResult> EnviarRevision(int id, int? asignacionId = null)
     {
         var r = await s.EnviarRevisionAsync(id);
 
         TempData[r.Exitoso ? "Exito" : "Error"] = r.Mensaje;
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { asignacionId });
     }
 
     [HttpGet]
     [Authorize(Policy = Permisos.Planificaciones.Revisar)]
-    public async Task<IActionResult> Revisar(int id)
+    public async Task<IActionResult> Revisar(int id, int? asignacionId = null)
     {
         var m = await s.ObtenerRevisionAsync(id);
 
@@ -145,7 +151,7 @@ public class PlanificacionesController(IPlanificacionServicio s) : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Planificaciones.Revisar)]
-    public async Task<IActionResult> Revisar(RevisarPlanificacion m)
+    public async Task<IActionResult> Revisar(RevisarPlanificacion m, int? asignacionId = null)
     {
         if (!ModelState.IsValid)
         {
@@ -164,7 +170,7 @@ public class PlanificacionesController(IPlanificacionServicio s) : Controller
         TempData[r.Exitoso ? "Exito" : "Error"] = r.Mensaje;
 
         return r.Exitoso
-            ? RedirectToAction(nameof(Index))
+            ? RedirectToAction(nameof(Index), new { asignacionId })
             : View(m);
     }
 
@@ -181,5 +187,11 @@ public class PlanificacionesController(IPlanificacionServicio s) : Controller
                 ModelState.AddModelError(e.Key, e.Value);
             }
         }
+    }
+
+    private void ValidarContextoAsignacion(int? asignacionId, int asignacionFormulario)
+    {
+        if (asignacionId.HasValue && asignacionId.Value != asignacionFormulario)
+            ModelState.AddModelError("", "La asignación no coincide con el contexto académico seleccionado.");
     }
 }

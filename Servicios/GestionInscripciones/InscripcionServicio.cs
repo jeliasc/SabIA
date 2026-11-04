@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
+using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Academico;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.SeguridadAcademica;
@@ -36,7 +37,7 @@ public sealed class InscripcionServicio(
             consulta = ciclo!.CicloEscolarId.HasValue
                 ? consulta.Where(x => x.CicloEscolarId == ciclo.CicloEscolarId.Value)
                 : consulta.Where(_ => false);
-        if (!acceso.EsOperadorInstitucional && perfil.DocenteId.HasValue)
+        if (!PuedeGestionar(Permisos.Inscripciones.Ver) && perfil.DocenteId.HasValue)
         {
             consulta = consulta.Where(x =>
                 x.Estado == EstadoInscripcion.Activa &&
@@ -45,9 +46,13 @@ public sealed class InscripcionServicio(
                     a.SeccionId == x.SeccionId &&
                     a.Estado == EstadoRegistro.Activo));
         }
-        else if (!acceso.EsOperadorInstitucional && perfil.AlumnoId.HasValue)
+        else if (!PuedeGestionar(Permisos.Inscripciones.Ver) && perfil.AlumnoId.HasValue)
         {
             consulta = consulta.Where(x => x.AlumnoId == perfil.AlumnoId.Value);
+        }
+        else if (!PuedeGestionar(Permisos.Inscripciones.Ver))
+        {
+            consulta = consulta.Where(_ => false);
         }
 
         return await consulta
@@ -56,8 +61,13 @@ public sealed class InscripcionServicio(
             .Select(x => new InscripcionLista
             {
                 Id = x.Id,
-                Alumno = x.Alumno.Usuario.PrimerNombre + " " +
-                    x.Alumno.Usuario.PrimerApellido,
+                Alumno = (
+                x.Alumno.Usuario.PrimerNombre + " " +
+                (x.Alumno.Usuario.SegundoNombre ?? "") + " " +
+                (x.Alumno.Usuario.TercerNombre ?? "") + " " +
+                x.Alumno.Usuario.PrimerApellido + " " +
+                (x.Alumno.Usuario.SegundoApellido ?? "")
+            ).Trim(),
                 Seccion = x.Seccion.Grado.Nombre + " " + x.Seccion.Nombre,
                 Carrera = x.Seccion.Grado.Carrera,
                 Ciclo = x.Seccion.CicloEscolar.Anio,
@@ -69,61 +79,70 @@ public sealed class InscripcionServicio(
 
     public async Task PrepararAsync(FormularioInscripcion modelo)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeGestionar(Permisos.Inscripciones.Crear))
         {
             modelo.Alumnos = [];
-            modelo.Secciones = [];
+            modelo.CiclosEscolares = [];
+            modelo.Carreras = [];
+            modelo.Grados = [];
+            modelo.SeccionesAcademicas = [];
             return;
         }
-        modelo.Alumnos = await contexto.Alumnos
+
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        await SeleccionAcademicaCatalogo.PrepararAsync(contexto, modelo, ciclo?.CicloEscolarId);
+
+        var alumnos = await contexto.Alumnos
             .AsNoTracking()
             .Where(x => x.Usuario.Activo)
             .OrderBy(x => x.Usuario.PrimerNombre)
-            .Select(x => new OpcionSeleccion
+            .Select(x => new
             {
                 Id = x.Id,
-                Texto = x.Usuario.PrimerNombre + " " +
-                    x.Usuario.PrimerApellido +
-                    (x.CodigoPersonal == null ? "" : " · " + x.CodigoPersonal)
+                Texto = (
+                x.Usuario.PrimerNombre + " " +
+                (x.Usuario.SegundoNombre ?? "") + " " +
+                (x.Usuario.TercerNombre ?? "") + " " +
+                x.Usuario.PrimerApellido + " " +
+                (x.Usuario.SegundoApellido ?? "")
+            ).Trim() +
+            (x.CodigoPersonal == null ? "" : " · " + x.CodigoPersonal)
             })
             .ToListAsync();
 
-        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
-        var cicloId = ciclo?.CicloEscolarId;
-        modelo.Secciones = await contexto.Secciones
+        var ciclosConInscripcionActiva = await contexto.Inscripciones
             .AsNoTracking()
-            .Where(x =>
-                x.Estado == EstadoRegistro.Activo &&
-                (contextoCiclo == null || cicloId.HasValue && x.CicloEscolarId == cicloId.Value))
-            .OrderByDescending(x => x.CicloEscolar.Anio)
-            .ThenBy(x => x.Grado.Orden)
-            .Select(x => new OpcionSeleccion
-            {
-                Id = x.Id,
-                Texto = x.CicloEscolar.Anio + " · " +
-                    x.Grado.Nombre + " " + x.Nombre
-            })
+            .Where(inscripcion => inscripcion.Estado == EstadoInscripcion.Activa)
+            .Select(inscripcion => new { inscripcion.AlumnoId, inscripcion.CicloEscolarId })
             .ToListAsync();
+
+        var ciclosPorAlumno = ciclosConInscripcionActiva
+            .GroupBy(item => item.AlumnoId)
+            .ToDictionary(
+                grupo => grupo.Key,
+                grupo => (IReadOnlySet<int>)grupo.Select(item => item.CicloEscolarId).ToHashSet());
+
+        modelo.Alumnos = alumnos.Select(alumno => new OpcionAlumnoInscripcion
+        {
+            Id = alumno.Id,
+            Texto = alumno.Texto,
+            CiclosConInscripcionActiva = ciclosPorAlumno.GetValueOrDefault(alumno.Id) ?? new HashSet<int>()
+        }).ToList();
     }
 
     public async Task<ResultadoOperacion> CrearAsync(CrearInscripcion modelo)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeGestionar(Permisos.Inscripciones.Crear))
             return ResultadoOperacion.Error("No tiene autorización administrativa para gestionar inscripciones.");
 
-        var seccion = await contexto.Secciones
-            .AsNoTracking()
-            .Include(x => x.CicloEscolar)
-            .FirstOrDefaultAsync(x =>
-                x.Id == modelo.SeccionId &&
-                x.Estado == EstadoRegistro.Activo &&
-                x.CicloEscolar.Activo);
+        modelo.Carrera = modelo.Carrera.Trim();
+        var seccion = await SeleccionAcademicaCatalogo.ObtenerSeccionValidaAsync(contexto, modelo);
 
         if (seccion == null)
         {
             return ResultadoOperacion.Validacion(
                 nameof(modelo.SeccionId),
-                "Seleccione una sección activa.");
+                "La sección no coincide con el ciclo, la carrera o el grado seleccionados.");
         }
 
         if (modelo.Fecha < seccion.CicloEscolar.FechaInicio ||
@@ -150,8 +169,12 @@ public sealed class InscripcionServicio(
         {
             if (!await contexto.Secciones.AnyAsync(x =>
                 x.Id == seccion.Id &&
+                x.CicloEscolarId == modelo.CicloEscolarId &&
+                x.GradoId == modelo.GradoId &&
+                x.Grado.Carrera == modelo.Carrera &&
                 x.Estado == EstadoRegistro.Activo &&
-                x.CicloEscolar.Activo) ||
+                x.CicloEscolar.Activo &&
+                x.CicloEscolar.Estado == EstadoCicloEscolar.Activo) ||
                 !await contexto.Alumnos.AnyAsync(x =>
                     x.Id == modelo.AlumnoId &&
                     x.Usuario.Activo))
@@ -264,8 +287,14 @@ public sealed class InscripcionServicio(
         return new TrasladarInscripcion
         {
             Id = inscripcion.Id,
-            Alumno = inscripcion.Alumno.Usuario.PrimerNombre + " " +
+            Alumno = string.Join(" ", new[]
+            {
+                inscripcion.Alumno.Usuario.PrimerNombre,
+                inscripcion.Alumno.Usuario.SegundoNombre,
+                inscripcion.Alumno.Usuario.TercerNombre,
                 inscripcion.Alumno.Usuario.PrimerApellido,
+                inscripcion.Alumno.Usuario.SegundoApellido
+            }.Where(x => !string.IsNullOrWhiteSpace(x))),
             SeccionOrigenId = inscripcion.SeccionId,
             Secciones = await contexto.Secciones
                 .AsNoTracking()
@@ -486,8 +515,14 @@ public sealed class InscripcionServicio(
         var revision = new RevisionTrasladoInscripcion
         {
             Id = modelo.Id,
-            Alumno = inscripcion.Alumno.Usuario.PrimerNombre + " " +
-                     inscripcion.Alumno.Usuario.PrimerApellido,
+            Alumno = string.Join(" ", new[]
+            {
+                inscripcion.Alumno.Usuario.PrimerNombre,
+                inscripcion.Alumno.Usuario.SegundoNombre,
+                inscripcion.Alumno.Usuario.TercerNombre,
+                inscripcion.Alumno.Usuario.PrimerApellido,
+                inscripcion.Alumno.Usuario.SegundoApellido
+            }.Where(x => !string.IsNullOrWhiteSpace(x))),
             SeccionOrigenId = inscripcion.SeccionId,
             SeccionDestinoId = destino.Id,
             FechaEfectiva = modelo.FechaEfectiva,
@@ -689,7 +724,7 @@ public sealed class InscripcionServicio(
 
     public async Task<ResultadoOperacion> CambiarEstadoAsync(int id, bool activa)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeGestionar(Permisos.Inscripciones.CambiarEstado))
             return ResultadoOperacion.Error("No tiene autorización administrativa para cambiar inscripciones.");
 
         await using var transaccion =
@@ -782,4 +817,8 @@ public sealed class InscripcionServicio(
             throw;
         }
     }
+
+    private bool PuedeGestionar(string permiso) =>
+        acceso.TienePermiso(permiso) &&
+        (acceso.EsOperadorInstitucional || acceso.EsAdministradorInstitucional);
 }

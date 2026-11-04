@@ -10,11 +10,11 @@ using Proyecto_Final.ViewModels.Inscripciones;
 
 namespace Proyecto_Final.Controllers;
 
-[Authorize(Policy = Permisos.Inscripciones.Ver)]
 public class InscripcionesController(IInscripcionServicio s, IDataProtectionProvider proteccionDatos) : Controller
 {
     private readonly IDataProtector protectorRevision = proteccionDatos.CreateProtector("SabIA.Traslados.Revision.v1");
 
+    [Authorize(Policy = Permisos.Inscripciones.Ver)]
     public async Task<IActionResult> Index() =>
         View(await s.ObtenerTodosAsync());
 

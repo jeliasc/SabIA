@@ -22,6 +22,7 @@
     )).Succeeded;
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
     var hayAcciones = !soloLectura && Model.Any() && (e || p);
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
 }
 
 <div class="container-fluid">
@@ -40,11 +41,11 @@
         <div class="d-grid d-md-flex align-items-center gap-2">
             @if (!soloLectura && c)
             {
-                <a asp-action="Crear" class="app-btn app-btn-soft-primary">
+                <a asp-action="Crear" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-primary">
                     Nueva unidad
                 </a>
             }
-            <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-secondary">
+            <a asp-action="@(soloLectura ? "Index" : "Historial")" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-secondary">
                 @(soloLectura ? "Ver vigentes" : "Ver historial")
             </a>
         </div>
@@ -99,7 +100,7 @@
                                     <div class="app-actions app-actions-table">
                                         @if (e)
                                         {
-                                            <a asp-action="Editar" asp-route-unidadAsignacionId="@x.UnidadAsignacionId"
+                                            <a asp-action="Editar" asp-route-unidadAsignacionId="@x.UnidadAsignacionId" asp-route-asignacionId="@contextoAsignacion"
                                                class="app-btn app-btn-soft-secondary app-btn-sm">
                                                 Editar
                                             </a>
@@ -109,7 +110,7 @@
                                         {
                                             <form asp-action="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
                                                   ? "Ocultar"
-                                                  : "Publicar")" asp-route-id="@x.UnidadAsignacionId" method="post"
+                                                  : "Publicar")" asp-route-id="@x.UnidadAsignacionId" asp-route-asignacionId="@contextoAsignacion" method="post"
                                                   data-confirmar-accion-academica
                                                   data-confirmar-titulo="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "Ocultar unidad" : "Publicar unidad")"
                                                   data-confirmar-mensaje="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "La unidad dejará de estar disponible para los alumnos." : "La unidad quedará disponible para los alumnos autorizados.")"
@@ -183,7 +184,7 @@
 
                     @if (!soloLectura && e)
                     {
-                        <a asp-action="Editar" asp-route-unidadAsignacionId="@x.UnidadAsignacionId"
+                        <a asp-action="Editar" asp-route-unidadAsignacionId="@x.UnidadAsignacionId" asp-route-asignacionId="@contextoAsignacion"
                            class="app-btn app-btn-soft-secondary w-100 mb-2">
                             Editar
                         </a>
@@ -193,7 +194,7 @@
                     {
                         <form asp-action="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada
                               ? "Ocultar"
-                              : "Publicar")" asp-route-id="@x.UnidadAsignacionId" method="post"
+                              : "Publicar")" asp-route-id="@x.UnidadAsignacionId" asp-route-asignacionId="@contextoAsignacion" method="post"
                               data-confirmar-accion-academica
                               data-confirmar-titulo="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "Ocultar unidad" : "Publicar unidad")"
                               data-confirmar-mensaje="@(x.Estado == Proyecto_Final.Models.EstadoPublicacionUnidad.Publicada ? "La unidad dejará de estar disponible para los alumnos." : "La unidad quedará disponible para los alumnos autorizados.")"

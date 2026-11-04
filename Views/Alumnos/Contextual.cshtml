@@ -22,19 +22,15 @@
     {
         <div class="d-md-none mb-3">
             <div class="d-grid">
-                <button type="button" class="app-btn app-btn-secondary"
-                        aria-expanded="false" aria-controls="busqueda-alumnos-contextual-movil"
-                        data-mostrar-busqueda-alumnos>
+                <button type="button" class="app-btn app-btn-secondary" aria-expanded="false"
+                        aria-controls="busqueda-alumnos-contextual-movil" data-mostrar-busqueda-alumnos>
                     <i class="bi bi-search" aria-hidden="true"></i>
                     Buscar alumno
                 </button>
             </div>
-            <div id="busqueda-alumnos-contextual-movil" class="mt-2 d-none"
-                 data-contenedor-busqueda-alumnos>
-                <input type="search" class="form-control"
-                       placeholder="Nombre, ciclo, grado, carrera o sección..."
-                       aria-label="Buscar alumnos" autocomplete="off"
-                       data-busqueda-alumnos />
+            <div id="busqueda-alumnos-contextual-movil" class="mt-2 d-none" data-contenedor-busqueda-alumnos>
+                <input type="search" class="form-control" placeholder="Nombre, ciclo, grado, carrera o sección..."
+                       aria-label="Buscar alumnos" autocomplete="off" data-busqueda-alumnos />
             </div>
         </div>
     }
@@ -42,8 +38,7 @@
     <div class="card shadow-sm border border-secondary d-none d-md-block">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table app-table w-100" data-tabla-index
-                       data-actions-column="false"
+                <table class="table app-table w-100" data-tabla-index data-actions-column="false"
                        data-search-placeholder="Nombre, ciclo, grado, carrera o sección..."
                        data-empty-message="No hay alumnos disponibles en tu ámbito académico"
                        data-zero-message="No se encontraron alumnos">
@@ -79,8 +74,7 @@
             var busqueda = $"{alumno.NombreCompleto} {alumno.CicloEscolar} " +
                 $"{alumno.Grado} {alumno.Carrera} {alumno.Seccion}";
 
-            <article class="card shadow-sm border-0 mb-3" data-alumno
-                     data-texto-busqueda="@busqueda">
+            <article class="card shadow-sm border-0 mb-3" data-alumno data-texto-busqueda="@busqueda">
                 <div class="card-body p-4">
                     <h3 class="fw-bold fs-5 mb-3">@alumno.NombreCompleto</h3>
                     <dl class="row mb-4">
@@ -97,8 +91,7 @@
             </article>
         }
 
-        <div class="app-card @(hayAlumnos ? "d-none" : null)"
-             data-alumnos-sin-resultados role="status">
+        <div class="app-card @(hayAlumnos ? "d-none" : null)" data-alumnos-sin-resultados role="status">
             <div class="app-card-body text-center text-muted">
                 @(hayAlumnos
                     ? "No se encontraron alumnos."

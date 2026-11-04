@@ -13,8 +13,22 @@ public sealed class CalificacionesController(
     IAuthorizationService autorizacion) : Controller
 {
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int? asignacionId)
     {
+        if (asignacionId.HasValue)
+        {
+            var contexto = await servicio.ObtenerContextoCursoAsync(asignacionId.Value);
+
+            if (contexto is null)
+            {
+                TempData["Error"] =
+                    "No tiene acceso a las calificaciones de esta asignación.";
+
+                return RedirectToAction("Index", "Home");
+            }
+
+            return View("ContextoCurso", contexto);
+        }
         var puedeConfigurar = (await autorizacion.AuthorizeAsync(
             User, Permisos.Calificaciones.Configurar)).Succeeded;
         return View(await servicio.ObtenerIndexAsync(puedeConfigurar));
@@ -25,7 +39,8 @@ public sealed class CalificacionesController(
     public async Task<IActionResult> Configurar(
         int asignacionId,
         int periodoId,
-        int? plantillaId = null)
+        int? plantillaId = null,
+        int? origenAsignacionId = null)
     {
         if (asignacionId <= 0 || periodoId <= 0)
         {
@@ -35,6 +50,8 @@ public sealed class CalificacionesController(
 
         var modelo = await servicio.PrepararConfiguracionAsync(
             asignacionId, periodoId, plantillaId);
+        if (modelo is not null && origenAsignacionId == asignacionId)
+            modelo.OrigenAsignacionId = asignacionId;
         return modelo == null ? NotFound() : View(modelo);
     }
 
@@ -49,6 +66,8 @@ public sealed class CalificacionesController(
             if (resultado.Exitoso)
             {
                 TempData["Exito"] = resultado.Mensaje;
+                if (modelo.OrigenAsignacionId == modelo.AsignacionId)
+                    return RedirectToAction(nameof(Index), new { asignacionId = modelo.AsignacionId });
                 return RedirectToAction(nameof(Libro), new { id = resultado.Datos });
             }
 
@@ -60,7 +79,7 @@ public sealed class CalificacionesController(
     }
 
     [HttpGet]
-    public async Task<IActionResult> Libro(int id)
+    public async Task<IActionResult> Libro(int id, int? asignacionId = null)
     {
         var puedeRegistrar = (await autorizacion.AuthorizeAsync(
             User, Permisos.Calificaciones.Registrar)).Succeeded;
@@ -75,44 +94,47 @@ public sealed class CalificacionesController(
             return RedirectToAction(nameof(Index));
         }
 
-        return consulta.Libro == null ? NotFound() : View(consulta.Libro);
+        if (consulta.Libro == null) return NotFound();
+        if (asignacionId == consulta.Libro.AsignacionId)
+            ViewData["OrigenAsignacionId"] = asignacionId;
+        return View(consulta.Libro);
     }
 
     [HttpGet]
-    public async Task<IActionResult> ControlTareas(int asignacionId)
+    public async Task<IActionResult> ControlTareas(int asignacionId, int? periodoId = null)
     {
-        var modelo = await servicio.ObtenerControlTareasAsync(asignacionId);
+        var modelo = await servicio.ObtenerControlTareasAsync(asignacionId, periodoId);
         return modelo == null ? NotFound() : View(modelo);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Calificaciones.Registrar)]
-    public async Task<IActionResult> Guardar(GuardarLibroCalificaciones modelo)
+    public async Task<IActionResult> Guardar(GuardarLibroCalificaciones modelo, int? asignacionId = null)
     {
         if (!ModelState.IsValid)
         {
             TempData["Error"] = "Revise las calificaciones ingresadas.";
-            return RedirectToAction(nameof(Libro), new { id = modelo.ConfiguracionId });
+            return RedirectToAction(nameof(Libro), new { id = modelo.ConfiguracionId, asignacionId });
         }
 
         var resultado = await servicio.GuardarLibroAsync(modelo);
         TempData[resultado.Exitoso ? "Exito" : "Error"] = resultado.Mensaje;
-        return RedirectToAction(nameof(Libro), new { id = modelo.ConfiguracionId });
+        return RedirectToAction(nameof(Libro), new { id = modelo.ConfiguracionId, asignacionId });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Calificaciones.Cerrar)]
-    public async Task<IActionResult> Cerrar(int id)
+    public async Task<IActionResult> Cerrar(int id, int? asignacionId = null)
     {
         var resultado = await servicio.CerrarAsync(id);
         TempData[resultado.Exitoso ? "Exito" : "Error"] = resultado.Mensaje;
-        return RedirectToAction(nameof(Libro), new { id });
+        return RedirectToAction(nameof(Libro), new { id, asignacionId });
     }
 
     [HttpGet]
-    public async Task<IActionResult> Abacus(int id)
+    public async Task<IActionResult> Abacus(int id, int? asignacionId = null)
     {
         var consulta = await servicio.ObtenerResumenAbacusParaNavegacionAsync(id);
         if (consulta.Estado == EstadoConsultaLibroCalificaciones.FueraDeCicloAutorizado)
@@ -122,6 +144,9 @@ public sealed class CalificacionesController(
             return RedirectToAction(nameof(Index));
         }
         if (consulta.Resumen == null) return NotFound();
+
+        if (asignacionId == consulta.Resumen.AsignacionId)
+            ViewData["OrigenAsignacionId"] = asignacionId;
 
         consulta.Resumen.PuedeSolicitarCorreccion = consulta.Resumen.EsResultadoCerrado &&
             (await autorizacion.AuthorizeAsync(

@@ -2,6 +2,7 @@
 @using Proyecto_Final.Models
 
 @{
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
     ViewData["Title"] = "Configurar cuestionario";
 }
 
@@ -142,7 +143,7 @@
                 </div>
 
                 <div class="d-flex justify-content-end gap-2 mt-4">
-                    <a asp-controller="Tareas" asp-action="Index" class="app-btn app-btn-secondary">
+                    <a asp-controller="Tareas" asp-action="Index" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-secondary">
                         Cancelar
                     </a>
 

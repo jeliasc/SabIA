@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Final.Data;
 using Proyecto_Final.Models;
+using Proyecto_Final.Seguridad;
 using Proyecto_Final.Servicios.Comunes;
 using Proyecto_Final.Servicios.GestionCiclos;
 using Proyecto_Final.Servicios.SeguridadAcademica;
@@ -15,7 +16,7 @@ public sealed class EncargadoServicio(
 {
     public async Task<List<EncargadoLista>> ObtenerTodosAsync()
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Encargados.Ver))
         {
             return [];
         }
@@ -49,7 +50,7 @@ public sealed class EncargadoServicio(
 
     public async Task<ResultadoOperacion> CrearAsync(CrearEncargado modelo)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Encargados.Crear))
         {
             return ResultadoOperacion.Error("No tiene autorización institucional para administrar encargados.");
         }
@@ -85,7 +86,7 @@ public sealed class EncargadoServicio(
 
     public Task<EditarEncargado?> ObtenerParaEditarAsync(int id)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Encargados.Editar))
         {
             return Task.FromResult<EditarEncargado?>(null);
         }
@@ -108,7 +109,7 @@ public sealed class EncargadoServicio(
 
     public async Task<ResultadoOperacion> EditarAsync(EditarEncargado modelo)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Encargados.Editar))
         {
             return ResultadoOperacion.Error("No tiene autorización institucional para administrar encargados.");
         }
@@ -166,4 +167,7 @@ public sealed class EncargadoServicio(
 
     private static string? Limpiar(string? valor) =>
         string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
+
+    private bool PuedeAdministrar(string permiso) =>
+        acceso.EsAdministradorInstitucional && acceso.TienePermiso(permiso);
 }

@@ -2,6 +2,8 @@
 
 @{
     var edicion = Model as Proyecto_Final.ViewModels.Unidades.EditarUnidad;
+    var contextoCurso = Model.AsignacionId > 0 && !string.IsNullOrWhiteSpace(Context.Request.Query["asignacionId"]);
+    var asignacionActual = Model.Asignaciones.FirstOrDefault(x => x.Id == Model.AsignacionId)?.Texto;
 }
 
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3">
@@ -9,20 +11,29 @@
 
 <div class="row g-3">
     <div class="col-md-8">
-        <label asp-for="AsignacionId" class="form-label">
-            Asignación
-        </label>
+        @if (contextoCurso)
+        {
+            <label class="form-label">Asignación actual</label>
+            <input type="hidden" asp-for="AsignacionId" />
+            <div class="form-control-plaintext border rounded px-3 py-2">@asignacionActual</div>
+        }
+        else
+        {
+            <label asp-for="AsignacionId" class="form-label">
+                Asignación
+            </label>
 
-        <select asp-for="AsignacionId" class="form-select" data-select-busqueda>
-            <option value="">Seleccione...</option>
+            <select asp-for="AsignacionId" class="form-select" data-select-busqueda>
+                <option value="">Seleccione...</option>
 
-            @foreach (var x in Model.Asignaciones)
-            {
-                <option value="@x.Id">
-                    @x.Texto
-                </option>
-            }
-        </select>
+                @foreach (var x in Model.Asignaciones)
+                {
+                    <option value="@x.Id">
+                        @x.Texto
+                    </option>
+                }
+            </select>
+        }
     </div>
 
     <div class="col-md-4">
@@ -58,7 +69,10 @@
             }
             else
             {
-                <span>Orden actual: <strong>@edicion.Orden</strong>. Solo cambiará automáticamente si selecciona otra asignación.</span>
+                <span>Orden actual:
+                    <strong>@edicion.Orden</strong>. Solo cambiará automáticamente si selecciona otra
+                    asignación..
+                </span>
             }
         </div>
     </div>

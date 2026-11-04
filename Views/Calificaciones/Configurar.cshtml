@@ -12,7 +12,7 @@
                     <h2 class="fw-bold mb-1">Configurar evaluación</h2>
                     <p class="text-muted mb-0">Defina categorías, ponderaciones y actividades del período.</p>
                 </div>
-                <a asp-action="Index" class="app-btn app-btn-soft-secondary">Regresar</a>
+                <a asp-action="Index" asp-route-asignacionId="@Model.OrigenAsignacionId" class="app-btn app-btn-soft-secondary">Regresar</a>
             </div>
 
             @if (Model.Id == 0 && Model.Plantillas.Count > 0)
@@ -22,6 +22,7 @@
                         <form asp-action="Configurar" method="get" class="row g-3 align-items-end">
                             <input type="hidden" name="asignacionId" value="@Model.AsignacionId" />
                             <input type="hidden" name="periodoId" value="@Model.PeriodoId" />
+                            <input type="hidden" name="origenAsignacionId" value="@Model.OrigenAsignacionId" />
                             <div class="col-md-9">
                                 <label for="plantillaId" class="form-label">Plantilla reutilizable</label>
                                 <select id="plantillaId" name="plantillaId" class="form-select" data-select-busqueda>
@@ -45,6 +46,7 @@
             <form asp-action="Configurar" method="post" data-configuracion-calificaciones>
                 @Html.AntiForgeryToken()
                 <input asp-for="Id" type="hidden" />
+                <input asp-for="OrigenAsignacionId" type="hidden" />
 
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
@@ -76,14 +78,24 @@
                         <div class="row g-3">
                             <div class="col-lg-6">
                                 <label asp-for="AsignacionId" class="form-label">Asignación</label>
-                                <select asp-for="AsignacionId" class="form-select" required data-select-busqueda
-                                        data-search-placeholder="Buscar asignación...">
-                                    <option value="">Seleccione una asignación</option>
-                                    @foreach (var opcion in Model.Asignaciones)
-                                    {
-                                        <option value="@opcion.Id">@opcion.Texto</option>
-                                    }
-                                </select>
+                                @if (Model.OrigenAsignacionId == Model.AsignacionId)
+                                {
+                                    <input asp-for="AsignacionId" type="hidden" />
+                                    <div class="form-control bg-body-tertiary">
+                                        @Model.Asignaciones.FirstOrDefault(x => x.Id == Model.AsignacionId)?.Texto
+                                    </div>
+                                }
+                                else
+                                {
+                                    <select asp-for="AsignacionId" class="form-select" required data-select-busqueda
+                                            data-search-placeholder="Buscar asignación...">
+                                        <option value="">Seleccione una asignación</option>
+                                        @foreach (var opcion in Model.Asignaciones)
+                                        {
+                                            <option value="@opcion.Id">@opcion.Texto</option>
+                                        }
+                                    </select>
+                                }
                                 <span asp-validation-for="AsignacionId" class="text-danger"></span>
                             </div>
                             <div class="col-lg-3">
@@ -212,7 +224,7 @@
                 </div>
 
                 <div class="d-flex justify-content-end gap-2">
-                    <a asp-action="Index" class="app-btn app-btn-soft-secondary">Cancelar</a>
+                    <a asp-action="Index" asp-route-asignacionId="@Model.OrigenAsignacionId" class="app-btn app-btn-soft-secondary">Cancelar</a>
                     <button type="submit" class="app-btn app-btn-soft-primary">Guardar configuración</button>
                 </div>
             </form>

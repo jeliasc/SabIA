@@ -10,6 +10,7 @@
     var puedePublicar = (await A.AuthorizeAsync(User, Permisos.Materiales.Publicar)).Succeeded;
     var puedeDescargar = (await A.AuthorizeAsync(User, Permisos.Materiales.Descargar)).Succeeded;
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
     var hayAcciones = !soloLectura && Model.Any() && (puedeEditar || puedePublicar);
 }
 <div class="container-fluid">
@@ -22,9 +23,9 @@
         <div class="d-grid d-md-flex align-items-center gap-2">
             @if (!soloLectura && puedeCrear)
             {
-                <a asp-action="Crear" class="app-btn app-btn-soft-primary">Nuevo material</a>
+                <a asp-action="Crear" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-primary">Nuevo material</a>
             }
-            <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-secondary">
+            <a asp-action="@(soloLectura ? "Index" : "Historial")" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-secondary">
                 @(soloLectura ? "Ver vigentes" : "Ver historial")
             </a>
         </div>
@@ -89,12 +90,12 @@
                                         <div class="app-actions app-actions-table">
                                             @if (puedeEditar)
                                             {
-                                                <a asp-action="Editar" asp-route-id="@item.Id"
+                                                <a asp-action="Editar" asp-route-id="@item.Id" asp-route-asignacionId="@contextoAsignacion"
                                                    class="app-btn app-btn-soft-secondary app-btn-sm">Editar</a>
                                             }
                                             @if (puedePublicar && item.Estado != EstadoPublicacionMaterial.Publicado)
                                             {
-                                                <form asp-action="Publicar" asp-route-id="@item.Id" method="post"
+                                                <form asp-action="Publicar" asp-route-id="@item.Id" asp-route-asignacionId="@contextoAsignacion" method="post"
                                                       data-confirmar-accion-academica data-confirmar-titulo="Publicar material"
                                                       data-confirmar-mensaje="El material quedará disponible para los alumnos autorizados."
                                                       data-confirmar-texto="Publicar" data-confirmar-color="#198754">
@@ -105,7 +106,7 @@
                                             }
                                             @if (puedePublicar && item.Estado == EstadoPublicacionMaterial.Publicado)
                                             {
-                                                <form asp-action="Ocultar" asp-route-id="@item.Id" method="post"
+                                                <form asp-action="Ocultar" asp-route-id="@item.Id" asp-route-asignacionId="@contextoAsignacion" method="post"
                                                       data-confirmar-accion-academica data-confirmar-titulo="Ocultar material"
                                                       data-confirmar-mensaje="El material dejará de estar disponible para los alumnos."
                                                       data-confirmar-texto="Ocultar">

@@ -53,12 +53,10 @@ public sealed class CalificacionServicio(
                      (d.Operaciones & OperacionDelegacionAcademica.SolicitarCorrecciones) ==
                         OperacionDelegacionAcademica.SolicitarCorrecciones)));
         }
-        else if (perfil.AlumnoId.HasValue)
+        else if (EsConsultaExclusivaDeAlumno(perfil))
         {
-            consulta = consulta.Where(x => contexto.Inscripciones.Any(i =>
-                i.AlumnoId == perfil.AlumnoId.Value &&
-                i.SeccionId == x.SeccionId &&
-                i.CicloEscolarId == x.CicloEscolarId));
+            // LOS ESTUDIANTES NO CONSULTAN LIBROS OFICIALES
+            consulta = consulta.Where(_ => false);
         }
         else if (!acceso.EsOperadorInstitucional)
         {
@@ -103,6 +101,88 @@ public sealed class CalificacionServicio(
                     Texto = x.CicloEscolar.Anio + " · " + x.Nombre
                 })
                 .ToListAsync()
+        };
+    }
+
+    public async Task<CalificacionesCursoContextual?> ObtenerContextoCursoAsync(int asignacionId)
+    {
+        if (asignacionId <= 0 ||
+            !await AsignacionPerteneceAlCicloSeleccionadoAsync(asignacionId))
+            return null;
+
+        var perfil = await acceso.ObtenerContextoUsuarioAsync();
+
+        // BLOQUEAR NAVEGACIÓN DEL LIBRO OFICIAL PARA ESTUDIANTES
+        if (EsConsultaExclusivaDeAlumno(perfil))
+            return null;
+
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        var puedeConsultar = ciclo?.EsHistorico == true
+            ? await acceso.PuedeConsultarAsignacionHistoricaAsync(asignacionId)
+            : await acceso.PuedeConsultarAsignacionVigenteAsync(asignacionId);
+        if (!puedeConsultar && perfil.DocenteId.HasValue && delegaciones is not null)
+        {
+            puedeConsultar = await delegaciones.PuedeActuarAsync(
+                asignacionId,
+                perfil.DocenteId.Value,
+                OperacionDelegacionAcademica.GestionarEvaluaciones);
+        }
+        if (!puedeConsultar) return null;
+
+        var asignacion = await contexto.Asignaciones.AsNoTracking()
+            .Where(x => x.Id == asignacionId)
+            .Select(x => new
+            {
+                x.Id,
+                x.Seccion.CicloEscolarId,
+                Curso = x.Curso.Nombre,
+                GradoSeccion = x.Seccion.Grado.Nombre + " " + x.Seccion.Nombre,
+                Ciclo = x.Seccion.CicloEscolar.Anio.ToString()
+            })
+            .SingleOrDefaultAsync();
+        if (asignacion is null) return null;
+
+        var configuraciones = await contexto.ConfiguracionesEvaluacion.AsNoTracking()
+            .Where(x => x.AsignacionId == asignacionId &&
+                x.CicloEscolarId == asignacion.CicloEscolarId)
+            .Select(x => new
+            {
+                x.Id,
+                x.PeriodoId,
+                Actividades = x.Actividades.Count(a => a.Activa),
+                EstadoCierre = contexto.CierresCalificaciones
+                    .Where(c => c.ConfiguracionEvaluacionId == x.Id)
+                    .Select(c => (EstadoCierreCalificaciones?)c.Estado)
+                    .FirstOrDefault() ?? EstadoCierreCalificaciones.Abierto
+            })
+            .ToListAsync();
+
+        var configuracionesPorPeriodo = configuraciones.ToDictionary(x => x.PeriodoId);
+        var periodos = await contexto.Periodos.AsNoTracking()
+            .Where(x => x.CicloEscolarId == asignacion.CicloEscolarId)
+            .OrderBy(x => x.Numero)
+            .Select(x => new { x.Id, x.Nombre })
+            .ToListAsync();
+
+        return new CalificacionesCursoContextual
+        {
+            AsignacionId = asignacion.Id,
+            Curso = asignacion.Curso,
+            GradoSeccion = asignacion.GradoSeccion,
+            Ciclo = asignacion.Ciclo,
+            PuedeConfigurar = await PuedeConfigurarAsync(asignacionId),
+            Periodos = periodos.Select(periodo =>
+            {
+                var configuracion = configuracionesPorPeriodo.GetValueOrDefault(periodo.Id);
+                return new PeriodoLibroContextual
+                {
+                    PeriodoId = periodo.Id,
+                    Nombre = periodo.Nombre,
+                    ConfiguracionId = configuracion?.Id,
+                    Actividades = configuracion?.Actividades ?? 0,
+                    EstadoCierre = configuracion?.EstadoCierre ?? EstadoCierreCalificaciones.Abierto
+                };
+            }).ToList()
         };
     }
 
@@ -193,7 +273,9 @@ public sealed class CalificacionServicio(
         return modelo;
     }
 
-    public async Task<ControlTareas?> ObtenerControlTareasAsync(int asignacionId)
+    public async Task<ControlTareas?> ObtenerControlTareasAsync(
+        int asignacionId,
+        int? periodoId = null)
     {
         if (!await AsignacionPerteneceAlCicloSeleccionadoAsync(asignacionId)) return null;
         var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
@@ -206,8 +288,41 @@ public sealed class CalificacionServicio(
             .FirstOrDefaultAsync(x => x.Id == asignacionId);
         if (asignacion == null) return null;
 
+        var periodos = await contexto.Periodos.AsNoTracking()
+            .Where(x => x.CicloEscolarId == asignacion.Seccion.CicloEscolarId)
+            .OrderBy(x => x.Numero)
+            .Select(x => new { x.Id, x.Nombre, x.FechaInicio, x.FechaFin })
+            .ToListAsync();
+
+        // El cero es el valor explícito de «Todos los bimestres». Una ausencia
+        // de parámetro selecciona el período vigente para facilitar la consulta.
+        int? periodoSeleccionadoId;
+        if (periodoId == 0)
+        {
+            periodoSeleccionadoId = null;
+        }
+        else if (periodoId.HasValue)
+        {
+            if (!periodos.Any(x => x.Id == periodoId.Value)) return null;
+            periodoSeleccionadoId = periodoId.Value;
+        }
+        else
+        {
+            var hoy = DateOnly.FromDateTime(HoraGuatemala.Ahora());
+            periodoSeleccionadoId = periodos
+                .FirstOrDefault(x => x.FechaInicio <= hoy && hoy <= x.FechaFin)?.Id;
+        }
+
         var tareas = await contexto.Tareas.AsNoTracking()
-            .Where(x => x.AsignacionId == asignacionId && x.Estado == EstadoTarea.Cerrada)
+            .Where(x => x.AsignacionId == asignacionId && x.Estado == EstadoTarea.Cerrada &&
+                (!periodoSeleccionadoId.HasValue ||
+                 (x.UnidadAsignacionId.HasValue &&
+                  x.UnidadAsignacion != null &&
+                  x.UnidadAsignacion.AsignacionId == asignacionId &&
+                  x.UnidadAsignacion.PeriodoId == periodoSeleccionadoId.Value &&
+                  x.UnidadAsignacion.Periodo != null &&
+                  x.UnidadAsignacion.Periodo.CicloEscolarId ==
+                      asignacion.Seccion.CicloEscolarId)))
             .OrderBy(x => x.FechaCierre).ThenBy(x => x.Id)
             .Select(x => new { x.Id, x.Titulo, x.PunteoMaximo, x.CriterioCalificacionEntrega })
             .ToListAsync();
@@ -227,10 +342,17 @@ public sealed class CalificacionServicio(
                 : consultaEntregas.Where(_ => false);
         }
         var entregas = await consultaEntregas
-            .Select(x => new { x.TareaId, x.AlumnoId, x.Calificacion, x.NumeroEnvio,
-                x.OrigenCalificacionAdministrativa, x.InscripcionId,
+            .Select(x => new
+            {
+                x.TareaId,
+                x.AlumnoId,
+                x.Calificacion,
+                x.NumeroEnvio,
+                x.OrigenCalificacionAdministrativa,
+                x.InscripcionId,
                 Alumno = x.Alumno.Usuario.PrimerNombre + " " + x.Alumno.Usuario.PrimerApellido,
-                Codigo = x.Alumno.CodigoPersonal })
+                Codigo = x.Alumno.CodigoPersonal
+            })
             .ToListAsync();
         var actual = await contexto.Inscripciones.AsNoTracking()
             .Where(x => x.AlumnoId != 0 && x.CicloEscolarId == asignacion.Seccion.CicloEscolarId &&
@@ -238,15 +360,30 @@ public sealed class CalificacionServicio(
             .Select(x => x.AlumnoId).ToListAsync();
         var modelo = new ControlTareas
         {
-            AsignacionId = asignacionId, Curso = asignacion.Curso.Nombre,
+            AsignacionId = asignacionId,
+            PeriodoIdSeleccionado = periodoSeleccionadoId,
+            Curso = asignacion.Curso.Nombre,
             GradoSeccion = asignacion.Seccion.Grado.Nombre + " " + asignacion.Seccion.Nombre,
-            Tareas = tareas.Select(x => new ControlTareaColumna { Id = x.Id, Titulo = x.Titulo,
-                PunteoMaximo = x.PunteoMaximo }).ToList()
+            Periodos = periodos.Select(x => new OpcionSeleccion
+            {
+                Id = x.Id,
+                Texto = x.Nombre
+            }).ToList(),
+            Tareas = tareas.Select(x => new ControlTareaColumna
+            {
+                Id = x.Id,
+                Titulo = x.Titulo,
+                PunteoMaximo = x.PunteoMaximo
+            }).ToList()
         };
         foreach (var grupo in entregas.GroupBy(x => x.AlumnoId).OrderBy(x => x.First().Alumno))
         {
-            var fila = new ControlTareaFila { Alumno = grupo.First().Alumno,
-                CodigoPersonal = grupo.First().Codigo ?? "Sin código", EsHistorico = !actual.Contains(grupo.Key) };
+            var fila = new ControlTareaFila
+            {
+                Alumno = grupo.First().Alumno,
+                CodigoPersonal = grupo.First().Codigo ?? "Sin código",
+                EsHistorico = !actual.Contains(grupo.Key)
+            };
             foreach (var tarea in tareas)
             {
                 var intentos = grupo.Where(x => x.TareaId == tarea.Id).ToList();
@@ -737,6 +874,7 @@ public sealed class CalificacionServicio(
         var libro = new LibroCalificaciones
         {
             ConfiguracionId = configuracion.Id,
+            AsignacionId = configuracion.AsignacionId,
             Curso = configuracion.Asignacion.Curso.Nombre,
             GradoSeccion = configuracion.Asignacion.Seccion.Grado.Nombre + " " +
                 configuracion.Asignacion.Seccion.Nombre,
@@ -1110,6 +1248,7 @@ public sealed class CalificacionServicio(
         return new ResumenAbacus
         {
             ConfiguracionId = configuracionId,
+            AsignacionId = libro.AsignacionId,
             Curso = libro.Curso,
             GradoSeccion = libro.GradoSeccion,
             CicloPeriodo = libro.Ciclo + " · " + libro.Periodo,
@@ -1546,7 +1685,10 @@ public sealed class CalificacionServicio(
             configuracion.MetodoCalculo,
             Categorias = configuracion.Categorias.OrderBy(x => x.Orden).Select(c => new
             {
-                c.Id, c.Nombre, c.Tipo, c.Porcentaje,
+                c.Id,
+                c.Nombre,
+                c.Tipo,
+                c.Porcentaje,
                 Actividades = configuracion.Actividades.Where(a => a.CategoriaEvaluacionId == c.Id)
                     .OrderBy(a => a.Orden).Select(a => new { a.Id, a.Nombre, a.PunteoMaximo, a.TareaId })
             })
@@ -1558,7 +1700,10 @@ public sealed class CalificacionServicio(
             modelo.MetodoCalculo,
             Categorias = modelo.Categorias.Select(c => new
             {
-                c.Id, c.Nombre, c.Tipo, c.Porcentaje,
+                c.Id,
+                c.Nombre,
+                c.Tipo,
+                c.Porcentaje,
                 Actividades = c.Actividades.Select(a => new { a.Id, a.Nombre, a.PunteoMaximo, a.TareaId })
             })
         }, JsonOpciones);
@@ -1756,11 +1901,9 @@ public sealed class CalificacionServicio(
                 perfil.DocenteId.Value,
                 OperacionDelegacionAcademica.GestionarEvaluaciones);
         }
-        if (perfil.AlumnoId.HasValue)
-            return await contexto.Inscripciones.AsNoTracking().AnyAsync(x =>
-                x.AlumnoId == perfil.AlumnoId.Value &&
-                x.SeccionId == configuracion.SeccionId &&
-                x.CicloEscolarId == configuracion.CicloEscolarId);
+        // BLOQUEAR LIBRO OFICIAL PARA ESTUDIANTES
+        if (EsConsultaExclusivaDeAlumno(perfil))
+            return false;
         return acceso.EsOperadorInstitucional &&
             acceso.TienePermiso(Permisos.Calificaciones.Ver);
     }

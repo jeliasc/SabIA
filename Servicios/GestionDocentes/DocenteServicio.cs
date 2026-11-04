@@ -32,7 +32,7 @@ public sealed class DocenteServicio : IDocenteServicio
 
     public async Task<List<DocenteLista>> ObtenerTodosAsync()
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Docentes.Ver))
         {
             return [];
         }
@@ -66,7 +66,7 @@ public sealed class DocenteServicio : IDocenteServicio
 
     public async Task<DetalleDocente?> ObtenerDetalleAsync(int id)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Docentes.Ver))
         {
             return null;
         }
@@ -302,7 +302,7 @@ public sealed class DocenteServicio : IDocenteServicio
     public async Task<ResultadoOperacion<ResultadoContrasenaTemporal>> CrearAsync(
         CrearDocente modelo)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Docentes.Crear))
         {
             return ResultadoOperacion<ResultadoContrasenaTemporal>.Error(
                 "No tiene autorización institucional para administrar docentes.");
@@ -414,7 +414,7 @@ public sealed class DocenteServicio : IDocenteServicio
 
     public async Task<EditarDocente?> ObtenerParaEditarAsync(int id)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Docentes.Editar))
         {
             return null;
         }
@@ -443,7 +443,7 @@ public sealed class DocenteServicio : IDocenteServicio
     public async Task<ResultadoOperacion> EditarAsync(
         EditarDocente modelo)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Docentes.Editar))
         {
             return ResultadoOperacion.Error("No tiene autorización institucional para administrar docentes.");
         }
@@ -532,7 +532,7 @@ public sealed class DocenteServicio : IDocenteServicio
         int id,
         bool activo)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Docentes.CambiarEstado))
         {
             return ResultadoOperacion.Error("No tiene autorización institucional para administrar docentes.");
         }
@@ -619,4 +619,7 @@ public sealed class DocenteServicio : IDocenteServicio
         string.IsNullOrWhiteSpace(valor)
             ? null
             : valor.Trim();
+
+    private bool PuedeAdministrar(string permiso) =>
+        acceso.EsAdministradorInstitucional && acceso.TienePermiso(permiso);
 }

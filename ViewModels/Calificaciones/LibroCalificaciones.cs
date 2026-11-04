@@ -6,6 +6,7 @@ namespace Proyecto_Final.ViewModels.Calificaciones;
 public sealed class LibroCalificaciones
 {
     public int ConfiguracionId { get; set; }
+    public int AsignacionId { get; set; }
     public string Curso { get; set; } = string.Empty;
     public string GradoSeccion { get; set; } = string.Empty;
     public string Periodo { get; set; } = string.Empty;

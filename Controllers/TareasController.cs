@@ -24,10 +24,11 @@ public class TareasController(
 
     [HttpGet]
     [Authorize(Policy = Permisos.Tareas.Crear)]
-    public async Task<IActionResult> Crear()
+    public async Task<IActionResult> Crear(int? asignacionId = null)
     {
         var m = new CrearTarea
         {
+            AsignacionId = asignacionId.GetValueOrDefault(),
             FechaDisponibilidad = HoraGuatemala.Ahora(),
             FechaLimite = HoraGuatemala.Ahora().AddDays(7),
             TokenCreacion = Guid.NewGuid()
@@ -44,8 +45,11 @@ public class TareasController(
     [Authorize(Policy = Permisos.Tareas.Crear)]
     public async Task<IActionResult> Crear(
         CrearTarea m,
-        CancellationToken ct)
+        CancellationToken ct,
+        int? asignacionId = null)
     {
+        ValidarContextoAsignacion(asignacionId, m.AsignacionId);
+
         if (m.Tipo == Models.TipoTarea.Cuestionario &&
             !await PuedeCrearCuestionariosAsync())
         {
@@ -65,10 +69,10 @@ public class TareasController(
                     return RedirectToAction(
                         nameof(CuestionariosController.Configurar),
                         "Cuestionarios",
-                        new { tareaId = r.Datos });
+                        new { tareaId = r.Datos, asignacionId = m.AsignacionId });
                 }
 
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { asignacionId = m.AsignacionId });
             }
 
             Err(r);
@@ -82,7 +86,7 @@ public class TareasController(
 
     [HttpGet]
     [Authorize(Policy = Permisos.Tareas.Editar)]
-    public async Task<IActionResult> Editar(int id)
+    public async Task<IActionResult> Editar(int id, int? asignacionId = null)
     {
         var m = await s.ObtenerEditarAsync(id);
 
@@ -96,8 +100,11 @@ public class TareasController(
     [Authorize(Policy = Permisos.Tareas.Editar)]
     public async Task<IActionResult> Editar(
         EditarTarea m,
-        CancellationToken ct)
+        CancellationToken ct,
+        int? asignacionId = null)
     {
+        ValidarContextoAsignacion(asignacionId, m.AsignacionId);
+
         if (ModelState.IsValid)
         {
             var r = await s.EditarAsync(m, ct);
@@ -105,7 +112,7 @@ public class TareasController(
             if (r.Exitoso)
             {
                 TempData["Exito"] = r.Mensaje;
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { asignacionId = m.AsignacionId });
             }
 
             Err(r);
@@ -119,18 +126,18 @@ public class TareasController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Tareas.Publicar)]
-    public async Task<IActionResult> Publicar(int id)
+    public async Task<IActionResult> Publicar(int id, int? asignacionId = null)
     {
         var r = await s.PublicarAsync(id);
 
         TempData[r.Exitoso ? "Exito" : "Error"] = r.Mensaje;
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { asignacionId });
     }
 
     [HttpGet]
     [Authorize(Policy = Permisos.Tareas.Cerrar)]
-    public async Task<IActionResult> Cerrar(int id)
+    public async Task<IActionResult> Cerrar(int id, int? asignacionId = null)
     {
         var modelo = await s.ObtenerParaCerrarAsync(id);
         return modelo is null ? NotFound() : View(modelo);
@@ -139,7 +146,7 @@ public class TareasController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Tareas.Cerrar)]
-    public async Task<IActionResult> Cerrar(CerrarTarea modelo)
+    public async Task<IActionResult> Cerrar(CerrarTarea modelo, int? asignacionId = null)
     {
         var r = await s.CerrarAsync(modelo);
         if (!r.Exitoso && r.Errores.Count > 0)
@@ -160,18 +167,18 @@ public class TareasController(
 
         TempData[r.Exitoso ? "Exito" : "Error"] = r.Mensaje;
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { asignacionId });
     }
 
     [HttpGet]
     [Authorize(Policy = Permisos.Entregas.Reabrir)]
-    public async Task<IActionResult> Reabrir(int id)
+    public async Task<IActionResult> Reabrir(int id, int? asignacionId = null)
     {
         var modelo = await s.ObtenerParaReabrirAsync(id);
         if (modelo is null)
         {
             TempData["Advertencia"] = "No puede reabrir esta actividad en su contexto académico actual.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { asignacionId });
         }
 
         return View(modelo);
@@ -180,7 +187,7 @@ public class TareasController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Entregas.Reabrir)]
-    public async Task<IActionResult> Reabrir(ReabrirTarea modelo)
+    public async Task<IActionResult> Reabrir(ReabrirTarea modelo, int? asignacionId = null)
     {
         if (!ModelState.IsValid)
         {
@@ -201,7 +208,7 @@ public class TareasController(
         }
 
         TempData["Exito"] = resultado.Mensaje;
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { asignacionId });
     }
 
     private void Err(Servicios.Comunes.ResultadoOperacion r)
@@ -237,5 +244,11 @@ public class TareasController(
         modelo.Curso = original.Curso;
         modelo.Tipo = original.Tipo;
         modelo.EstadoActual = original.EstadoActual;
+    }
+
+    private void ValidarContextoAsignacion(int? asignacionId, int asignacionFormulario)
+    {
+        if (asignacionId.HasValue && asignacionId.Value != asignacionFormulario)
+            ModelState.AddModelError("", "La asignación no coincide con el contexto académico seleccionado.");
     }
 }

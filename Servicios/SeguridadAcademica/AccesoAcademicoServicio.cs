@@ -18,6 +18,11 @@ public sealed class AccesoAcademicoServicio(
         httpContextAccessor.HttpContext is { } httpContext &&
         AutorizacionDashboardCoordinacion.PuedeVer(httpContext.User);
 
+    public bool EsAdministradorInstitucional =>
+        httpContextAccessor.HttpContext?.User is { } usuario &&
+        (usuario.IsInRole(Roles.Superusuario) ||
+         usuario.IsInRole(Roles.Administrador));
+
     public bool TienePermiso(string permiso) =>
         httpContextAccessor.HttpContext?.User.HasClaim(
             TiposClaims.Permiso,

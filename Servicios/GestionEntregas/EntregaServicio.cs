@@ -134,11 +134,13 @@ public sealed class EntregaServicio(
             {
                 Id = x.Id,
                 TareaId = x.TareaId,
+                AsignacionId = x.Tarea.AsignacionId,
                 AlumnoId = x.AlumnoId,
                 InscripcionId = x.InscripcionId,
                 Alumno = x.Alumno.Usuario.PrimerNombre + " " +
                     x.Alumno.Usuario.PrimerApellido,
                 Tarea = x.Tarea.Titulo,
+                Tipo = x.Tarea.Tipo,
                 Curso = x.Tarea.Asignacion.Curso.Nombre,
                 FechaLimite = x.Tarea.FechaLimite,
                 FechaLimiteIndividual = x.FechaLimiteIndividual,

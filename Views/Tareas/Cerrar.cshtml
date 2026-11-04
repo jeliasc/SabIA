@@ -1,6 +1,7 @@
 @model Proyecto_Final.ViewModels.Tareas.CerrarTarea
 
 @{
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
     ViewData["Title"] = "Cerrar tarea";
 }
 
@@ -36,7 +37,7 @@
                     }
                 </div>
                 <div class="d-flex justify-content-end gap-2">
-                    <a asp-action="Index" class="app-btn app-btn-secondary">Cancelar</a>
+                    <a asp-action="Index" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-secondary">Cancelar</a>
                     <button type="submit" class="app-btn app-btn-soft-danger">Confirmar cierre</button>
                 </div>
             </form>

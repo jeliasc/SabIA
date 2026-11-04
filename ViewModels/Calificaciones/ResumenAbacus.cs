@@ -5,6 +5,7 @@ namespace Proyecto_Final.ViewModels.Calificaciones;
 public sealed class ResumenAbacus
 {
     public int ConfiguracionId { get; set; }
+    public int AsignacionId { get; set; }
     public string Curso { get; set; } = string.Empty;
     public string GradoSeccion { get; set; } = string.Empty;
     public string CicloPeriodo { get; set; } = string.Empty;

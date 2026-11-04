@@ -16,6 +16,7 @@
         Permisos.Cuestionarios.Resolver
     )).Succeeded;
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
     var hayAcciones = Model.Any(x =>
         (x.PuedeVerResultados &&
          x.EstadoTarea != Proyecto_Final.Models.EstadoTarea.Borrador) ||
@@ -44,7 +45,7 @@
                     <i class="bi bi-stars"></i> Importar desde IA
                 </a>
             }
-            <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-soft-primary">
+            <a asp-action="@(soloLectura ? "Index" : "Historial")" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-primary">
                 @(soloLectura ? "Ver vigentes" : "Ver historial")
             </a>
         </div>
@@ -108,7 +109,7 @@
                                             @if (editar &&
                                                 x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Borrador)
                                             {
-                                                <a asp-action="AgregarPregunta" asp-route-cuestionarioId="@x.Id"
+                                                <a asp-action="AgregarPregunta" asp-route-cuestionarioId="@x.Id" asp-route-asignacionId="@contextoAsignacion"
                                                    class="app-btn app-btn-soft-secondary app-btn-sm">
                                                     Preguntas
                                                 </a>
@@ -117,7 +118,7 @@
                                             @if (x.PuedeVerResultados &&
                                                 x.EstadoTarea != Proyecto_Final.Models.EstadoTarea.Borrador)
                                             {
-                                                <a asp-action="Resultados" asp-route-id="@x.Id"
+                                                <a asp-action="Resultados" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion"
                                                    class="app-btn app-btn-soft-secondary app-btn-sm">
                                                     Resultados
                                                 </a>
@@ -126,7 +127,7 @@
                                             @if (resolver &&
                                                 x.EstadoTarea == Proyecto_Final.Models.EstadoTarea.Publicada)
                                             {
-                                                <a asp-action="Resolver" asp-route-id="@x.Id"
+                                                <a asp-action="Resolver" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion"
                                                    class="app-btn app-btn-soft-primary app-btn-sm">
                                                     Resolver
                                                 </a>
@@ -189,17 +190,17 @@
                             <div class="d-grid gap-2">
                                 @if (!soloLectura && editar && esBorrador)
                                 {
-                                    <a asp-action="AgregarPregunta" asp-route-cuestionarioId="@x.Id"
+                                    <a asp-action="AgregarPregunta" asp-route-cuestionarioId="@x.Id" asp-route-asignacionId="@contextoAsignacion"
                                        class="app-btn app-btn-soft-secondary">Preguntas</a>
                                 }
                                 @if (x.PuedeVerResultados && !esBorrador)
                                 {
-                                    <a asp-action="Resultados" asp-route-id="@x.Id"
+                                    <a asp-action="Resultados" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion"
                                        class="app-btn app-btn-soft-secondary">Resultados</a>
                                 }
                                 @if (!soloLectura && resolver && esPublicada)
                                 {
-                                    <a asp-action="Resolver" asp-route-id="@x.Id" class="app-btn app-btn-soft-primary">Resolver</a>
+                                    <a asp-action="Resolver" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-primary">Resolver</a>
                                 }
                             </div>
                         </div>

@@ -1,6 +1,7 @@
 @model Proyecto_Final.ViewModels.Cuestionarios.IntentoEnCurso
 @{
     ViewData["Title"] = Model.Titulo;
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
 }
 
 <div class="container-fluid"
@@ -45,7 +46,7 @@
 
     @if (Model.PermitirNavegacion)
     {
-        <form method="post" asp-action="Finalizar" data-form-final>
+        <form method="post" asp-action="Finalizar" asp-route-asignacionId="@contextoAsignacion" data-form-final>
             @Html.AntiForgeryToken()
             <input type="hidden" name="IntentoId" value="@Model.IntentoId" />
 
@@ -101,7 +102,7 @@
         var p = Model.Preguntas[0];
         var esUltima = p.Numero >= Model.TotalPreguntas;
 
-        <form method="post" asp-action="Responder" data-form-pregunta>
+        <form method="post" asp-action="Responder" asp-route-asignacionId="@contextoAsignacion" data-form-pregunta>
             @Html.AntiForgeryToken()
             <input type="hidden" name="IntentoId" value="@Model.IntentoId" />
 
@@ -129,7 +130,7 @@
         </form>
 
         @* Envío del cierre cuando se acaba el tiempo total del cuestionario. *@
-        <form method="post" asp-action="Finalizar" data-form-final hidden>
+        <form method="post" asp-action="Finalizar" asp-route-asignacionId="@contextoAsignacion" data-form-final hidden>
             @Html.AntiForgeryToken()
             <input type="hidden" name="IntentoId" value="@Model.IntentoId" />
         </form>

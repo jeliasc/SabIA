@@ -6,6 +6,8 @@
         !esCreacion ||
         (ViewData["PuedeCrearCuestionario"] as bool? ?? false);
     var esCuestionario = Model.Tipo == TipoTarea.Cuestionario;
+    var contextoCurso = Model.AsignacionId > 0 && !string.IsNullOrWhiteSpace(Context.Request.Query["asignacionId"]);
+    var asignacionActual = Model.Asignaciones.FirstOrDefault(x => x.Id == Model.AsignacionId)?.Texto;
 }
 
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3">
@@ -13,6 +15,14 @@
 
 <div class="row g-3">
     <div class="col-md-6">
+        @if (contextoCurso)
+        {
+            <label class="form-label">Asignación actual</label>
+            <input type="hidden" asp-for="AsignacionId" />
+            <div class="form-control-plaintext border rounded px-3 py-2">@asignacionActual</div>
+        }
+        else
+        {
         <label asp-for="AsignacionId" class="form-label">
             Asignación
         </label>
@@ -28,6 +38,7 @@
                 </option>
             }
         </select>
+        }
         <span asp-validation-for="AsignacionId" class="text-danger"></span>
     </div>
 

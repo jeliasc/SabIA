@@ -149,6 +149,53 @@ public sealed class ConfidencialidadCalificacionesTests
     }
 
     [Fact]
+    public async Task ContextoCurso_AislaLaAsignacionYRelacionaCadaPeriodoConSuLibro()
+    {
+        await using var escenario = await Escenario.CrearAsync(cerrado: true);
+        var propio = escenario.CrearServicio(new AccesoPrueba(docenteId: 1));
+        var delegado = escenario.CrearServicio(
+            new AccesoPrueba(docenteId: 2, puedeConsultarAsignacion: false),
+            new DelegacionPrueba(vigente: true));
+        var ajeno = escenario.CrearServicio(
+            new AccesoPrueba(docenteId: 2, puedeConsultarAsignacion: false));
+
+        var contexto = await propio.ObtenerContextoCursoAsync(1);
+        var contextoDelegado = await delegado.ObtenerContextoCursoAsync(1);
+
+        Assert.NotNull(contexto);
+        Assert.Equal(1, contexto!.AsignacionId);
+        var periodo = Assert.Single(contexto.Periodos);
+        Assert.Equal(1, periodo.PeriodoId);
+        Assert.Equal(1, periodo.ConfiguracionId);
+        Assert.Equal(EstadoCierreCalificaciones.Cerrado, periodo.EstadoCierre);
+        Assert.NotNull(contextoDelegado);
+        Assert.Null(await propio.ObtenerContextoCursoAsync(999));
+        Assert.Null(await ajeno.ObtenerContextoCursoAsync(1));
+    }
+
+    [Fact]
+    public async Task ControlTareas_FiltraTareasCerradasPorPeriodoValidadoDeLaAsignacion()
+    {
+        await using var escenario = await Escenario.CrearAsync(cerrado: false);
+        var servicio = escenario.CrearServicio(new AccesoPrueba(docenteId: 1));
+
+        var primerBimestre = await servicio.ObtenerControlTareasAsync(1, 1);
+        var segundoBimestre = await servicio.ObtenerControlTareasAsync(1, 2);
+        var todos = await servicio.ObtenerControlTareasAsync(1, 0);
+
+        Assert.NotNull(primerBimestre);
+        Assert.Equal(1, primerBimestre!.PeriodoIdSeleccionado);
+        Assert.Equal(new[] { "Tarea confidencial" }, primerBimestre.Tareas.Select(x => x.Titulo));
+        Assert.NotNull(segundoBimestre);
+        Assert.Equal(2, segundoBimestre!.PeriodoIdSeleccionado);
+        Assert.Equal(new[] { "Tarea segundo bimestre" }, segundoBimestre.Tareas.Select(x => x.Titulo));
+        Assert.NotNull(todos);
+        Assert.Null(todos!.PeriodoIdSeleccionado);
+        Assert.Equal(2, todos.Tareas.Count);
+        Assert.Null(await servicio.ObtenerControlTareasAsync(1, 999));
+    }
+
+    [Fact]
     public async Task LibroParaNavegacion_ClasificaElCicloSoloDespuesDeAutorizar()
     {
         await using var escenario = await Escenario.CrearAsync(cerrado: true);
@@ -303,6 +350,15 @@ public sealed class ConfidencialidadCalificacionesTests
                 FechaInicio = new DateOnly(2026, 1, 1),
                 FechaFin = new DateOnly(2026, 3, 1)
             };
+            var periodoDos = new Periodo
+            {
+                Id = 2,
+                CicloEscolar = ciclo,
+                Numero = 2,
+                Nombre = "Segundo bimestre",
+                FechaInicio = new DateOnly(2026, 3, 2),
+                FechaFin = new DateOnly(2026, 5, 1)
+            };
             var grado = new Grado
             {
                 Id = 1,
@@ -362,11 +418,58 @@ public sealed class ConfidencialidadCalificacionesTests
                 FechaCreacion = DateTime.UtcNow,
                 ConfiguradoPorUsuario = docenteUsuario
             };
+            var unidadUno = new Unidad
+            {
+                Id = 1,
+                Titulo = "Unidad primer bimestre",
+                CreadoPorUsuario = docenteUsuario,
+                FechaCreacion = DateTime.UtcNow
+            };
+            var unidadDos = new Unidad
+            {
+                Id = 2,
+                Titulo = "Unidad segundo bimestre",
+                CreadoPorUsuario = docenteUsuario,
+                FechaCreacion = DateTime.UtcNow
+            };
+            var unidadAsignacionUno = new UnidadAsignacion
+            {
+                Id = 1,
+                Unidad = unidadUno,
+                Asignacion = asignacion,
+                Periodo = periodo,
+                Orden = 1,
+                Estado = EstadoPublicacionUnidad.Publicada,
+                AsignadoPorUsuario = docenteUsuario
+            };
+            var unidadAsignacionDos = new UnidadAsignacion
+            {
+                Id = 2,
+                Unidad = unidadDos,
+                Asignacion = asignacion,
+                Periodo = periodoDos,
+                Orden = 2,
+                Estado = EstadoPublicacionUnidad.Publicada,
+                AsignadoPorUsuario = docenteUsuario
+            };
             var tarea = new Tarea
             {
                 Id = 1,
                 Asignacion = asignacion,
+                UnidadAsignacion = unidadAsignacionUno,
                 Titulo = "Tarea confidencial",
+                Estado = EstadoTarea.Cerrada,
+                PunteoMaximo = 10,
+                FechaCreacion = DateTime.UtcNow.AddDays(-2),
+                FechaCierre = DateTime.UtcNow.AddDays(-1),
+                CreadoPorUsuario = docenteUsuario
+            };
+            var tareaSegundoBimestre = new Tarea
+            {
+                Id = 2,
+                Asignacion = asignacion,
+                UnidadAsignacion = unidadAsignacionDos,
+                Titulo = "Tarea segundo bimestre",
                 Estado = EstadoTarea.Cerrada,
                 PunteoMaximo = 10,
                 FechaCreacion = DateTime.UtcNow.AddDays(-2),
@@ -421,8 +524,9 @@ public sealed class ConfidencialidadCalificacionesTests
                 Activa = true
             };
             contexto.AddRange(docenteUsuario, alumnoUsuario, companeroUsuario, docenteAjenoUsuario,
-                ciclo, periodo, grado, seccion, curso, docente, docenteAjeno, alumno, companero,
-                asignacion, inscripcionAlumno, inscripcionCompanero, configuracion, tarea, categoria, actividad,
+                ciclo, periodo, periodoDos, grado, seccion, curso, docente, docenteAjeno, alumno, companero,
+                asignacion, inscripcionAlumno, inscripcionCompanero, configuracion, unidadUno, unidadDos,
+                unidadAsignacionUno, unidadAsignacionDos, tarea, tareaSegundoBimestre, categoria, actividad,
                 relevo, delegacionVigente);
             contexto.AddRange(
                 new Entrega

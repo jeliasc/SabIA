@@ -21,9 +21,9 @@ public class UnidadesController(IUnidadServicio s) : Controller
 
     [HttpGet]
     [Authorize(Policy = Permisos.Unidades.Crear)]
-    public async Task<IActionResult> Crear()
+    public async Task<IActionResult> Crear(int? asignacionId = null)
     {
-        var m = new CrearUnidad();
+        var m = new CrearUnidad { AsignacionId = asignacionId.GetValueOrDefault() };
 
         await s.PrepararAsync(m);
 
@@ -33,8 +33,10 @@ public class UnidadesController(IUnidadServicio s) : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Unidades.Crear)]
-    public async Task<IActionResult> Crear(CrearUnidad m)
+    public async Task<IActionResult> Crear(CrearUnidad m, int? asignacionId = null)
     {
+        ValidarContextoAsignacion(asignacionId, m.AsignacionId);
+
         if (ModelState.IsValid)
         {
             var r = await s.CrearAsync(m);
@@ -42,7 +44,7 @@ public class UnidadesController(IUnidadServicio s) : Controller
             if (r.Exitoso)
             {
                 TempData["Exito"] = r.Mensaje;
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { asignacionId = m.AsignacionId });
             }
 
             Err(r);
@@ -55,7 +57,7 @@ public class UnidadesController(IUnidadServicio s) : Controller
 
     [HttpGet]
     [Authorize(Policy = Permisos.Unidades.Editar)]
-    public async Task<IActionResult> Editar(int unidadAsignacionId)
+    public async Task<IActionResult> Editar(int unidadAsignacionId, int? asignacionId = null)
     {
         var m = await s.ObtenerEditarAsync(unidadAsignacionId);
 
@@ -67,8 +69,10 @@ public class UnidadesController(IUnidadServicio s) : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Unidades.Editar)]
-    public async Task<IActionResult> Editar(EditarUnidad m)
+    public async Task<IActionResult> Editar(EditarUnidad m, int? asignacionId = null)
     {
+        ValidarContextoAsignacion(asignacionId, m.AsignacionId);
+
         if (ModelState.IsValid)
         {
             var r = await s.EditarAsync(m);
@@ -76,7 +80,7 @@ public class UnidadesController(IUnidadServicio s) : Controller
             if (r.Exitoso)
             {
                 TempData["Exito"] = r.Mensaje;
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { asignacionId = m.AsignacionId });
             }
 
             Err(r);
@@ -90,25 +94,25 @@ public class UnidadesController(IUnidadServicio s) : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Unidades.Publicar)]
-    public async Task<IActionResult> Publicar(int id)
+    public async Task<IActionResult> Publicar(int id, int? asignacionId = null)
     {
         var r = await s.PublicarAsync(id);
 
         TempData[r.Exitoso ? "Exito" : "Error"] = r.Mensaje;
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { asignacionId });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Unidades.Publicar)]
-    public async Task<IActionResult> Ocultar(int id)
+    public async Task<IActionResult> Ocultar(int id, int? asignacionId = null)
     {
         var r = await s.OcultarAsync(id);
 
         TempData[r.Exitoso ? "Exito" : "Error"] = r.Mensaje;
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { asignacionId });
     }
 
     private void Err(Servicios.Comunes.ResultadoOperacion r)
@@ -124,5 +128,11 @@ public class UnidadesController(IUnidadServicio s) : Controller
                 ModelState.AddModelError(e.Key, e.Value);
             }
         }
+    }
+
+    private void ValidarContextoAsignacion(int? asignacionId, int asignacionFormulario)
+    {
+        if (asignacionId.HasValue && asignacionId.Value != asignacionFormulario)
+            ModelState.AddModelError("", "La asignación no coincide con el contexto académico seleccionado.");
     }
 }

@@ -76,6 +76,15 @@ public class AlumnosController : Controller
     [Authorize(Policy = Permisos.Alumnos.Crear)]
     public async Task<IActionResult> Crear(CrearAlumno modelo)
     {
+        if (!modelo.InscribirAhora)
+        {
+            ModelState.Remove(nameof(modelo.CicloEscolarId));
+            ModelState.Remove(nameof(modelo.Carrera));
+            ModelState.Remove(nameof(modelo.GradoId));
+            ModelState.Remove(nameof(modelo.SeccionId));
+            ModelState.Remove(nameof(modelo.FechaInscripcion));
+        }
+
         if (!ModelState.IsValid)
         {
             await alumnoServicio.PrepararCreacionAsync(modelo);

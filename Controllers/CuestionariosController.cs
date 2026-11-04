@@ -28,7 +28,7 @@ public class CuestionariosController(
 
     [HttpGet]
     [Authorize(Policy = Permisos.Cuestionarios.Crear)]
-    public async Task<IActionResult> Configurar(int tareaId)
+    public async Task<IActionResult> Configurar(int tareaId, int? asignacionId = null)
     {
         var m = await s.ObtenerConfiguracionAsync(tareaId);
 
@@ -40,7 +40,7 @@ public class CuestionariosController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Cuestionarios.Crear)]
-    public async Task<IActionResult> Configurar(ConfigurarCuestionario m)
+    public async Task<IActionResult> Configurar(ConfigurarCuestionario m, int? asignacionId = null)
     {
         if (!ModelState.IsValid)
         {
@@ -59,13 +59,13 @@ public class CuestionariosController(
 
         return RedirectToAction(
             nameof(AgregarPregunta),
-            new { cuestionarioId = r.Datos }
+            new { cuestionarioId = r.Datos, asignacionId }
         );
     }
 
     [HttpGet]
     [Authorize(Policy = Permisos.Cuestionarios.Editar)]
-    public async Task<IActionResult> AgregarPregunta(int cuestionarioId)
+    public async Task<IActionResult> AgregarPregunta(int cuestionarioId, int? asignacionId = null)
     {
         var m = await s.PrepararPreguntaAsync(cuestionarioId);
 
@@ -77,7 +77,7 @@ public class CuestionariosController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Cuestionarios.Editar)]
-    public async Task<IActionResult> AgregarPregunta(CrearPregunta m)
+    public async Task<IActionResult> AgregarPregunta(CrearPregunta m, int? asignacionId = null)
     {
         if (!ModelState.IsValid)
         {
@@ -105,7 +105,7 @@ public class CuestionariosController(
 
         return RedirectToAction(
             nameof(AgregarPregunta),
-            new { cuestionarioId = m.CuestionarioId }
+            new { cuestionarioId = m.CuestionarioId, asignacionId }
         );
     }
 
@@ -144,22 +144,22 @@ public class CuestionariosController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Cuestionarios.Resolver)]
-    public async Task<IActionResult> Iniciar(int id)
+    public async Task<IActionResult> Iniciar(int id, int? asignacionId = null)
     {
         var r = await s.IniciarAsync(id);
 
         if (!r.Exitoso)
         {
             TempData["Error"] = r.Mensaje;
-            return RedirectToAction(nameof(Resolver), new { id });
+            return RedirectToAction(nameof(Resolver), new { id, asignacionId });
         }
 
-        return RedirectToAction(nameof(Intento), new { id = r.Datos });
+        return RedirectToAction(nameof(Intento), new { id = r.Datos, asignacionId });
     }
 
     [HttpGet]
     [Authorize(Policy = Permisos.Cuestionarios.Resolver)]
-    public async Task<IActionResult> Intento(int id)
+    public async Task<IActionResult> Intento(int id, int? asignacionId = null)
     {
         var vista = await s.ObtenerIntentoAsync(id);
 
@@ -167,7 +167,7 @@ public class CuestionariosController(
             return NotFound();
 
         if (vista.Finalizado || vista.Modelo == null)
-            return RedirectToAction(nameof(Resultado), new { id = vista.IntentoId });
+            return RedirectToAction(nameof(Resultado), new { id = vista.IntentoId, asignacionId });
 
         return View(vista.Modelo);
     }
@@ -204,42 +204,42 @@ public class CuestionariosController(
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Cuestionarios.Resolver)]
-    public async Task<IActionResult> Responder(ResponderPregunta m)
+    public async Task<IActionResult> Responder(ResponderPregunta m, int? asignacionId = null)
     {
         var r = await s.ResponderAsync(m);
 
         if (!r.Exitoso)
         {
             TempData["Error"] = r.Mensaje;
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { asignacionId });
         }
 
         if (r.Datos)
-            return RedirectToAction(nameof(Resultado), new { id = m.IntentoId });
+            return RedirectToAction(nameof(Resultado), new { id = m.IntentoId, asignacionId });
 
         if (r.Mensaje.StartsWith("El tiempo", StringComparison.Ordinal))
             TempData["Advertencia"] = r.Mensaje;
 
-        return RedirectToAction(nameof(Intento), new { id = m.IntentoId });
+        return RedirectToAction(nameof(Intento), new { id = m.IntentoId, asignacionId });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Cuestionarios.Resolver)]
-    public async Task<IActionResult> Finalizar(FinalizarIntento m)
+    public async Task<IActionResult> Finalizar(FinalizarIntento m, int? asignacionId = null)
     {
         var r = await s.FinalizarAsync(m);
 
         if (!r.Exitoso)
         {
             TempData["Error"] = r.Mensaje;
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { asignacionId });
         }
 
         if (r.Mensaje.StartsWith("El tiempo", StringComparison.Ordinal))
             TempData["Advertencia"] = r.Mensaje;
 
-        return RedirectToAction(nameof(Resultado), new { id = r.Datos });
+        return RedirectToAction(nameof(Resultado), new { id = r.Datos, asignacionId });
     }
 
     [HttpGet]

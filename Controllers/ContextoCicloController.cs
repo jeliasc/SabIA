@@ -59,6 +59,7 @@ public sealed class ContextoCicloController(IContextoCicloEscolar contextoCiclo)
             "home" => "/Home",
             "inscripciones" => "/Inscripciones",
             "materiales" => "/Materiales",
+            "miscursos" => "/MisCursos",
             "periodos" => "/Periodos",
             "planificaciones" => "/Planificaciones",
             "resolucionestraslados" => "/ResolucionesTraslados",

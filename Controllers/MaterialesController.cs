@@ -21,9 +21,9 @@ public class MaterialesController(IMaterialServicio s) : Controller
 
     [HttpGet]
     [Authorize(Policy = Permisos.Materiales.Crear)]
-    public async Task<IActionResult> Crear()
+    public async Task<IActionResult> Crear(int? asignacionId = null)
     {
-        var m = new CrearMaterial();
+        var m = new CrearMaterial { AsignacionId = asignacionId.GetValueOrDefault() };
 
         await s.PrepararAsync(m);
 
@@ -35,8 +35,11 @@ public class MaterialesController(IMaterialServicio s) : Controller
     [Authorize(Policy = Permisos.Materiales.Crear)]
     public async Task<IActionResult> Crear(
         CrearMaterial m,
-        CancellationToken ct)
+        CancellationToken ct,
+        int? asignacionId = null)
     {
+        ValidarContextoAsignacion(asignacionId, m.AsignacionId);
+
         if (ModelState.IsValid)
         {
             var r = await s.CrearAsync(m, ct);
@@ -44,7 +47,7 @@ public class MaterialesController(IMaterialServicio s) : Controller
             if (r.Exitoso)
             {
                 TempData["Exito"] = r.Mensaje;
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { asignacionId = m.AsignacionId });
             }
 
             Err(r);
@@ -57,13 +60,16 @@ public class MaterialesController(IMaterialServicio s) : Controller
 
     [HttpGet]
     [Authorize(Policy = Permisos.Materiales.Editar)]
-    public async Task<IActionResult> Editar(int id)
+    public async Task<IActionResult> Editar(int id, int? asignacionId = null)
     {
         var m = await s.ObtenerEditarAsync(id);
 
-        return m == null
-            ? NotFound()
-            : View(m);
+        if (m is null)
+            return NotFound();
+
+        m.AsignacionId = asignacionId.GetValueOrDefault();
+        await s.PrepararAsync(m);
+        return View(m);
     }
 
     [HttpPost]
@@ -71,8 +77,11 @@ public class MaterialesController(IMaterialServicio s) : Controller
     [Authorize(Policy = Permisos.Materiales.Editar)]
     public async Task<IActionResult> Editar(
         EditarMaterial m,
-        CancellationToken ct)
+        CancellationToken ct,
+        int? asignacionId = null)
     {
+        ValidarContextoAsignacion(asignacionId, m.AsignacionId);
+
         if (ModelState.IsValid)
         {
             var r = await s.EditarAsync(m, ct);
@@ -80,7 +89,7 @@ public class MaterialesController(IMaterialServicio s) : Controller
             if (r.Exitoso)
             {
                 TempData["Exito"] = r.Mensaje;
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { asignacionId = m.AsignacionId });
             }
 
             Err(r);
@@ -94,25 +103,25 @@ public class MaterialesController(IMaterialServicio s) : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Materiales.Publicar)]
-    public async Task<IActionResult> Publicar(int id)
+    public async Task<IActionResult> Publicar(int id, int? asignacionId = null)
     {
         var r = await s.PublicarAsync(id);
 
         TempData[r.Exitoso ? "Exito" : "Error"] = r.Mensaje;
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { asignacionId });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Permisos.Materiales.Publicar)]
-    public async Task<IActionResult> Ocultar(int id)
+    public async Task<IActionResult> Ocultar(int id, int? asignacionId = null)
     {
         var r = await s.OcultarAsync(id);
 
         TempData[r.Exitoso ? "Exito" : "Error"] = r.Mensaje;
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { asignacionId });
     }
 
     [HttpGet]
@@ -175,5 +184,11 @@ public class MaterialesController(IMaterialServicio s) : Controller
                 ModelState.AddModelError(e.Key, e.Value);
             }
         }
+    }
+
+    private void ValidarContextoAsignacion(int? asignacionId, int asignacionFormulario)
+    {
+        if (asignacionId.HasValue && asignacionId.Value != asignacionFormulario)
+            ModelState.AddModelError("", "La asignación no coincide con el contexto académico seleccionado.");
     }
 }

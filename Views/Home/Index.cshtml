@@ -1,13 +1,7 @@
 @model Proyecto_Final.ViewModels.Prototipo.DashboardPrototipo
-@using Microsoft.AspNetCore.Authorization
-@using Proyecto_Final.Seguridad
-@inject IAuthorizationService Autorizacion
 
 @{
     ViewData["Title"] = Model.Tipo == "inicio" ? "Inicio" : "Dashboard";
-    var puedeCalificar = (await Autorizacion.AuthorizeAsync(
-        User,
-        Permisos.Entregas.Calificar)).Succeeded;
 }
 
 <div class="container-fluid">
@@ -203,10 +197,6 @@
                                 <th>Tarea</th>
                                 <th>Curso</th>
                                 <th>Fecha</th>
-                                @if (puedeCalificar)
-                                {
-                                    <th class="text-end">Acciones</th>
-                                }
                             </tr>
                         </thead>
                         <tbody>
@@ -217,15 +207,6 @@
                                     <td class="fw-semibold">@entrega.Tarea</td>
                                     <td>@entrega.Curso</td>
                                     <td>@entrega.Fecha</td>
-                                    @if (puedeCalificar)
-                                    {
-                                        <td class="text-end">
-                                            <a asp-controller="Entregas" asp-action="Calificar" asp-route-id="@entrega.Id"
-                                               class="app-btn app-btn-soft-primary app-btn-sm">
-                                                Calificar
-                                            </a>
-                                        </td>
-                                    }
                                 </tr>
                             }
                         </tbody>
@@ -240,13 +221,6 @@
                             <div class="fw-semibold">@entrega.Tarea</div>
                             <div>@entrega.Alumno</div>
                             <div class="small text-body-secondary mb-3">@entrega.Curso · @entrega.Fecha</div>
-                            @if (puedeCalificar)
-                            {
-                                <a asp-controller="Entregas" asp-action="Calificar" asp-route-id="@entrega.Id"
-                                   class="app-btn app-btn-soft-primary w-100">
-                                    Calificar
-                                </a>
-                            }
                         </article>
                     }
                 </div>
@@ -307,7 +281,7 @@
         </section>
     }
 
-    @if (Model.Accesos.Count > 0)
+    @if (Model.Tipo == "inicio" && Model.Accesos.Count > 0)
     {
         <section aria-labelledby="titulo-accesos">
             <h3 id="titulo-accesos" class="h5 mb-3">Accesos disponibles</h3>

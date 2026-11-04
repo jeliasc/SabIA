@@ -13,42 +13,45 @@
             </nav>
             <h2 class="fw-semibold mb-1">Ciclo @Model.Contexto.Anio</h2>
             <p class="text-body-secondary mb-0">@Model.Contexto.Estado. Seleccione un grado para consultar sus
-                secciones.</p>
-            </div>
-            @if (Model.Contexto.EsHistorico)
-            {
-                <span class="app-badge app-badge-secondary">Modo de consulta</span>
-            }
-            else
-            {
-
-                <span class="app-badge app-badge-success">Ciclo activo institucional</span>
-            }
+                secciones.
+            </p>
         </div>
-        @if (Model.Carreras.Count == 0)
+        @if (Model.Contexto.EsHistorico)
         {
-            <div class="alert alert-info" role="status">No hay grados o secciones configurados para este ciclo.</div>
+            <span class="app-badge app-badge-secondary">Modo de consulta</span>
         }
-        @foreach (var carrera in Model.Carreras)
+        else
         {
-            <section class="app-card mb-4" aria-label="@carrera.Nombre">
-                <div class="app-card-header">
-                    <h3 class="app-card-title">@carrera.Nombre</h3>
-                </div>
-                <div class="app-card-body">
-                    <div class="row g-3">
-                        @foreach (var grado in carrera.Grados)
-                        {
-                            <div class="col-12 col-md-6 col-xl-4"><a asp-action="Grado" asp-route-id="@grado.Id"
-                                                                     class="app-card h-100 d-block text-decoration-none text-body border">
+
+            <span class="app-badge app-badge-success">Ciclo activo institucional</span>
+        }
+    </div>
+    @if (Model.Carreras.Count == 0)
+    {
+        <div class="alert alert-info" role="status">No hay grados o secciones configurados para este ciclo.</div>
+    }
+    @foreach (var carrera in Model.Carreras)
+    {
+        <section class="app-card mb-4" aria-label="@carrera.Nombre">
+            <div class="app-card-header">
+                <h3 class="app-card-title">@carrera.Nombre</h3>
+            </div>
+            <div class="app-card-body">
+                <div class="row g-3">
+                    @foreach (var grado in carrera.Grados)
+                    {
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <a asp-action="Grado" asp-route-id="@grado.Id"
+                               class="app-card h-100 d-block text-decoration-none text-body border">
                                 <div class="app-card-body"><i class="bi bi-layers fs-3 text-primary"></i>
                                     <div class="fw-semibold mt-2">@grado.Nombre</div>
                                     <div class="small text-body-secondary">@grado.Nivel · @grado.Secciones sección(es)</div>
                                 </div>
-                            </a></div>
-                        }
-                    </div>
+                            </a>
+                        </div>
+                    }
                 </div>
-            </section>
-        }
-    </div>
+            </div>
+        </section>
+    }
+</div>

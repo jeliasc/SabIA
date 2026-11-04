@@ -105,7 +105,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const aceptar = await confirmarAccion(
                 titulo,
-                mensaje,
+                typeof mensaje === "function" ? mensaje() : mensaje,
                 textoConfirmar,
                 "Cancelar",
                 "#198754"
@@ -123,7 +123,9 @@ document.addEventListener("DOMContentLoaded", function () {
     configurarConfirmacionFormulario(
         "[data-crear-alumno]",
         "Crear alumno",
-        "Se crearán la cuenta de acceso y la inscripción inicial del alumno, y se generará una contraseña temporal.",
+        () => document.querySelector("[data-inscribir-ahora]")?.checked
+            ? "Se crearán la cuenta de acceso y la inscripción inicial del alumno. Se generará una contraseña temporal."
+            : "Se crearán la cuenta de acceso y el perfil del alumno sin inscripción académica. Se generará una contraseña temporal.",
         "Crear"
     );
 
@@ -134,3 +136,108 @@ document.addEventListener("DOMContentLoaded", function () {
         "Guardar"
     );
 });
+
+// INSCRIPCIÓN ACADÉMICA OPCIONAL
+(() => {
+    const iniciar = () => {
+        const formulario = document.querySelector("[data-crear-alumno]");
+        if (!formulario) return;
+
+        const casilla = formulario.querySelector("[data-inscribir-ahora]");
+        const campos = formulario.querySelector("[data-campos-inscripcion]");
+        if (!casilla || !campos) return;
+
+        const mensajes = {
+            CicloEscolarId: "Seleccione un ciclo escolar.",
+            Carrera: "Seleccione una carrera.",
+            GradoId: "Seleccione un grado.",
+            SeccionId: "Seleccione una sección."
+        };
+
+        const controles = Object.entries(mensajes).map(([nombre, mensaje]) => ({
+            campo: formulario.elements.namedItem(nombre),
+            nombre,
+            mensaje
+        })).filter(item => item.campo);
+
+        // EVITAR VALIDACIONES AUTOMÁTICAS INCONDICIONALES
+        controles.forEach(({ campo }) => {
+            campo.removeAttribute("required");
+            campo.removeAttribute("data-val-required");
+        });
+
+        const $ = window.jQuery;
+
+        if ($?.validator?.unobtrusive) {
+            $(formulario).removeData("validator");
+            $(formulario).removeData("unobtrusiveValidation");
+            $.validator.unobtrusive.parse(formulario);
+        }
+
+        const mostrarError = ({ campo, nombre, mensaje }, error) => {
+            const elemento = formulario.querySelector(
+                `[data-valmsg-for="${nombre}"]`
+            );
+
+            campo.classList.toggle("input-validation-error", error);
+
+            if (elemento) {
+                elemento.textContent = error ? mensaje : "";
+                elemento.classList.toggle("field-validation-error", error);
+                elemento.classList.toggle("field-validation-valid", !error);
+            }
+        };
+
+        const limpiarErrores = () => {
+            controles.forEach(item => mostrarError(item, false));
+        };
+
+        const validarInscripcion = () => {
+            if (!casilla.checked) return true;
+
+            let valido = true;
+
+            controles.forEach(item => {
+                const vacio = !item.campo.value ||
+                    item.campo.value === "0";
+
+                mostrarError(item, vacio);
+
+                if (vacio) valido = false;
+            });
+
+            return valido;
+        };
+
+        const actualizar = () => {
+            campos.classList.toggle("d-none", !casilla.checked);
+            limpiarErrores();
+        };
+
+        // VALIDACIÓN ANTES DE LA CONFIRMACIÓN
+        formulario.addEventListener("submit", evento => {
+            if (!validarInscripcion()) {
+                evento.preventDefault();
+                evento.stopImmediatePropagation();
+            }
+        }, true);
+
+        controles.forEach(({ campo }) => {
+            campo.addEventListener("change", () => {
+                if (casilla.checked) {
+                    const item = controles.find(x => x.campo === campo);
+                    mostrarError(item, false);
+                }
+            });
+        });
+
+        casilla.addEventListener("change", actualizar);
+        actualizar();
+    };
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", iniciar, { once: true });
+    } else {
+        iniciar();
+    }
+})();

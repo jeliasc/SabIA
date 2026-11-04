@@ -151,7 +151,6 @@ public static class SeguridadSeeders
                 Permisos.Cuestionarios.Ver,
                 Permisos.Cuestionarios.Resolver,
                 Permisos.Notificaciones.Ver,
-                Permisos.Calificaciones.Ver
             ]
         ).ConfigureAwait(false);
 

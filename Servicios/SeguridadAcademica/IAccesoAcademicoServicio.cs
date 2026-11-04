@@ -4,6 +4,10 @@ public interface IAccesoAcademicoServicio
 {
     string? UsuarioId { get; }
     bool EsOperadorInstitucional { get; }
+    // La administración de directorios es independiente del dashboard de
+    // coordinación. El permiso de cada acción lo validan las políticas.
+    // El valor por defecto conserva la semántica de los dobles existentes.
+    bool EsAdministradorInstitucional => EsOperadorInstitucional;
     bool TienePermiso(string permiso);
     Task<ContextoAcademicoUsuario> ObtenerContextoUsuarioAsync();
     Task<int?> ObtenerDocenteIdAsync();

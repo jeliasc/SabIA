@@ -11,12 +11,15 @@ public sealed class EntregaLista
 
     // Identifica el contexto académico, no un intento histórico aislado.
     public int TareaId { get; set; }
+    public int AsignacionId { get; set; }
     public int AlumnoId { get; set; }
     public int? InscripcionId { get; set; }
 
     public string Alumno { get; set; } = string.Empty;
 
     public string Tarea { get; set; } = string.Empty;
+
+    public TipoTarea Tipo { get; set; }
 
     public string Curso { get; set; } = string.Empty;
 

@@ -29,13 +29,17 @@ public sealed class AsignacionServicio(
                 ? consulta.Where(x => x.Seccion.CicloEscolarId == ciclo.CicloEscolarId.Value)
                 : consulta.Where(_ => false);
 
-        if (!acceso.EsOperadorInstitucional && perfil.DocenteId.HasValue)
+        if (!PuedeGestionar(Permisos.Asignaciones.Ver) && perfil.DocenteId.HasValue)
         {
             consulta = consulta.Where(x =>
                 x.DocenteId == perfil.DocenteId.Value &&
                 x.Estado == EstadoRegistro.Activo);
         }
-        else if (!acceso.EsOperadorInstitucional && perfil.AlumnoId.HasValue)
+        else if (!PuedeGestionar(Permisos.Asignaciones.Ver) && perfil.AlumnoId.HasValue)
+        {
+            consulta = consulta.Where(_ => false);
+        }
+        else if (!PuedeGestionar(Permisos.Asignaciones.Ver))
         {
             consulta = consulta.Where(_ => false);
         }
@@ -61,9 +65,12 @@ public sealed class AsignacionServicio(
             .ToListAsync();
     }
 
-    public async Task PrepararAsync(FormularioAsignacion m)
+    public async Task PrepararAsync(
+        FormularioAsignacion m,
+        string? permisoRequerido = null)
     {
-        if (!acceso.EsOperadorInstitucional)
+        var permiso = permisoRequerido ?? Permisos.Asignaciones.Crear;
+        if (!PuedeGestionar(permiso))
         {
             m.Secciones = [];
             m.Cursos = [];
@@ -75,6 +82,8 @@ public sealed class AsignacionServicio(
         m.Secciones = await c.Secciones
             .AsNoTracking()
             .Where(x => x.Estado == EstadoRegistro.Activo &&
+                x.CicloEscolar.Activo &&
+                x.CicloEscolar.Estado == EstadoCicloEscolar.Activo &&
                 (contextoCiclo == null || cicloId.HasValue && x.CicloEscolarId == cicloId.Value))
             .OrderByDescending(x => x.CicloEscolar.Anio)
             .ThenBy(x => x.Grado.Orden)
@@ -123,7 +132,7 @@ public sealed class AsignacionServicio(
 
     public async Task<ResultadoOperacion> CrearAsync(CrearAsignacion m)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeGestionar(Permisos.Asignaciones.Crear))
             return ResultadoOperacion.Error("No tiene autorización administrativa para gestionar asignaciones.");
 
         var v = await Val(m, 0);
@@ -163,7 +172,7 @@ public sealed class AsignacionServicio(
 
     public async Task<EditarAsignacion?> ObtenerEditarAsync(int id)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeGestionar(Permisos.Asignaciones.Editar))
             return null;
 
         var m = await c.Asignaciones
@@ -180,7 +189,7 @@ public sealed class AsignacionServicio(
 
         if (m != null)
         {
-            await PrepararAsync(m);
+            await PrepararAsync(m, Permisos.Asignaciones.Editar);
         }
 
         return m;
@@ -188,7 +197,7 @@ public sealed class AsignacionServicio(
 
     public async Task<ResultadoOperacion> EditarAsync(EditarAsignacion m)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeGestionar(Permisos.Asignaciones.Editar))
             return ResultadoOperacion.Error("No tiene autorización administrativa para gestionar asignaciones.");
 
         var v = await Val(m, m.Id);
@@ -246,7 +255,7 @@ public sealed class AsignacionServicio(
         int id,
         bool activo)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeGestionar(Permisos.Asignaciones.CambiarEstado))
             return ResultadoOperacion.Error("No tiene autorización administrativa para gestionar asignaciones.");
 
         var x = await c.Asignaciones.FindAsync(id);
@@ -295,13 +304,19 @@ public sealed class AsignacionServicio(
         FormularioAsignacion m,
         int id)
     {
+        var cicloId = contextoCiclo is null
+            ? (int?)null
+            : (await contextoCiclo.ObtenerAsync()).CicloEscolarId;
         var s = await c.Secciones
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 x =>
                     x.Id == m.SeccionId &&
                     x.Estado == EstadoRegistro.Activo &&
-                    x.CicloEscolar.Activo
+                    x.CicloEscolar.Activo &&
+                    x.CicloEscolar.Estado == EstadoCicloEscolar.Activo &&
+                    (contextoCiclo == null ||
+                     cicloId.HasValue && x.CicloEscolarId == cicloId.Value)
             );
 
         if (s == null)
@@ -567,6 +582,10 @@ public sealed class AsignacionServicio(
     private bool PuedeRelevarExcepcional() =>
         acceso.TienePermiso(Permisos.Asignaciones.RelevarExcepcional) &&
         acceso.EsOperadorInstitucional;
+
+    private bool PuedeGestionar(string permiso) =>
+        acceso.TienePermiso(permiso) &&
+        (acceso.EsOperadorInstitucional || acceso.EsAdministradorInstitucional);
 
     private async Task CompletarRelevoAsync(ReemplazarDocenteAsignacion modelo)
     {

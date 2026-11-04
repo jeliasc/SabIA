@@ -170,9 +170,14 @@
     var esAlumnoContextual = alumnos && !AccesoAcademico.EsOperadorInstitucional &&
         !esDocenteContextual && contextoAcademico.AlumnoId.HasValue;
     var comunidadAcademica = esDocenteContextual || esAlumnoContextual;
-    var docentesAdministrativos = docentes && AccesoAcademico.EsOperadorInstitucional;
-    var alumnosAdministrativos = alumnos && AccesoAcademico.EsOperadorInstitucional;
-    var encargadosAdministrativos = encargados && AccesoAcademico.EsOperadorInstitucional;
+    var aprendizajeGeneral = !comunidadAcademica &&
+        (tareas || entregas || cuestionarios || calificaciones);
+    // Comunidad administrativa no depende del dashboard académico: un rol
+    // administrativo ve únicamente los directorios para los que conserva el
+    // permiso de consulta correspondiente.
+    var docentesAdministrativos = docentes && AccesoAcademico.EsAdministradorInstitucional;
+    var alumnosAdministrativos = alumnos && AccesoAcademico.EsAdministradorInstitucional;
+    var encargadosAdministrativos = encargados && AccesoAcademico.EsAdministradorInstitucional;
 }
 
 <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
@@ -198,6 +203,16 @@
                         <p>Inicio</p>
                     </a>
                 </li>
+
+                @if (comunidadAcademica)
+                {
+                    <li class="nav-item">
+                        <a asp-controller="MisCursos" asp-action="Index" class="nav-link @Activo("MisCursos")">
+                            <i class="nav-icon bi bi-journal-bookmark"></i>
+                            <p>@(esDocenteContextual ? "Mis asignaciones" : "Mis cursos")</p>
+                        </a>
+                    </li>
+                }
 
                 @if (exploradorAcademico)
                 {
@@ -474,7 +489,7 @@
                     </li>
                 }
 
-                @if (unidades || materiales || planificaciones || documentos)
+                @if (!comunidadAcademica && (unidades || materiales || planificaciones || documentos))
                 {
                     <li class="nav-item @Abierto("Unidades", "Materiales", "Planificaciones", "Documentos")">
                         <a href="#" class="nav-link @Activo("Unidades", "Materiales", "Planificaciones", "Documentos")">
@@ -531,7 +546,7 @@
                     </li>
                 }
 
-                @if (tareas || entregas || cuestionarios || calificaciones || ia)
+                @if (aprendizajeGeneral)
                 {
                     <li class="nav-item @Abierto("Tareas", "Entregas", "Cuestionarios", "Calificaciones", "ContenidoIA")">
                         <a href="#"
@@ -587,16 +602,17 @@
                                 </li>
                             }
 
-                            @if (ia)
-                            {
-                                <li class="nav-item">
-                                    <a asp-controller="ContenidoIA" asp-action="Index" class="nav-link @Activo("ContenidoIA")">
-                                        <i class="nav-icon bi bi-stars"></i>
-                                        <p>Contenido con IA</p>
-                                    </a>
-                                </li>
-                            }
                         </ul>
+                    </li>
+                }
+
+                @if (ia)
+                {
+                    <li class="nav-item">
+                        <a asp-controller="ContenidoIA" asp-action="Index" class="nav-link @Activo("ContenidoIA")">
+                            <i class="nav-icon bi bi-stars"></i>
+                            <p>Contenido con IA</p>
+                        </a>
                     </li>
                 }
 

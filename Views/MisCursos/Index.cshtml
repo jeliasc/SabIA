@@ -1,0 +1,45 @@
+@model Proyecto_Final.ViewModels.NavegacionAcademica.MisCursosIndice
+@{
+    ViewData["Title"] = Model.EsDocente ? "Mis asignaciones" : "Mis cursos";
+}
+<div class="container-fluid">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">@(Model.EsDocente ? "Mis asignaciones" : "Mis cursos")</h2>
+            <p class="text-muted mb-0">Ciclo @Model.Anio · @(Model.EsHistorico ? "consulta histórica" : "contexto académico vigente").</p>
+        </div>
+        @if (Model.EsHistorico)
+        {
+            <span class="app-badge app-badge-secondary">Solo consulta</span>
+        }
+    </div>
+    @if (Model.Cursos.Count == 0)
+    {
+        <div class="alert alert-info" role="status">No hay @(Model.EsDocente ? "asignaciones" : "cursos") autorizados para
+            el ciclo seleccionado.
+        </div>
+    }
+    else
+    {
+
+        <div class="row g-3">
+            @foreach (var curso in Model.Cursos)
+            {
+                <div class="col-12 col-md-6 col-xl-4">
+                    <a asp-action="Espacio" asp-route-asignacionId="@curso.AsignacionId"
+                       class="app-card h-100 d-block text-decoration-none text-body">
+                        <div class="app-card-body"><i class="bi bi-book fs-3 text-primary"></i>
+                            <div class="fw-semibold mt-2">@curso.Curso</div>
+                            <div class="small text-body-secondary">@curso.Grado · Sección @curso.Seccion · Ciclo @curso.Anio
+                            </div>
+                            @if (!Model.EsDocente)
+                            {
+                                <div class="small text-body-secondary mt-2">Docente: @curso.Docente </div>
+                            }
+                        </div>
+                    </a>
+                </div>
+            }
+        </div>
+    }
+</div>

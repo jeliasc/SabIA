@@ -211,7 +211,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
 
     private async Task<AmbitoAlumnos> ObtenerAmbitoAsync(int? cicloEscolarId)
     {
-        if (acceso.EsOperadorInstitucional)
+        if (PuedeAdministrar(Permisos.Alumnos.Ver))
         {
             return new AmbitoAlumnos(TipoAccesoAlumnos.Institucional);
         }
@@ -328,9 +328,15 @@ public sealed class AlumnoServicio : IAlumnoServicio
             .AsQueryable();
 
         if (cicloEscolarId.HasValue)
-            consulta = consulta.Where(alumno => contexto.Inscripciones.Any(inscripcion =>
-                inscripcion.AlumnoId == alumno.Id &&
-                inscripcion.CicloEscolarId == cicloEscolarId.Value));
+        {
+            consulta = consulta.Where(alumno =>
+                contexto.Inscripciones.Any(inscripcion =>
+                    inscripcion.AlumnoId == alumno.Id &&
+                    inscripcion.CicloEscolarId == cicloEscolarId.Value)
+                ||
+                !contexto.Inscripciones.Any(inscripcion =>
+                    inscripcion.AlumnoId == alumno.Id));
+        }
 
         var alumnos = await consulta
             .OrderBy(alumno => alumno.Usuario.PrimerNombre)
@@ -489,28 +495,19 @@ public sealed class AlumnoServicio : IAlumnoServicio
 
     public async Task PrepararCreacionAsync(CrearAlumno modelo)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Alumnos.Crear))
         {
-            modelo.Secciones = [];
+            modelo.CiclosEscolares = [];
+            modelo.Carreras = [];
+            modelo.Grados = [];
+            modelo.SeccionesAcademicas = [];
             return;
         }
-        modelo.Secciones = await contexto.Secciones
-            .AsNoTracking()
-            .Where(seccion =>
-                seccion.Estado == EstadoRegistro.Activo &&
-                seccion.CicloEscolar.Activo)
-            .OrderByDescending(seccion => seccion.CicloEscolar.Anio)
-            .ThenBy(seccion => seccion.Grado.Orden)
-            .ThenBy(seccion => seccion.Nombre)
-            .Select(seccion => new OpcionSeleccion
-            {
-                Id = seccion.Id,
-                Texto = seccion.CicloEscolar.Anio + " - " +
-                    seccion.Grado.Nombre + " " + seccion.Nombre
-            })
-            .ToListAsync();
 
-        if (modelo.Secciones.Count == 0)
+        var ciclo = contextoCiclo is null ? null : await contextoCiclo.ObtenerAsync();
+        await SeleccionAcademicaCatalogo.PrepararAsync(contexto, modelo, ciclo?.CicloEscolarId);
+
+        if (modelo.SeccionesAcademicas.Count == 0)
         {
             modelo.CiclosInactivosConSecciones = await contexto
                 .CiclosEscolares
@@ -529,7 +526,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
     private async Task<List<AlertaOcupacionSeccion>>
         ObtenerAlertasOcupacionAsync(int? docenteId, int? cicloEscolarId = null)
     {
-        if (!acceso.EsOperadorInstitucional && !docenteId.HasValue)
+        if (!PuedeAdministrar(Permisos.Alumnos.Crear) && !docenteId.HasValue)
         {
             return [];
         }
@@ -543,7 +540,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
                     ? inscripcion.CicloEscolarId == cicloEscolarId.Value
                     : inscripcion.Seccion.CicloEscolar.Activo));
 
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Alumnos.Crear))
         {
             var idDocente = docenteId!.Value;
 
@@ -590,27 +587,43 @@ public sealed class AlumnoServicio : IAlumnoServicio
     public async Task<ResultadoOperacion<ResultadoContrasenaTemporal>> CrearAsync(
         CrearAlumno modelo)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Alumnos.Crear))
         {
             return ResultadoOperacion<ResultadoContrasenaTemporal>.Error(
                 "No tiene autorización administrativa para crear alumnos.");
         }
 
         modelo.CodigoPersonal = Limpiar(modelo.CodigoPersonal);
+        modelo.Carrera = modelo.Carrera?.Trim() ?? string.Empty;
 
-        var seccion = await contexto.Secciones
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item =>
-                item.Id == modelo.SeccionId &&
-                item.Estado == EstadoRegistro.Activo &&
-                item.CicloEscolar.Activo);
+        Seccion? seccion = null;
 
-        if (seccion == null)
+        // VALIDAR INSCRIPCIÓN INICIAL
+        if (modelo.InscribirAhora)
         {
-            return ResultadoOperacion<ResultadoContrasenaTemporal>.Validacion(
-                nameof(modelo.SeccionId),
-                "La sección seleccionada no existe, está inactiva o no pertenece al ciclo escolar activo."
-            );
+            if (!PuedeAdministrar(Permisos.Inscripciones.Crear))
+            {
+                return ResultadoOperacion<ResultadoContrasenaTemporal>.Error(
+                    "No tiene autorización para realizar inscripciones académicas.");
+            }
+
+            seccion = await SeleccionAcademicaCatalogo
+                .ObtenerSeccionValidaAsync(contexto, modelo);
+
+            if (seccion == null)
+            {
+                return ResultadoOperacion<ResultadoContrasenaTemporal>.Validacion(
+                    nameof(modelo.SeccionId),
+                    "La sección no coincide con el ciclo, la carrera o el grado seleccionados.");
+            }
+
+            if (modelo.FechaInscripcion < seccion.CicloEscolar.FechaInicio ||
+                modelo.FechaInscripcion > seccion.CicloEscolar.FechaFin)
+            {
+                return ResultadoOperacion<ResultadoContrasenaTemporal>.Validacion(
+                    nameof(modelo.FechaInscripcion),
+                    "La fecha de inscripción debe pertenecer al ciclo escolar seleccionado.");
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(modelo.CodigoPersonal) &&
@@ -657,25 +670,31 @@ public sealed class AlumnoServicio : IAlumnoServicio
             contexto.Alumnos.Add(alumno);
             await contexto.SaveChangesAsync();
 
-            contexto.Inscripciones.Add(new Inscripcion
+            if (modelo.InscribirAhora && seccion != null)
             {
-                AlumnoId = alumno.Id,
-                SeccionId = seccion.Id,
-                CicloEscolarId = seccion.CicloEscolarId,
-                Fecha = DateOnly.FromDateTime(DateTime.Today),
-                Estado = EstadoInscripcion.Activa
-            });
+                contexto.Inscripciones.Add(new Inscripcion
+                {
+                    AlumnoId = alumno.Id,
+                    SeccionId = seccion.Id,
+                    CicloEscolarId = seccion.CicloEscolarId,
+                    Fecha = modelo.FechaInscripcion,
+                    Estado = EstadoInscripcion.Activa
+                });
+            }
 
             if (modelo.RegistrarEncargadoAhora)
             {
                 var datos = modelo.DatosEncargado;
                 var encargado = new Encargado
                 {
-                    Nombres = datos.Nombres.Trim(), Apellidos = datos.Apellidos.Trim(),
-                    Dpi = Limpiar(datos.Dpi), Telefono = datos.Telefono.Trim(),
+                    Nombres = datos.Nombres.Trim(),
+                    Apellidos = datos.Apellidos.Trim(),
+                    Dpi = Limpiar(datos.Dpi),
+                    Telefono = datos.Telefono.Trim(),
                     TelefonoAlterno = Limpiar(datos.TelefonoAlterno),
                     Correo = Limpiar(datos.Correo)?.ToLowerInvariant(),
-                    Direccion = Limpiar(datos.Direccion), FechaCreacion = DateTime.UtcNow
+                    Direccion = Limpiar(datos.Direccion),
+                    FechaCreacion = DateTime.UtcNow
                 };
                 contexto.Encargados.Add(encargado);
                 await contexto.SaveChangesAsync();
@@ -687,15 +706,19 @@ public sealed class AlumnoServicio : IAlumnoServicio
                 });
             }
 
-            await entregaPendienteServicio.CrearParaTareasDisponiblesAsync(
-                alumno.Id,
-                seccion.Id);
+            if (modelo.InscribirAhora && seccion != null)
+            {
+                await entregaPendienteServicio.CrearParaTareasDisponiblesAsync(
+                    alumno.Id,
+                    seccion.Id);
+            }
 
             await contexto.SaveChangesAsync();
             await transaccion.CommitAsync();
 
-            var mensaje =
-                "El alumno fue creado e inscrito correctamente y se generó su cuenta de acceso.";
+            var mensaje = modelo.InscribirAhora
+                ? "El alumno fue creado e inscrito correctamente y se generó su cuenta de acceso."
+                : "El alumno fue creado correctamente, sin inscripción académica, y se generó su cuenta de acceso.";
 
             try
             {
@@ -740,7 +763,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
 
     public async Task<EditarAlumno?> ObtenerParaEditarAsync(int id)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Alumnos.Editar))
             return null;
 
         var modelo = await contexto.Alumnos
@@ -765,7 +788,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
 
     public async Task<ResultadoOperacion> EditarAsync(EditarAlumno modelo)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Alumnos.Editar))
             return ResultadoOperacion.Error(
                 "No tiene autorización administrativa para editar alumnos.");
 
@@ -922,7 +945,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
         int id,
         bool activo)
     {
-        if (!acceso.EsOperadorInstitucional)
+        if (!PuedeAdministrar(Permisos.Alumnos.CambiarEstado))
             return ResultadoOperacion.Error(
                 "No tiene autorización administrativa para cambiar el estado de alumnos.");
 
@@ -1007,4 +1030,7 @@ public sealed class AlumnoServicio : IAlumnoServicio
         string.IsNullOrWhiteSpace(valor)
             ? null
             : valor.Trim();
+
+    private bool PuedeAdministrar(string permiso) =>
+        acceso.EsAdministradorInstitucional && acceso.TienePermiso(permiso);
 }

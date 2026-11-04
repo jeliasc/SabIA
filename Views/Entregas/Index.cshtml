@@ -19,6 +19,7 @@
     )).Succeeded;
 
     var soloLectura = ViewData["SoloLectura"] as bool? ?? false;
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
 
     // El listado sólo navega; las acciones se validan y se muestran dentro
     // del historial del contexto académico seleccionado.
@@ -41,7 +42,8 @@
             </p>
         </div>
 
-        <a asp-action="@(soloLectura ? "Index" : "Historial")" class="app-btn app-btn-primary">
+        <a asp-action="@(soloLectura ? "Index" : "Historial")" asp-route-asignacionId="@contextoAsignacion"
+           class="app-btn app-btn-primary">
             @(soloLectura ? "Ver vigentes" : "Ver historial")
         </a>
     </div>
@@ -55,6 +57,7 @@
                     <tr>
                         <th>Alumno</th>
                         <th>Tarea</th>
+                        <th>Tipo</th>
                         <th>Curso</th>
                         <th>Última entrega</th>
                         <th>Intentos</th>
@@ -76,6 +79,11 @@
 
                             <td class="fw-semibold">
                                 @x.Tarea
+                            </td>
+                            <td>
+                                @(x.Tipo == Proyecto_Final.Models.TipoTarea.Archivo
+                                    ? "Entrega de archivo"
+                                    : "Cuestionario")
                             </td>
 
                             <td>@x.Curso</td>
@@ -137,8 +145,10 @@
 
                             <td>
                                 @(x.Calificacion.HasValue
-                                    ? $"{x.Calificacion}/{x.PunteoMaximo}"
-                                    : "-")
+                                ? $"{Math.Round(x.Calificacion.Value, 2,
+                                    MidpointRounding.AwayFromZero):0.00}/{Math.Round(x.PunteoMaximo, 2,
+                                    MidpointRounding.AwayFromZero):0.00}"
+                                : "-")
                             </td>
 
                             @if (hayAcciones)
@@ -150,6 +160,7 @@
                                              x.EntregaCalificableId.HasValue)
                                         {
                                             <a asp-action="Calificar" asp-route-id="@x.EntregaCalificableId"
+                                               asp-route-asignacionId="@contextoAsignacion"
                                                class="app-btn app-btn-soft-primary app-btn-sm">
                                                 Calificar
                                             </a>
@@ -158,6 +169,7 @@
                                         @if (puedeVer)
                                         {
                                             <a asp-action="Detalle" asp-route-id="@x.Id"
+                                               asp-route-asignacionId="@contextoAsignacion"
                                                class="app-btn app-btn-soft-primary app-btn-sm">
                                                 Ver actividad
                                             </a>
@@ -194,7 +206,7 @@
             @foreach (var x in Model)
             {
                 <div class="card border-0 shadow-sm mb-3 entrega-movil-item"
-                     data-busqueda="@($"{x.Alumno} {x.Tarea} {x.Curso} {x.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")} {x.EstadoActividad} {x.Calificacion} {x.PunteoMaximo}")">
+                     data-busqueda="@($"{x.Alumno} {x.Tarea} {(x.Tipo == Proyecto_Final.Models.TipoTarea.Archivo ? "Entrega de archivo" : "Cuestionario")} {x.Curso} {x.FechaEntrega?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")} {x.EstadoActividad} {x.Calificacion} {x.PunteoMaximo}")">
                     <div class="card-body">
                         <div class="d-flex justify-content-between gap-2">
                             <div class="fw-bold">
@@ -210,6 +222,12 @@
 
                         <div class="text-muted">
                             @x.Curso
+                        </div>
+                        <div class="small text-muted mt-1">
+                            Tipo:
+                            @(x.Tipo == Proyecto_Final.Models.TipoTarea.Archivo
+                                ? "Entrega de archivo"
+                                : "Cuestionario")
                         </div>
 
                         <div class="small mb-3">
@@ -263,13 +281,15 @@
                         {
                             <div class="small mb-3">
                                 Calificación vigente:
-                                @x.Calificacion / @x.PunteoMaximo
+                                @(Math.Round(x.Calificacion.Value, 2, MidpointRounding.AwayFromZero).ToString("0.00")) /
+                                @(Math.Round(x.PunteoMaximo, 2, MidpointRounding.AwayFromZero).ToString("0.00"))
                             </div>
                         }
 
                         @if (puedeVer)
                         {
-                            <a asp-action="Detalle" asp-route-id="@x.Id" class="app-btn app-btn-soft-secondary w-100 mt-2">
+                            <a asp-action="Detalle" asp-route-id="@x.Id" asp-route-asignacionId="@contextoAsignacion"
+                               class="app-btn app-btn-soft-secondary w-100 mt-2">
                                 Ver actividad e historial
                             </a>
                         }
@@ -279,7 +299,7 @@
                              x.EntregaCalificableId.HasValue)
                         {
                             <a asp-action="Calificar" asp-route-id="@x.EntregaCalificableId"
-                               class="app-btn app-btn-soft-primary w-100 mt-2">
+                               asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-primary w-100 mt-2">
                                 Calificar
                             </a>
                         }
@@ -306,6 +326,55 @@
             </div>
         </div>
     </div>
+    @if (soloLectura && Model.Any())
+    {
+        var grupos = Model
+            .GroupBy(x => new { x.AlumnoId, x.InscripcionId, x.AsignacionId })
+            .OrderBy(x => x.First().Alumno)
+            .ThenBy(x => x.First().Curso);
+
+        <div class="card shadow-sm border border-secondary mt-3">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3">Resumen de puntos</h5>
+
+                @foreach (var grupo in grupos)
+                {
+                    var calificadas = grupo
+                        .Where(x => x.Calificacion.HasValue)
+                        .ToList();
+
+                    var obtenidos = calificadas.Sum(x => x.Calificacion ?? 0m);
+                    var posibles = calificadas.Sum(x => x.PunteoMaximo);
+                    var pendientes = grupo.Count(x => !x.Calificacion.HasValue);
+
+                    <div class="mb-3">
+                        <div class="fw-semibold">
+                            @grupo.First().Alumno — @grupo.First().Curso
+                        </div>
+
+                        <div>
+                            Puntos obtenidos:
+                            <strong>
+                                @Math.Round(obtenidos, 2, MidpointRounding.AwayFromZero).ToString("0.00")
+                                /
+                                @Math.Round(posibles, 2, MidpointRounding.AwayFromZero).ToString("0.00")
+                            </strong>
+                        </div>
+
+                        <div class="small text-muted">
+                            Actividades calificadas: @calificadas.Count
+                            · Pendientes de calificación: @pendientes
+                        </div>
+                    </div>
+                }
+
+                <p class="small text-muted mb-0">
+                    Resumen informativo de actividades calificadas.
+                    No representa la nota oficial del bimestre.
+                </p>
+            </div>
+        </div>
+    }
 </div>
 
 @section Scripts {

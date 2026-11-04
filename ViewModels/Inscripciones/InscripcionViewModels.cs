@@ -4,20 +4,22 @@ using Proyecto_Final.ViewModels.Comunes;
 
 namespace Proyecto_Final.ViewModels.Inscripciones;
 
-public class FormularioInscripcion
+public class FormularioInscripcion : FormularioSeleccionAcademica
 {
     [Range(1, int.MaxValue, ErrorMessage = "Seleccione un alumno.")]
     public int AlumnoId { get; set; }
 
-    [Range(1, int.MaxValue, ErrorMessage = "Seleccione una sección.")]
-    public int SeccionId { get; set; }
-
     public DateOnly Fecha { get; set; } =
         DateOnly.FromDateTime(DateTime.Today);
 
-    public List<OpcionSeleccion> Alumnos { get; set; } = [];
+    public List<OpcionAlumnoInscripcion> Alumnos { get; set; } = [];
+}
 
-    public List<OpcionSeleccion> Secciones { get; set; } = [];
+public sealed class OpcionAlumnoInscripcion
+{
+    public int Id { get; init; }
+    public string Texto { get; init; } = string.Empty;
+    public IReadOnlySet<int> CiclosConInscripcionActiva { get; init; } = new HashSet<int>();
 }
 
 public sealed class CrearInscripcion : FormularioInscripcion

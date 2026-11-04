@@ -123,6 +123,11 @@ public sealed class PlanificacionServicio(
 
         var periodos = contexto.Periodos.AsNoTracking()
             .Where(x => x.CicloEscolar.Activo);
+        if (modelo.AsignacionId > 0)
+            periodos = periodos.Where(x => x.CicloEscolarId == contexto.Asignaciones
+                .Where(a => a.Id == modelo.AsignacionId)
+                .Select(a => a.Seccion.CicloEscolarId)
+                .FirstOrDefault());
         if (docenteId.HasValue)
         {
             var ciclos = asignaciones.Select(x => x.Seccion.CicloEscolarId).Distinct();
@@ -142,6 +147,8 @@ public sealed class PlanificacionServicio(
         var unidades = contexto.UnidadesAsignaciones.AsNoTracking()
             .Where(x => x.Asignacion.Estado == EstadoRegistro.Activo &&
                 x.Asignacion.Seccion.CicloEscolar.Activo);
+        if (modelo.AsignacionId > 0)
+            unidades = unidades.Where(x => x.AsignacionId == modelo.AsignacionId);
         if (docenteId.HasValue)
             unidades = unidades.Where(x => x.Asignacion.DocenteId == docenteId.Value);
 

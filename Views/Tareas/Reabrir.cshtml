@@ -1,6 +1,7 @@
 @model Proyecto_Final.ViewModels.Tareas.ReabrirTarea
 @using Proyecto_Final.Models
 @{
+    var contextoAsignacion = Context.Request.Query["asignacionId"].ToString();
     ViewData["Title"] = "Reabrir actividad";
 }
 <div class="container-fluid">
@@ -11,7 +12,7 @@
     </div>
     <div class="app-card">
         <div class="app-card-body">
-            <form asp-action="Reabrir" method="post" data-confirmar-accion-academica
+            <form asp-action="Reabrir" asp-route-asignacionId="@contextoAsignacion" method="post" data-confirmar-accion-academica
                   data-confirmar-titulo="Reabrir actividad"
                   data-confirmar-mensaje="Se registrará una autorización por alumno beneficiado."
                   data-confirmar-texto="Reabrir">
@@ -39,7 +40,7 @@
                     </div>
                 </div>
                 <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
-                    <a asp-action="Index" class="app-btn app-btn-soft-secondary">Cancelar</a>
+                    <a asp-action="Index" asp-route-asignacionId="@contextoAsignacion" class="app-btn app-btn-soft-secondary">Cancelar</a>
                     <button type="submit" class="app-btn app-btn-warning">Confirmar reapertura</button>
                 </div>
             </form>

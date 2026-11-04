@@ -30,7 +30,8 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Contraseña temporal</label>
                         <div class="input-group">
-                            <input type="text" id="contrasenaTemporal" class="form-control fw-bold" value="@Model.ContrasenaTemporal" readonly />
+                            <input type="text" id="contrasenaTemporal" class="form-control fw-bold"
+                                   value="@Model.ContrasenaTemporal" readonly />
                             <button type="button" class="app-btn app-btn-soft-secondary" id="botonCopiarContrasena">
                                 <i class="bi bi-copy"></i>
                                 Copiar
@@ -40,21 +41,22 @@
 
                     <div class="app-alert app-alert-warning mb-3">
                         <i class="bi bi-exclamation-triangle"></i>
-                        <div>Conserve esta contraseña únicamente como respaldo y entréguela por un medio seguro si el correo no pudo enviarse.</div>
-                    </div>
+                        <div>Conserve esta contraseña únicamente como respaldo y entréguela por un medio seguro si el
+                            correo no pudo enviarse.</div>
+                        </div>
 
-                    <div class="d-grid mt-4">
-                        <a asp-action="Index" class="app-btn app-btn-soft-primary">
-                            <i class="bi bi-arrow-left"></i>
-                            Volver a alumnos
-                        </a>
+                        <div class="d-grid mt-4">
+                            <a asp-action="Index" class="app-btn app-btn-soft-primary">
+                                <i class="bi bi-arrow-left"></i>
+                                Volver a alumnos
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-@section Scripts {
-    <script src="~/js/usuarios.js" asp-append-version="true"></script>
-}
+    @section Scripts {
+        <script src="~/js/usuarios.js" asp-append-version="true"></script>
+    }

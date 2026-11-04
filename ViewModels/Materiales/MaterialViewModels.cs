@@ -7,6 +7,9 @@ namespace Proyecto_Final.ViewModels.Materiales;
 
 public class FormularioMaterial
 {
+    // Contexto efímero de navegación; no forma parte del material persistido.
+    public int AsignacionId { get; set; }
+
     [Range(1, int.MaxValue, ErrorMessage = "Seleccione una unidad.")]
     public int UnidadId { get; set; }
 

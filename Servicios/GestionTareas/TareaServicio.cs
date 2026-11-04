@@ -318,6 +318,9 @@ public sealed class TareaServicio(
                 x.Asignacion.Estado == EstadoRegistro.Activo &&
                 x.Asignacion.Seccion.CicloEscolar.Activo);
 
+        if (m.AsignacionId > 0)
+            uq = uq.Where(x => x.AsignacionId == m.AsignacionId);
+
         if (d.HasValue)
         {
             uq = uq.Where(x =>

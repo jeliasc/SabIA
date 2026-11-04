@@ -5,6 +5,7 @@
 
 @{
     ViewData["Title"] = "Libro de calificaciones";
+    var origenAsignacionId = ViewData["OrigenAsignacionId"] as int?;
 
     string Numero(decimal valor) =>
         valor.ToString("0.####", CultureInfo.InvariantCulture);
@@ -119,11 +120,13 @@
 
             <a asp-action="Abacus"
                asp-route-id="@Model.ConfiguracionId"
+               asp-route-asignacionId="@origenAsignacionId"
                class="app-btn app-btn-soft-secondary">
                 Resumen Abacus
             </a>
 
             <a asp-action="Index"
+               asp-route-asignacionId="@origenAsignacionId"
                class="app-btn app-btn-soft-secondary">
                 Regresar
             </a>
@@ -150,6 +153,11 @@
         <div class="d-none d-lg-block">
             <form asp-action="Guardar" method="post">
                 @Html.AntiForgeryToken()
+
+                @if (origenAsignacionId.HasValue)
+                {
+                    <input type="hidden" name="asignacionId" value="@origenAsignacionId" />
+                }
 
                 <input type="hidden"
                        name="ConfiguracionId"
@@ -388,6 +396,11 @@
             <form asp-action="Guardar" method="post">
                 @Html.AntiForgeryToken()
 
+                @if (origenAsignacionId.HasValue)
+                {
+                    <input type="hidden" name="asignacionId" value="@origenAsignacionId" />
+                }
+
                 <input type="hidden"
                        name="ConfiguracionId"
                        value="@Model.ConfiguracionId" />
@@ -564,6 +577,7 @@
         {
             <form asp-action="Cerrar"
                   asp-route-id="@Model.ConfiguracionId"
+                  asp-route-asignacionId="@origenAsignacionId"
                   method="post"
                   class="d-flex justify-content-end mt-4"
                   data-confirmar-accion-academica

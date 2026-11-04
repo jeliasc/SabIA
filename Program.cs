@@ -43,6 +43,7 @@ using Proyecto_Final.Servicios.GestionCalificaciones;
 using Proyecto_Final.Servicios.InteligenciaArtificial;
 using Proyecto_Final.Servicios.Dashboard;
 using Proyecto_Final.Servicios.ExploradorAcademico;
+using Proyecto_Final.Servicios.NavegacionAcademica;
 using Proyecto_Final.Servicios.Auditoria;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -345,6 +346,7 @@ builder.Services.AddScoped<INotificacionServicio, NotificacionServicio>();
 builder.Services.AddScoped<ICalificacionServicio, CalificacionServicio>();
 builder.Services.AddScoped<IDashboardServicio, DashboardServicio>();
 builder.Services.AddScoped<IExploradorAcademicoServicio, ExploradorAcademicoServicio>();
+builder.Services.AddScoped<INavegacionAcademicaServicio, NavegacionAcademicaServicio>();
 builder.Services.AddScoped<IAuditoriaServicio, AuditoriaServicio>();
 builder.Services.AddScoped<IAuditoriaConsultaServicio, AuditoriaConsultaServicio>();
 builder.Services.Configure<ConfiguracionIa>(builder.Configuration.GetSection("InteligenciaArtificial"));
