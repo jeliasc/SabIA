@@ -1001,6 +1001,71 @@ namespace Proyecto_Final.Data.Migraciones
                     b.ToTable("EntregasArchivos");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.EventoDiagnostico", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Accion")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Categoria")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Componente")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<string>("Controlador")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long?>("DuracionMilisegundos")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("FechaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MensajeTecnico")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Modulo")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Operacion")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int?>("ResultadoHttp")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SesionDiagnosticoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TipoExcepcion")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SesionDiagnosticoId", "FechaUtc");
+
+                    b.ToTable("EventosDiagnostico");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.FuenteResolucionTrasladoAcademico", b =>
                 {
                     b.Property<int>("Id")
@@ -2043,6 +2108,67 @@ namespace Proyecto_Final.Data.Migraciones
                     b.ToTable("RegistrosAuditoria");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.RegistroAuditoriaBaseDatos", b =>
+                {
+                    b.Property<string>("CamposModificados")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("campos_modificados");
+
+                    b.Property<string>("Esquema")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("esquema");
+
+                    b.Property<DateTime>("FechaUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_utc");
+
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Operacion")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("operacion");
+
+                    b.Property<string>("Origen")
+                        .HasColumnType("text")
+                        .HasColumnName("origen");
+
+                    b.Property<string>("RegistroId")
+                        .HasColumnType("text")
+                        .HasColumnName("registro_id");
+
+                    b.Property<string>("Tabla")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("tabla");
+
+                    b.Property<string>("TransaccionId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("transaccion_id");
+
+                    b.Property<string>("UsuarioConexion")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("usuario_conexion");
+
+                    b.Property<string>("ValoresAnteriores")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("valores_anteriores");
+
+                    b.Property<string>("ValoresNuevos")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("valores_nuevos");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("auditoria_bd", (string)null);
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.RelevoAsignacion", b =>
                 {
                     b.Property<int>("Id")
@@ -2460,6 +2586,67 @@ namespace Proyecto_Final.Data.Migraciones
                         .IsUnique();
 
                     b.ToTable("Secciones");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.SesionDiagnostico", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActivadaPorUsuarioId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("DuracionMinutos")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FinalizadaPorUsuarioId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("FinalizadaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("InicioUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Modulo")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("MotivoFinalizacion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("UsuarioId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("VencimientoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivadaPorUsuarioId");
+
+                    b.HasIndex("FinalizadaPorUsuarioId");
+
+                    b.HasIndex("Estado", "InicioUtc");
+
+                    b.HasIndex("UsuarioId", "Estado", "VencimientoUtc");
+
+                    b.ToTable("SesionesDiagnostico", t =>
+                        {
+                            t.HasCheckConstraint("CK_SesionesDiagnostico_Duracion", "\"DuracionMinutos\" IN (5, 15, 30) AND \"VencimientoUtc\" > \"InicioUtc\"");
+                        });
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.SolicitudCorreccionCalificacion", b =>
@@ -3324,6 +3511,17 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Entrega");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.EventoDiagnostico", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.SesionDiagnostico", "SesionDiagnostico")
+                        .WithMany("Eventos")
+                        .HasForeignKey("SesionDiagnosticoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SesionDiagnostico");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.FuenteResolucionTrasladoAcademico", b =>
                 {
                     b.HasOne("Proyecto_Final.Models.Asignacion", "Asignacion")
@@ -4004,6 +4202,32 @@ namespace Proyecto_Final.Data.Migraciones
                     b.Navigation("Grado");
                 });
 
+            modelBuilder.Entity("Proyecto_Final.Models.SesionDiagnostico", b =>
+                {
+                    b.HasOne("Proyecto_Final.Models.Usuario", "ActivadaPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("ActivadaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Final.Models.Usuario", "FinalizadaPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("FinalizadaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Proyecto_Final.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ActivadaPorUsuario");
+
+                    b.Navigation("FinalizadaPorUsuario");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("Proyecto_Final.Models.SolicitudCorreccionCalificacion", b =>
                 {
                     b.HasOne("Proyecto_Final.Models.ActividadEvaluable", "ActividadEvaluable")
@@ -4299,6 +4523,11 @@ namespace Proyecto_Final.Data.Migraciones
             modelBuilder.Entity("Proyecto_Final.Models.RespuestaAlumno", b =>
                 {
                     b.Navigation("OpcionesSeleccionadas");
+                });
+
+            modelBuilder.Entity("Proyecto_Final.Models.SesionDiagnostico", b =>
+                {
+                    b.Navigation("Eventos");
                 });
 
             modelBuilder.Entity("Proyecto_Final.Models.Tarea", b =>

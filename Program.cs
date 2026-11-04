@@ -235,7 +235,10 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy(
         Politicas.AuditoriaSuperusuario,
-        politica => politica.RequireRole(Roles.Superusuario));
+        politica => politica.RequireRole(
+            Roles.Superusuario,
+            "Técnico"
+        ));
     options.AddPolicy(Politicas.ComentariosAcademicos,
         politica => politica.RequireAuthenticatedUser());
     options.AddPolicy(Politicas.UsuariosValidarDatos, politica =>
@@ -349,6 +352,8 @@ builder.Services.AddScoped<IExploradorAcademicoServicio, ExploradorAcademicoServ
 builder.Services.AddScoped<INavegacionAcademicaServicio, NavegacionAcademicaServicio>();
 builder.Services.AddScoped<IAuditoriaServicio, AuditoriaServicio>();
 builder.Services.AddScoped<IAuditoriaConsultaServicio, AuditoriaConsultaServicio>();
+builder.Services.AddScoped<IDiagnosticoServicio, DiagnosticoServicio>();
+builder.Services.AddHostedService<FinalizadorDiagnosticosVencidos>();
 builder.Services.Configure<ConfiguracionIa>(builder.Configuration.GetSection("InteligenciaArtificial"));
 builder.Services.AddHttpClient<IIaServicio, IaServicio>((serviceProvider, client) =>
 {
@@ -469,6 +474,7 @@ app.Use(async (contexto, siguiente) =>
     }
 });
 
+app.UseMiddleware<DiagnosticoMiddleware>();
 app.UseAuthorization();
 
 // PERMITIR ARCHIVOS ESTÁTICOS SIN AUTENTICACIÓN

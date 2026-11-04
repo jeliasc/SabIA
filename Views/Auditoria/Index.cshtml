@@ -1,369 +1,67 @@
-
-@model Proyecto_Final.ViewModels.Auditoria.AuditoriaIndice
+@model Proyecto_Final.ViewModels.Auditoria.AuditoriaCentroViewModel
 @using Proyecto_Final.Models
-
+@using Proyecto_Final.ViewModels.Auditoria
 @{
     ViewData["Title"] = "Auditoría";
-
-    string ClaseResultado(ResultadoAuditoria resultado) => resultado switch
-    {
-        ResultadoAuditoria.Exitoso => "text-bg-success",
-        ResultadoAuditoria.Rechazado => "text-bg-warning",
-        _ => "text-bg-danger"
-    };
+    var diagnosticoActivo = string.Equals(Context.Request.Query["pestana"], "diagnostico", StringComparison.OrdinalIgnoreCase);
+    string ClaseResultado(ResultadoAuditoria resultado) => resultado switch { ResultadoAuditoria.Exitoso => "text-bg-success", ResultadoAuditoria.Rechazado => "text-bg-warning", _ => "text-bg-danger" };
 }
 
 <div class="container-fluid">
-
-    <!-- Encabezado -->
     <div class="mb-4">
         <h2 class="fw-bold mb-1">Auditoría</h2>
-        <p class="text-muted mb-0">
-            Trazabilidad de operaciones y eventos de seguridad.
-        </p>
+        <p class="text-muted mb-0">Historial de seguridad y centro de diagnóstico técnico bajo demanda.</p>
     </div>
+    @if (TempData["Exito"] is string exito) { <div class="alert alert-success">@exito</div> }
+    @if (TempData["Error"] is string error) { <div class="alert alert-danger">@error</div> }
 
-    <!-- Filtros -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body">
-            <form method="get"
-                  asp-action="Index"
-                  class="row g-3"
-                  aria-label="Filtros de auditoría">
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item"><a class="nav-link @(!diagnosticoActivo ? "active" : null)" asp-action="Index">Historial</a></li>
+        <li class="nav-item"><a class="nav-link @(diagnosticoActivo ? "active" : null)" asp-action="Index" asp-route-pestana="diagnostico">Diagnóstico</a></li>
+    </ul>
 
-                <div class="col-12 col-sm-6 col-lg-2">
-                    <label asp-for="Filtro.FechaDesde"
-                           class="form-label"></label>
-                    <input asp-for="Filtro.FechaDesde"
-                           name="FechaDesde"
-                           class="form-control" />
-                </div>
-
-                <div class="col-12 col-sm-6 col-lg-2">
-                    <label asp-for="Filtro.FechaHasta"
-                           class="form-label"></label>
-                    <input asp-for="Filtro.FechaHasta"
-                           name="FechaHasta"
-                           class="form-control" />
-                </div>
-
-                <div class="col-12 col-md-6 col-lg-4">
-                    <label asp-for="Filtro.Responsable"
-                           class="form-label"></label>
-                    <input asp-for="Filtro.Responsable"
-                           name="Responsable"
-                           class="form-control"
-                           maxlength="100" />
-                </div>
-
-                <div class="col-12 col-sm-6 col-lg-2">
-                    <label asp-for="Filtro.Modulo"
-                           class="form-label"></label>
-                    <input asp-for="Filtro.Modulo"
-                           name="Modulo"
-                           class="form-control"
-                           maxlength="80" />
-                </div>
-
-                <div class="col-12 col-sm-6 col-lg-2">
-                    <label asp-for="Filtro.Accion"
-                           class="form-label"></label>
-                    <input asp-for="Filtro.Accion"
-                           name="Accion"
-                           class="form-control"
-                           maxlength="120" />
-                </div>
-
-                <div class="col-12 col-sm-6 col-lg-3">
-                    <label asp-for="Filtro.Resultado"
-                           class="form-label"></label>
-                    <select asp-for="Filtro.Resultado"
-                            name="Resultado"
-                            asp-items="Html.GetEnumSelectList<ResultadoAuditoria>()"
-                            class="form-select">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-
-                <div class="col-12 col-sm-6 col-lg-3">
-                    <label asp-for="Filtro.DireccionIp"
-                           class="form-label"></label>
-                    <input asp-for="Filtro.DireccionIp"
-                           name="DireccionIp"
-                           class="form-control"
-                           maxlength="45" />
-                </div>
-
-                <div class="col-12 col-lg-6 d-flex flex-wrap align-items-end gap-2">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-search" aria-hidden="true"></i>
-                        Filtrar
-                    </button>
-
-                    <a asp-action="Index"
-                       class="btn btn-outline-secondary">
-                        Limpiar
-                    </a>
-                </div>
-
-                <div class="col-12">
-                    <div class="form-text">
-                        Las fechas se interpretan en horario de Guatemala.
-                    </div>
-                </div>
-
+    @if (!diagnosticoActivo)
+    {
+        <div class="card border-0 shadow-sm mb-4"><div class="card-body">
+            <form method="get" class="row g-3" aria-label="Filtros de auditoría">
+                <div class="col-6 col-lg-2"><label asp-for="Historial.Filtro.FechaDesde" class="form-label"></label><input asp-for="Historial.Filtro.FechaDesde" name="FechaDesde" class="form-control" /></div>
+                <div class="col-6 col-lg-2"><label asp-for="Historial.Filtro.FechaHasta" class="form-label"></label><input asp-for="Historial.Filtro.FechaHasta" name="FechaHasta" class="form-control" /></div>
+                <div class="col-12 col-lg-3"><label asp-for="Historial.Filtro.Responsable" class="form-label"></label><input asp-for="Historial.Filtro.Responsable" name="Responsable" class="form-control" maxlength="100" /></div>
+                <div class="col-6 col-lg-2"><label asp-for="Historial.Filtro.Modulo" class="form-label"></label><input asp-for="Historial.Filtro.Modulo" name="Modulo" class="form-control" maxlength="80" /></div>
+                <div class="col-6 col-lg-2"><label asp-for="Historial.Filtro.Resultado" class="form-label"></label><select asp-for="Historial.Filtro.Resultado" name="Resultado" asp-items="Html.GetEnumSelectList<ResultadoAuditoria>()" class="form-select"><option value="">Todos</option></select></div>
+                <div class="col-6 col-lg-2"><label asp-for="Historial.Filtro.Origen" class="form-label">Origen</label><select asp-for="Historial.Filtro.Origen" name="Origen" asp-items="Html.GetEnumSelectList<OrigenHistorialAuditoria>()" class="form-select"></select></div>
+                <div class="col-12 col-lg-1 d-flex align-items-end"><button class="btn btn-primary w-100">Filtrar</button></div>
             </form>
-        </div>
-    </div>
-
-    <!-- Resultados -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-body">
-
-            <!-- Resumen -->
-            <div class="d-flex flex-wrap justify-content-between
-                        align-items-center gap-2 mb-3">
-
-                <span class="text-muted">
-                    @Model.TotalRegistros registro(s)
-                </span>
-
-                <span class="text-muted">
-                    Página @Model.Pagina de @Model.TotalPaginas
-                </span>
-            </div>
-
-            @if (Model.Registros.Count == 0)
-            {
-                <!-- Estado vacío único -->
-                <div class="text-center text-muted py-5">
-                    <i class="bi bi-journal-x fs-2 d-block mb-2"
-                       aria-hidden="true"></i>
-
-                    No hay eventos que coincidan con los filtros.
-                </div>
-            }
-            else
-            {
-                <!-- =====================================
-                     ESCRITORIO: TABLA
-                     >= 992px
-                     ===================================== -->
-                <div class="d-none d-lg-block">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-
-                            <thead>
-                                <tr>
-                                    <th scope="col">
-                                        Fecha y hora (Guatemala)
-                                    </th>
-                                    <th scope="col">Responsable</th>
-                                    <th scope="col">Módulo</th>
-                                    <th scope="col">Acción</th>
-                                    <th scope="col">Resultado</th>
-                                    <th scope="col">IP</th>
-                                    <th scope="col" class="text-end">
-                                        Acciones
-                                    </th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                @foreach (var registro in Model.Registros)
-                                {
-                                    <tr>
-                                        <td class="text-nowrap">
-                                            @registro.FechaHoraGuatemala.ToString("dd/MM/yyyy HH:mm:ss")
-                                        </td>
-
-                                        <td class="text-break">
-                                            @registro.Responsable
-                                        </td>
-
-                                        <td class="text-break">
-                                            @registro.Modulo
-                                        </td>
-
-                                        <td class="text-break">
-                                            @registro.Accion
-                                        </td>
-
-                                        <td>
-                                            <span class="badge @ClaseResultado(registro.Resultado)">
-                                                @registro.Resultado.GetDisplayName()
-                                            </span>
-                                        </td>
-
-                                        <td>
-                                            <code>
-                                                @(registro.DireccionIp ?? "—")
-                                            </code>
-                                        </td>
-
-                                        <td class="text-end text-nowrap">
-                                            <a asp-action="Detalle"
-                                               asp-route-id="@registro.Id"
-                                               class="btn btn-sm btn-outline-primary">
-                                                Ver detalle
-                                            </a>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-
-                        </table>
-                    </div>
-                </div>
-
-                <!-- =====================================
-                     MÓVIL Y TABLET: TARJETAS
-                     < 992px
-                     ===================================== -->
-                <div class="d-lg-none">
-
-                    @foreach (var registro in Model.Registros)
-                    {
-                        <article class="card border mb-3">
-
-                            <div class="card-body">
-
-                                <!-- Responsable y resultado -->
-                                <div class="d-flex flex-wrap
-                                            justify-content-between
-                                            align-items-start gap-2 mb-2">
-
-                                    <div class="fw-semibold text-break">
-                                        @registro.Responsable
-                                    </div>
-
-                                    <span class="badge @ClaseResultado(registro.Resultado)">
-                                        @registro.Resultado.GetDisplayName()
-                                    </span>
-                                </div>
-
-                                <!-- Fecha -->
-                                <div class="small text-muted mb-3">
-                                    <i class="bi bi-clock me-1"
-                                       aria-hidden="true"></i>
-
-                                    <time datetime="@registro.FechaHoraGuatemala.ToString("yyyy-MM-ddTHH:mm:ss")">
-                                        @registro.FechaHoraGuatemala.ToString("dd/MM/yyyy HH:mm:ss")
-                                    </time>
-                                </div>
-
-                                <!-- Datos del evento -->
-                                <dl class="row g-2 small mb-3">
-
-                                    <dt class="col-4">
-                                        Módulo
-                                    </dt>
-
-                                    <dd class="col-8 text-break mb-0">
-                                        @registro.Modulo
-                                    </dd>
-
-                                    <dt class="col-4">
-                                        Acción
-                                    </dt>
-
-                                    <dd class="col-8 text-break mb-0">
-                                        @registro.Accion
-                                    </dd>
-
-                                    <dt class="col-4">
-                                        IP
-                                    </dt>
-
-                                    <dd class="col-8 text-break mb-0">
-                                        <code class="text-break">
-                                            @(registro.DireccionIp ?? "—")
-                                        </code>
-                                    </dd>
-
-                                </dl>
-
-                                <!-- Acción -->
-                                <a asp-action="Detalle"
-                                   asp-route-id="@registro.Id"
-                                   class="btn btn-outline-primary btn-sm w-100">
-
-                                    <i class="bi bi-eye me-1"
-                                       aria-hidden="true"></i>
-
-                                    Ver detalle
-                                </a>
-
-                            </div>
-                        </article>
-                    }
-
-                </div>
-            }
-
-            <!-- =====================================
-                 PAGINACIÓN COMPARTIDA
-                 ===================================== -->
-            @if (Model.TotalPaginas > 1)
-            {
-                <nav aria-label="Paginación de auditoría"
-                     class="mt-3">
-
-                    <ul class="pagination pagination-sm
-                               justify-content-center
-                               justify-content-lg-end
-                               flex-wrap gap-1 mb-0">
-
-                        <!-- Anterior -->
-                        <li class="page-item @(Model.Pagina == 1 ? "disabled" : null)">
-
-                            <a class="page-link"
-                               asp-action="Index"
-                               asp-route-pagina="@(Model.Pagina - 1)"
-                               asp-route-fechaDesde="@Model.Filtro.FechaDesde"
-                               asp-route-fechaHasta="@Model.Filtro.FechaHasta"
-                               asp-route-responsable="@Model.Filtro.Responsable"
-                               asp-route-modulo="@Model.Filtro.Modulo"
-                               asp-route-accion="@Model.Filtro.Accion"
-                               asp-route-resultado="@Model.Filtro.Resultado"
-                               asp-route-direccionIp="@Model.Filtro.DireccionIp"
-                               aria-disabled="@(Model.Pagina == 1 ? "true" : "false")">
-
-                                Anterior
-                            </a>
-                        </li>
-
-                        <!-- Página actual -->
-                        <li class="page-item disabled">
-                            <span class="page-link">
-                                @Model.Pagina / @Model.TotalPaginas
-                            </span>
-                        </li>
-
-                        <!-- Siguiente -->
-                        <li class="page-item @(Model.Pagina == Model.TotalPaginas ? "disabled" : null)">
-
-                            <a class="page-link"
-                               asp-action="Index"
-                               asp-route-pagina="@(Model.Pagina + 1)"
-                               asp-route-fechaDesde="@Model.Filtro.FechaDesde"
-                               asp-route-fechaHasta="@Model.Filtro.FechaHasta"
-                               asp-route-responsable="@Model.Filtro.Responsable"
-                               asp-route-modulo="@Model.Filtro.Modulo"
-                               asp-route-accion="@Model.Filtro.Accion"
-                               asp-route-resultado="@Model.Filtro.Resultado"
-                               asp-route-direccionIp="@Model.Filtro.DireccionIp"
-                               aria-disabled="@(Model.Pagina == Model.TotalPaginas ? "true" : "false")">
-
-                                Siguiente
-                            </a>
-                        </li>
-
-                    </ul>
-                </nav>
-            }
-
-        </div>
-    </div>
-
+        </div></div>
+        <div class="card border-0 shadow-sm"><div class="card-body">
+            <div class="d-flex justify-content-between text-muted mb-3"><span>@Model.Historial.TotalRegistros registro(s) de aplicación</span><span>Página @Model.Historial.Pagina de @Model.Historial.TotalPaginas</span></div>
+            <div class="table-responsive"><table class="table table-hover align-middle"><thead><tr><th>Fecha (Guatemala)</th><th>Origen</th><th>Responsable</th><th>Módulo</th><th>Acción</th><th>Resultado</th><th></th></tr></thead><tbody>
+            @foreach (var registro in Model.Historial.Registros) { <tr><td class="text-nowrap">@registro.FechaHoraGuatemala.ToString("dd/MM/yyyy HH:mm:ss")</td><td><span class="badge text-bg-secondary">@registro.Origen</span></td><td>@registro.Responsable</td><td>@registro.Modulo</td><td>@registro.Accion</td><td>@if(registro.Origen == "Aplicación") { <span class="badge @ClaseResultado(registro.Resultado)">@registro.Resultado.GetDisplayName()</span> } else { <span class="text-muted">No aplica</span> }</td><td>@if(registro.Origen == "Aplicación") { <a asp-action="Detalle" asp-route-id="@registro.Id" class="btn btn-sm btn-outline-primary">Detalle</a> } else { <a asp-action="DetalleBaseDatos" asp-route-id="@registro.Id" class="btn btn-sm btn-outline-primary">Detalle</a> }</td></tr> }
+            </tbody></table></div>
+            @if (Model.Historial.Registros.Count == 0) { <p class="text-center text-muted py-4 mb-0">No hay eventos que coincidan con los filtros.</p> }
+            @if (Model.Historial.TotalPaginas > 1) { <nav><ul class="pagination justify-content-end mb-0"><li class="page-item @(Model.Historial.Pagina == 1 ? "disabled" : null)"><a class="page-link" asp-route-pagina="@(Model.Historial.Pagina - 1)" asp-route-fechaDesde="@Model.Historial.Filtro.FechaDesde" asp-route-fechaHasta="@Model.Historial.Filtro.FechaHasta" asp-route-responsable="@Model.Historial.Filtro.Responsable" asp-route-modulo="@Model.Historial.Filtro.Modulo">Anterior</a></li><li class="page-item disabled"><span class="page-link">@Model.Historial.Pagina / @Model.Historial.TotalPaginas</span></li><li class="page-item @(Model.Historial.Pagina == Model.Historial.TotalPaginas ? "disabled" : null)"><a class="page-link" asp-route-pagina="@(Model.Historial.Pagina + 1)" asp-route-fechaDesde="@Model.Historial.Filtro.FechaDesde" asp-route-fechaHasta="@Model.Historial.Filtro.FechaHasta" asp-route-responsable="@Model.Historial.Filtro.Responsable" asp-route-modulo="@Model.Historial.Filtro.Modulo">Siguiente</a></li></ul></nav> }
+        </div></div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm mb-4"><div class="card-body"><h3 class="h5">Activar diagnóstico</h3><p class="text-muted small">La captura detallada se limita al usuario, módulo y tiempo seleccionados. No se almacenan formularios, credenciales ni trazas completas.</p>
+            <form asp-action="ActivarDiagnostico" method="post" class="row g-3">@Html.AntiForgeryToken()
+                <div class="col-12 col-md-6"><label class="form-label" for="busqueda-usuario">Buscar usuario</label><div class="input-group"><input id="busqueda-usuario" class="form-control" autocomplete="off" placeholder="Nombre, usuario o correo" /><button type="button" id="buscar-usuario" class="btn btn-outline-secondary">Buscar</button></div><select asp-for="Solicitud.UsuarioId" class="form-select mt-2" required><option value="">Seleccione un usuario después de buscar</option></select><span asp-validation-for="Solicitud.UsuarioId" class="text-danger"></span></div>
+                <div class="col-12 col-md-3"><label asp-for="Solicitud.Modulo" class="form-label">Módulo</label><select asp-for="Solicitud.Modulo" class="form-select"><option value="">Todos los módulos</option>@foreach (var modulo in Model.Diagnostico.Modulos) { <option value="@modulo">@modulo</option> }</select></div>
+                <div class="col-12 col-md-3"><label asp-for="Solicitud.DuracionMinutos" class="form-label">Duración</label><select asp-for="Solicitud.DuracionMinutos" class="form-select"><option value="5">5 minutos</option><option value="15">15 minutos</option><option value="30">30 minutos</option></select></div>
+                <div class="col-12"><label asp-for="Solicitud.Motivo" class="form-label">Motivo</label><textarea asp-for="Solicitud.Motivo" class="form-control" rows="2" maxlength="1000" required></textarea></div><div class="col-12"><button class="btn btn-primary">Activar diagnóstico</button></div>
+            </form>
+        </div></div>
+        <div class="row g-4"><div class="col-12 col-xl-6"><div class="card border-0 shadow-sm h-100"><div class="card-body"><h3 class="h5">Sesiones recientes</h3><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Usuario</th><th>Módulo</th><th>Estado</th><th></th></tr></thead><tbody>@foreach(var sesion in Model.Diagnostico.Sesiones) { <tr><td>@sesion.Usuario<br /><small class="text-muted">@sesion.InicioUtc.ToLocalTime().ToString("dd/MM HH:mm") — @sesion.VencimientoUtc.ToLocalTime().ToString("HH:mm")</small></td><td>@(sesion.Modulo ?? "Todos")</td><td>@sesion.Estado.GetDisplayName()</td><td>@if(sesion.Estado == EstadoSesionDiagnostico.Activa) { <form asp-action="FinalizarDiagnostico" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@sesion.Id" /><button class="btn btn-sm btn-outline-danger">Finalizar</button></form> }</td></tr> }</tbody></table></div></div></div></div>
+        <div class="col-12 col-xl-6"><div class="card border-0 shadow-sm h-100"><div class="card-body"><h3 class="h5">Resultados recientes</h3>@foreach(var evento in Model.Diagnostico.Eventos) { <article class="border-bottom py-2"><div class="d-flex justify-content-between"><strong>@evento.Usuario · @evento.Modulo</strong><small>@evento.FechaUtc.ToLocalTime().ToString("dd/MM HH:mm:ss")</small></div><div class="small">@evento.Operacion · HTTP @(evento.ResultadoHttp?.ToString() ?? "—") · @(evento.DuracionMilisegundos?.ToString() ?? "—") ms</div>@if(!string.IsNullOrWhiteSpace(evento.TipoExcepcion) || !string.IsNullOrWhiteSpace(evento.MensajeTecnico)) { <div class="small text-danger">@evento.TipoExcepcion — @evento.MensajeTecnico</div> }</article> } @if(!Model.Diagnostico.Eventos.Any()) { <p class="text-muted mb-0">No hay resultados de diagnóstico.</p> }</div></div></div></div>
+    }
 </div>
+
+@section Scripts { <script>
+document.getElementById('buscar-usuario')?.addEventListener('click', async () => {
+ const texto = document.getElementById('busqueda-usuario').value.trim(); if(texto.length < 2) return;
+ const respuesta = await fetch('@Url.Action("BuscarUsuarios")?termino=' + encodeURIComponent(texto)); if(!respuesta.ok) return;
+ const usuarios = await respuesta.json(), selector = document.getElementById('Solicitud_UsuarioId'); selector.innerHTML = '<option value="">Seleccione un usuario</option>';
+ usuarios.forEach(u => { const opcion = document.createElement('option'); opcion.value = u.id; opcion.textContent = u.texto; selector.appendChild(opcion); });
+});
+</script> }

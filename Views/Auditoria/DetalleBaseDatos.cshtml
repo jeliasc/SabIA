@@ -1,0 +1,17 @@
+@model Proyecto_Final.Models.RegistroAuditoriaBaseDatos
+@{
+    ViewData["Title"] = "Detalle de auditoría de base de datos";
+}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4"><div><h2 class="fw-bold mb-1">Detalle de base de datos</h2><p class="text-muted mb-0">Evidencia técnica generada por PostgreSQL.</p></div><a asp-action="Index" class="btn btn-outline-secondary">Volver</a></div>
+    <div class="alert alert-secondary">Esta evidencia identifica el rol de conexión de PostgreSQL; no atribuye la acción a un usuario de SabIA.</div>
+    <div class="card border-0 shadow-sm"><div class="card-body"><dl class="row mb-0">
+        <dt class="col-sm-3">Fecha UTC</dt><dd class="col-sm-9">@Model.FechaUtc.ToString("O")</dd>
+        <dt class="col-sm-3">Tabla / operación</dt><dd class="col-sm-9">@Model.Esquema.@Model.Tabla · @Model.Operacion</dd>
+        <dt class="col-sm-3">Registro / conexión</dt><dd class="col-sm-9"><code>@Model.RegistroId</code> · <code>@Model.UsuarioConexion</code></dd>
+        <dt class="col-sm-3">Transacción</dt><dd class="col-sm-9"><code>@Model.TransaccionId</code></dd>
+        <dt class="col-sm-3">Campos modificados</dt><dd class="col-sm-9"><pre class="mb-0 text-break">@Model.CamposModificados</pre></dd>
+        <dt class="col-sm-3">Valores anteriores</dt><dd class="col-sm-9"><pre class="mb-0 text-break">@Model.ValoresAnteriores</pre></dd>
+        <dt class="col-sm-3">Valores nuevos</dt><dd class="col-sm-9"><pre class="mb-0 text-break">@Model.ValoresNuevos</pre></dd>
+    </dl></div></div>
+</div>

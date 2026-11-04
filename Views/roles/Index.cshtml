@@ -2,6 +2,20 @@
 
 @{
     ViewData["Title"] = "Roles";
+
+    var puedeEditar = User.HasClaim(
+        TiposClaims.Permiso,
+        Permisos.Roles.Editar);
+
+    var puedeCambiarEstado = User.HasClaim(
+        TiposClaims.Permiso,
+        Permisos.Roles.CambiarEstado);
+
+    var mostrarAcciones = (puedeEditar || puedeCambiarEstado) &&
+        Model.Any(rol => !string.Equals(
+            rol.Name,
+            Roles.Superusuario,
+            StringComparison.OrdinalIgnoreCase));
 }
 
 <div class="container-fluid">
@@ -53,8 +67,8 @@
         <div class="card-body p-0">
 
             <div class="table-responsive">
-
-                <table id="tablaRoles" class="table app-table" data-tabla-index data-actions-column="true"
+                <table id="tablaRoles" class="table app-table" data-tabla-index
+                       data-actions-column="@(mostrarAcciones ? "true" : "false")"
                        data-search-placeholder="Nombre o descripción..." data-empty-message="No existen roles registrados"
                        data-zero-message="No se encontraron roles">
 
@@ -62,9 +76,12 @@
                         <tr>
                             <th>Nombre</th>
                             <th>Estado</th>
-                            <th class="text-end">
-                                Acciones
-                            </th>
+                            @if (mostrarAcciones)
+                            {
+                                <th class="text-end">
+                                    Acciones
+                                </th>
+                            }
                         </tr>
                     </thead>
 
@@ -101,81 +118,83 @@
                                     }
 
                                 </td>
-
-                                <td class="text-end text-nowrap">
-
-                                    @if (!esSuperusuario &&
-                                        User.HasClaim(
-                                            TiposClaims.Permiso,
-                                            Permisos.Roles.Editar))
-                                    {
-                                        <a asp-action="Editar" asp-route-id="@rol.Id" class="app-btn app-btn-soft-secondary">
-
-                                            <i class="bi bi-pencil"></i>
-
-                                            <span class="d-none d-xl-inline">
-                                                Editar
-                                            </span>
-
-                                        </a>
-                                    }
-
-                                    @if (rol.Activo)
-                                    {
-                                        @if (!esSuperusuario &&
-                                        User.HasClaim(
-                                            TiposClaims.Permiso,
-                                            Permisos.Roles.CambiarEstado))
-                                        {
-                                            <form asp-action="Desactivar" method="post" class="d-inline formulario-cambiar-estado"
-                                                  data-accion="desactivar" data-nombre="@rol.Name">
-
-                                                @Html.AntiForgeryToken()
-
-                                                <input type="hidden" name="id" value="@rol.Id" />
-
-                                                <button type="submit" class="app-btn app-btn-soft-danger">
-
-                                                    <i class="bi bi-shield-x"></i>
-
-                                                    <span class="d-none d-xl-inline">
-                                                        Desactivar
-                                                    </span>
-
-                                                </button>
-
-                                            </form>
-                                        }
-                                    }
-                                    else
-                                    {
+                                @if (mostrarAcciones)
+                                {
+                                    <td class="text-end text-nowrap">
+                                    
                                         @if (!esSuperusuario &&
                                             User.HasClaim(
                                                 TiposClaims.Permiso,
-                                                Permisos.Roles.CambiarEstado))
+                                                Permisos.Roles.Editar))
                                         {
-                                            <form asp-action="Activar" method="post" class="d-inline formulario-cambiar-estado"
-                                                  data-accion="activar" data-nombre="@rol.Name">
+                                            <a asp-action="Editar" asp-route-id="@rol.Id" class="app-btn app-btn-soft-secondary">
 
-                                                @Html.AntiForgeryToken()
+                                                <i class="bi bi-pencil"></i>
 
-                                                <input type="hidden" name="id" value="@rol.Id" />
+                                                <span class="d-none d-xl-inline">
+                                                    Editar
+                                                </span>
 
-                                                <button type="submit" class="app-btn app-btn-soft-success">
-
-                                                    <i class="bi bi-shield-check"></i>
-
-                                                    <span class="d-none d-xl-inline">
-                                                        Activar
-                                                    </span>
-
-                                                </button>
-
-                                            </form>
+                                            </a>
                                         }
-                                    }
 
-                                </td>
+                                        @if (rol.Activo)
+                                        {
+                                            @if (!esSuperusuario &&
+                                            User.HasClaim(
+                                                TiposClaims.Permiso,
+                                                Permisos.Roles.CambiarEstado))
+                                            {
+                                                <form asp-action="Desactivar" method="post" class="d-inline formulario-cambiar-estado"
+                                                      data-accion="desactivar" data-nombre="@rol.Name">
+
+                                                    @Html.AntiForgeryToken()
+
+                                                    <input type="hidden" name="id" value="@rol.Id" />
+
+                                                    <button type="submit" class="app-btn app-btn-soft-danger">
+
+                                                        <i class="bi bi-shield-x"></i>
+
+                                                        <span class="d-none d-xl-inline">
+                                                            Desactivar
+                                                        </span>
+
+                                                    </button>
+
+                                                </form>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            @if (!esSuperusuario &&
+                                                User.HasClaim(
+                                                    TiposClaims.Permiso,
+                                                    Permisos.Roles.CambiarEstado))
+                                            {
+                                                <form asp-action="Activar" method="post" class="d-inline formulario-cambiar-estado"
+                                                      data-accion="activar" data-nombre="@rol.Name">
+
+                                                    @Html.AntiForgeryToken()
+
+                                                    <input type="hidden" name="id" value="@rol.Id" />
+
+                                                    <button type="submit" class="app-btn app-btn-soft-success">
+
+                                                        <i class="bi bi-shield-check"></i>
+
+                                                        <span class="d-none d-xl-inline">
+                                                            Activar
+                                                        </span>
+
+                                                    </button>
+
+                                                </form>
+                                            }
+                                        }
+
+                                    </td>
+                                }
 
                             </tr>
                         }

@@ -33,7 +33,7 @@ public sealed class AuditoriaSaveChangesInterceptor(IHttpContextAccessor httpCon
 
         contexto.ChangeTracker.DetectChanges();
         var entradas = contexto.ChangeTracker.Entries()
-            .Where(x => x.Entity is not RegistroAuditoria &&
+            .Where(x => x.Entity is not RegistroAuditoria and not SesionDiagnostico and not EventoDiagnostico &&
                         x.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
             .ToList();
 

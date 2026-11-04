@@ -15,6 +15,9 @@ public class Contexto
     public DbSet<PermisoSistema> PermisosSistema =>
         Set<PermisoSistema>();
     public DbSet<RegistroAuditoria> RegistrosAuditoria => Set<RegistroAuditoria>();
+    public DbSet<RegistroAuditoriaBaseDatos> RegistrosAuditoriaBaseDatos => Set<RegistroAuditoriaBaseDatos>();
+    public DbSet<SesionDiagnostico> SesionesDiagnostico => Set<SesionDiagnostico>();
+    public DbSet<EventoDiagnostico> EventosDiagnostico => Set<EventoDiagnostico>();
 
     public DbSet<Docente> Docentes =>
         Set<Docente>();
@@ -181,6 +184,47 @@ public class Contexto
         builder.Entity<RegistroAuditoria>().HasIndex(x => x.FechaUtc);
         builder.Entity<RegistroAuditoria>().HasIndex(x => new { x.UsuarioId, x.FechaUtc });
         builder.Entity<RegistroAuditoria>().HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<RegistroAuditoriaBaseDatos>(entidad =>
+        {
+            entidad.HasNoKey();
+            entidad.ToView("auditoria_bd");
+            entidad.Property(x => x.Id).HasColumnName("id");
+            entidad.Property(x => x.FechaUtc).HasColumnName("fecha_utc");
+            entidad.Property(x => x.Esquema).HasColumnName("esquema");
+            entidad.Property(x => x.Tabla).HasColumnName("tabla");
+            entidad.Property(x => x.Operacion).HasColumnName("operacion");
+            entidad.Property(x => x.RegistroId).HasColumnName("registro_id");
+            entidad.Property(x => x.UsuarioConexion).HasColumnName("usuario_conexion");
+            entidad.Property(x => x.TransaccionId).HasColumnName("transaccion_id");
+            entidad.Property(x => x.Origen).HasColumnName("origen");
+            entidad.Property(x => x.CamposModificados).HasColumnName("campos_modificados").HasColumnType("jsonb");
+            entidad.Property(x => x.ValoresAnteriores).HasColumnName("valores_anteriores").HasColumnType("jsonb");
+            entidad.Property(x => x.ValoresNuevos).HasColumnName("valores_nuevos").HasColumnType("jsonb");
+        });
+
+        builder.Entity<SesionDiagnostico>()
+            .HasIndex(x => new { x.UsuarioId, x.Estado, x.VencimientoUtc });
+        builder.Entity<SesionDiagnostico>()
+            .HasIndex(x => new { x.Estado, x.InicioUtc });
+        builder.Entity<SesionDiagnostico>()
+            .HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<SesionDiagnostico>()
+            .HasOne(x => x.ActivadaPorUsuario).WithMany().HasForeignKey(x => x.ActivadaPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<SesionDiagnostico>()
+            .HasOne(x => x.FinalizadaPorUsuario).WithMany().HasForeignKey(x => x.FinalizadaPorUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<SesionDiagnostico>()
+            .ToTable(tabla => tabla.HasCheckConstraint(
+                "CK_SesionesDiagnostico_Duracion",
+                "\"DuracionMinutos\" IN (5, 15, 30) AND \"VencimientoUtc\" > \"InicioUtc\""));
+
+        builder.Entity<EventoDiagnostico>()
+            .HasIndex(x => new { x.SesionDiagnosticoId, x.FechaUtc });
+        builder.Entity<EventoDiagnostico>()
+            .HasOne(x => x.SesionDiagnostico).WithMany(x => x.Eventos)
+            .HasForeignKey(x => x.SesionDiagnosticoId).OnDelete(DeleteBehavior.Cascade);
 
         builder.Entity<CicloEscolar>()
             .HasIndex(x => x.Activo)

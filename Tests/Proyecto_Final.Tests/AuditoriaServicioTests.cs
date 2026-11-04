@@ -360,7 +360,7 @@ public sealed class AuditoriaServicioTests
     }
 
     [Fact]
-    public void ControladorAuditoria_EsSoloLectura_YExclusivoSuperusuario()
+    public void ControladorAuditoria_ProtegeHistorialYAccionesDeDiagnostico()
     {
         var autorizacion = Assert.Single(typeof(AuditoriaController)
             .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
@@ -371,12 +371,14 @@ public sealed class AuditoriaServicioTests
             .GetMethods(System.Reflection.BindingFlags.Instance |
                         System.Reflection.BindingFlags.Public |
                         System.Reflection.BindingFlags.DeclaredOnly);
-        Assert.Equal(2, acciones.Length);
-        Assert.All(acciones, accion =>
-            Assert.NotEmpty(accion.GetCustomAttributes(typeof(HttpGetAttribute), inherit: true)));
-        Assert.DoesNotContain(acciones, x =>
-            x.Name.Contains("Editar", StringComparison.OrdinalIgnoreCase) ||
-            x.Name.Contains("Eliminar", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(6, acciones.Length);
+        Assert.Equal(4, acciones.Count(accion =>
+            accion.GetCustomAttributes(typeof(HttpGetAttribute), inherit: true).Any()));
+        var mutaciones = acciones.Where(accion =>
+            accion.GetCustomAttributes(typeof(HttpPostAttribute), inherit: true).Any()).ToList();
+        Assert.Equal(2, mutaciones.Count);
+        Assert.All(mutaciones, accion => Assert.NotEmpty(
+            accion.GetCustomAttributes(typeof(ValidateAntiForgeryTokenAttribute), inherit: true)));
     }
 
     [Theory]
